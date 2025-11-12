@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Bahnhof hinzufügen</h1>
+
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.name.label }}<br>
+            {{ form.name(size=40) }}
+        </p>
+        <p>
+            {{ form.adresse.label }}<br>
+            {{ form.adresse(size=60) }}
+        </p>
+        <p>{{ form.submit(class="btn btn-primary") }}</p>
+    </form>
+
+    <hr>
+
+    <h2>Gespeicherte Bahnhöfe</h2>
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>Name</th>
+            <th>Adresse</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+        </tr>
+        {% for b in posts %}
+        <tr>
+            <td>{{ b.name }}</td>
+            <td>{{ b.adresse }}</td>
+            <td>{{ b.latitude or '-' }}</td>
+            <td>{{ b.longitude or '-' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
