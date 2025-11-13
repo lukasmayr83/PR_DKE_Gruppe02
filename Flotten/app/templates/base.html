@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+    <head>
+        {% if title %}
+        <title>{{ title }} - Flotten</title>
+        {% else %}
+        <title>Flotten</title>
+        {% endif %}
+    </head>
+    <body>
+        <div>Flotten:
+            <a href="{{ url_for('uebers_personenwagen') }}">Personenwagen</a>
+            <a href="{{ url_for('uebers_triebwagen') }}">Triebwagen</a>
+            {% if current_user.is_anonymous %}
+            <a href="{{ url_for('login') }}">Login</a>
+            {% else %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% endif %}
+        </div>
+        <hr>
+        {% block content %}{% endblock %}
+    </body>
+</html>
