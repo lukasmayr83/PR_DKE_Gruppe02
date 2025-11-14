@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Bahnhof bearbeiten</h2>
+
+<div style="display: flex; gap: 20px;">
+
+    <!-- LINKES PANEL: Formular -->
+    <div style="flex: 1; max-width: 500px;">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <p>
+                {{ form.name.label }}<br>
+                {{ form.name(size=40) }}
+                {% for error in form.name.errors %}
+                    <span style="color: red;">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p>
+                {{ form.adresse.label }}<br>
+                {{ form.adresse(id="adresse", size=60) }}
+                {% for error in form.adresse.errors %}
+                    <span style="color: red;">[{{ error }}]</span>
+                {% endfor %}
+                <span id="adresse-error" style="color:red; display:none;"></span>
+            </p>
+
+            <p>
+                <label for="latitude">Breitengrad:</label><br>
+                <input type="text" id="latitude" name="latitude" value="{{ bahnhof.latitude }}" readonly>
+            </p>
+
+            <p>
+                <label for="longitude">Längengrad:</label><br>
+                <input type="text" id="longitude" name="longitude" value="{{ bahnhof.longitude }}" readonly>
+            </p>
+
+            <p>{{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('bahnhof') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
+            </p>
+        </form>
+    </div>
+
+    <!-- RECHTES PANEL: Karte -->
+    <div style="flex: 1; min-width: 400px; height: 80vh;">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
+
+</div>
+
+<!-- Leaflet CSS + JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+let map = L.map('map').setView([47.5162, 14.5501], 7); // Österreich zentriert
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+let marker = null;
+
+// Marker initial auf aktuelle Koordinaten setzen
+let latField = document.getElementById("latitude");
+let lonField = document.getElementById("longitude");
+if (latField.value && lonField.value) {
+    marker = L.marker([parseFloat(latField.value), parseFloat(lonField.value)], {draggable: true}).addTo(map);
+    marker.on('dragend', function() {
+        const pos = marker.getLatLng();
+        latField.value = pos.lat;
+        lonField.value = pos.lng;
+    });
+    map.setView([parseFloat(latField.value), parseFloat(lonField.value)], 15);
+}
+
+document.getElementById("adresse").addEventListener("change", function () {
+    const adresse = this.value.trim();
+    const errorSpan = document.getElementById("adresse-error");
+    errorSpan.style.display = "none";
+    errorSpan.textContent = "";
+
+    if (adresse.length < 3) return;
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+
+                latField.value = lat;
+                lonField.value = lon;
+
+                if (marker) {
+                    marker.setLatLng([lat, lon]);
+                } else {
+                    marker = L.marker([lat, lon], {draggable: true}).addTo(map);
+                    marker.on('dragend', function() {
+                        const pos = marker.getLatLng();
+                        latField.value = pos.lat;
+                        lonField.value = pos.lng;
+                    });
+                }
+
+                map.setView([lat, lon], 15);
+            } else {
+                latField.value = "";
+                lonField.value = "";
+                errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
+                errorSpan.style.display = "inline";
+            }
+        })
+        .catch(err => console.error("Geocoding Fehler:", err));
+});
+</script>
+{% endblock %}

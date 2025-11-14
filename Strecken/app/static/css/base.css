@@ -1,0 +1,82 @@
+/* Header-Container: Menü links, User-Links rechts */
+.header {
+  display: flex;
+  justify-content: space-between; /* Abstand zwischen links und rechts */
+  align-items: center; /* vertikal zentrieren */
+  padding: 5px 20px;
+  background-color: #f8f8f8;
+}
+
+/* Menü unverändert */
+.menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: transparent;
+    display: flex; /* horizontale Ausrichtung */
+    gap: 10px;
+}
+
+.menu li {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+}
+
+/* Dropdown wie gehabt */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  min-width: 200px;
+  z-index: 1;
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 0;
+  list-style: none;
+}
+
+.dropdown-content li a {
+  color: black;
+  padding: 10px;
+  text-decoration: none;
+  display: block;
+  background-color: #e0e0e0;
+}
+
+.dropdown-content li a:hover {
+  background-color: #b0b0b0;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+/* Login/Logout-Links rechts */
+.user-links a {
+  text-decoration: none;
+  padding: 8px 12px;
+  background-color: #ddd;
+  border-radius: 4px;
+  margin-left: 10px;
+  transition: background-color 0.2s;
+}
+
+.user-links a:hover {
+  background-color: #ccc;
+}
+
+/* Menü auf Button-Stil anpassen */
+.menu > li > a {
+    background-color: #ddd; /* wie Login */
+    color: black;
+    padding: 8px 12px; /* wie Login */
+    border-radius: 4px; /* wie Login */
+    text-decoration: none; /* Unterstrich entfernen */
+    display: inline-block; /* wie Button */
+    transition: background-color 0.2s;
+}
+
+.menu > li > a:hover {
+    background-color: #ccc; /* wie Login Hover */
+}

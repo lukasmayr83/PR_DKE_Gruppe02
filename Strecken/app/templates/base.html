@@ -1,36 +1,41 @@
 <!doctype html>
 <html>
-    <head>
-        {% if title %}
+<head>
+    {% if title %}
         <title>{{ title }} - Strecken</title>
-        {% else %}
-        <title>Welcome to Strecken</title>
-        {% endif %}
-    </head>
-    <body>
-<div>
-    <a href="{{ url_for('index') }}">Home</a>
-
-    {% if current_user.is_anonymous %}
-        <a href="{{ url_for('login') }}">Login</a>
-    {% elif current_user.role.value == 'admin' %}
-        <!-- Nur für Admins sichtbar -->
-        <a href="{{ url_for('register') }}">Register</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
     {% else %}
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <title>Welcome to Strecken</title>
     {% endif %}
-</div>
-        <hr>
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul>
-            {% for message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+</head>
+<body>
+    <div class="header">
+        <!-- Menü links -->
+        <ul class="menu">
+            <li class="dropdown">
+                <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
+                <ul class="dropdown-content">
+                    <li><a href="{{ url_for('bahnhof_add') }}">Neuen Bahnhof hinzufügen</a></li>
+                    <li><a href="{{ url_for('bahnhof') }}">Alle Bahnhöfe verwalten</a></li>
+                </ul>
+            </li>
         </ul>
-        {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
-    </body>
+
+        <!-- Login/Logout rechts -->
+        <div class="user-links">
+            {% if current_user.is_anonymous %}
+                <a href="{{ url_for('login') }}">Login</a>
+            {% elif current_user.role.value == 'admin' %}
+                <a href="{{ url_for('register') }}">Register</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    {% block content %}{% endblock %}
+</body>
 </html>

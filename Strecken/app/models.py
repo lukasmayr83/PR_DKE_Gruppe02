@@ -6,6 +6,7 @@ import sqlalchemy.orm as so
 import enum
 from app import db
 from app import login
+import requests
 from geopy.geocoders import Nominatim
 
 @login.user_loader
@@ -49,13 +50,18 @@ class Bahnhof (db.Model):
     latitude: so.Mapped[float] = so.mapped_column(sa.Float, nullable=True)
     longitude: so.Mapped[float] = so.mapped_column(sa.Float, nullable=True)
 
-    def geocode_address(self): geolocator = Nominatim(user_agent="Lukas Mayr")
-
     def geocode_address(self):
-        geolocator = Nominatim(user_agent="my_flask_app", timeout=10)
-        location = geolocator.geocode(self.adresse)
-        if location:
-            self.latitude = location.latitude
-            self.longitude = location.longitude
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "format": "json",
+            "q": self.adresse
+        }
+
+        response = requests.get(url, params=params, headers={"User-Agent": "Strecken_App"})
+        data = response.json()
+
+        if data:
+            self.latitude = float(data[0]["lat"])
+            self.longitude = float(data[0]["lon"])
 
 
