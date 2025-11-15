@@ -11,6 +11,9 @@
         <div>Flotten:
             <a href="{{ url_for('uebers_personenwagen') }}">Personenwagen</a>
             <a href="{{ url_for('uebers_triebwagen') }}">Triebwagen</a>
+            <a href="{{ url_for('uebers_zuege') }}">Züge</a>
+            <a href="{{ url_for('uebers_wartungen') }}">Wartungen</a>
+            <a href="{{ url_for('uebers_mitarbeiter') }}">Mitarbeiterverwalten</a>
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}

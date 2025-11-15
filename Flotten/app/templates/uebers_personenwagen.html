@@ -1,5 +1,49 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hi, {{ user.username }}!</h1>
+    <h1>Personenwagen</h1>
+<h2>Übersicht</h2>
+    <p>
+        <form action="{{ url_for('hinzufuegen_personenwagen') }}" method="get" style="display:inline;">
+             <button type="submit">Hinzufügen</button>
+        </form>
+        <button disabled>Bearbeiten</button>
+        <button disabled>Löschen</button>
+       <form method="GET" action="{{ url_for('uebers_personenwagen') }}">
+            <input type="text" name="q" placeholder="Suchen..." value="{{ request.args.get('q','') }}">
+           <button type="submit">Suchen</button>
+</form>
+    </p>
+    <table border="1">
+        <thead>
+            <tr>
+                <th></th>
+                <th>personenwagenID</th>
+                <th>kapazitaet</th>
+                <th>maxGewicht</th>
+                <th>spurweite</th>
+                <th>istFrei</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wagen in personenwagen_liste %}
+            <tr>
+                <td><input type="radio" name="selected_wagen" value="{{ wagen.personenwagenid }}"></td>
+
+                <td>{{ wagen.personenwagenid }}</td>
+                <td>{{ wagen.kapazitaet }}</td>
+                <td>{{ wagen.maxgewicht }}</td>
+
+                <td>{{ wagen.spurweite }}</td>
+                <td>
+                    {% if wagen.istfrei is none %}
+                        Frei
+                    {% else %}
+                        Zug {{ wagen.istfrei }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}

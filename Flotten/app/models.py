@@ -31,3 +31,41 @@ class User(UserMixin,db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class Wagen (db.Model):
+    __tablename__ = 'wagen'
+
+    wagenid: so.Mapped[int] = so.mapped_column(primary_key=True)
+    spurweite: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False)
+    istfrei: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, default=None)
+
+    type: so.Mapped[str] = so.mapped_column(sa.String(50), nullable=False)
+
+    __mapper_args__ = {
+        "polymorphic_on" : "type",
+        "polymorphic_abstract" : True
+    }
+
+    def __repr__(self):
+        return "<{self.__class__.__name__}(ID={self.wagenid})>"
+
+class Personenwagen (Wagen):
+    __tablename__ = 'personenwagen'
+
+    personenwagenid: so.Mapped[int] = so.mapped_column(sa.ForeignKey('wagen.wagenid'), primary_key=True)
+    kapazitaet: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
+    maxgewicht: so.Mapped[float] = so.mapped_column(sa.Float,nullable=False)
+
+    __mapper_args__ = {
+        "polymorphic_identity" : "personenwagen",
+    }
+
+class Triebwagen(Wagen):
+    __tablename__ = 'triebwagen'
+
+    triebwagenid: so.Mapped[int] = so.mapped_column(sa.ForeignKey('wagen.wagenid'),primary_key=True)
+
+    maxzugkraft: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False)
+
+    __mapper_args__ = {
+        "polymorphic_identity" : "triebwagen",
+    }
