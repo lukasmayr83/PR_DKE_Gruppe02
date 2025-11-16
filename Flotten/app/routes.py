@@ -51,10 +51,10 @@ def dashboard_mitarbeiter():
 @app.route('/uebers_personenwagen')
 @login_required
 def uebers_personenwagen():
+    # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String
+    # strip() entfernt Leerzeichen am Anfang/Ende.
     suchbegriff = request.args.get('q', '').strip()
 
-    # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String -
-    # strip() entfernt Leerzeichen am Anfang/Ende.
     query = db.select(Personenwagen).order_by(Personenwagen.wagenid)
 
     if suchbegriff:
@@ -91,6 +91,67 @@ def hinzufuegen_personenwagen():
 
     return render_template('hinzufuegen_personenwagen.html',title='Neuen Personenwagen hinzufügen',form=form)
 
+@app.route('/personenwagen_action', methods=['POST'])
+@login_required
+def personenwagen_action():
+    wagen_id = request.form.get("selected_wagen")
+    action = request.form.get("action")
+
+    if not wagen_id:
+        flash("Bitte wählen Sie einen Personenwagen aus.")
+        return redirect(url_for('uebers_personenwagen'))
+
+    pw = db.session.get(Personenwagen, wagen_id)
+
+    if not pw:
+        flash("Personenwagen nicht gefunden.")
+        return redirect(url_for('uebers_personenwagen'))
+
+    if action == "loeschen":
+        if pw.istfrei is not None:
+            flash("Wagen ist in einem Zug und kann nicht gelöscht werden.")
+            return redirect(url_for('uebers_personenwagen'))
+
+        db.session.delete(pw)
+        db.session.commit()
+        flash("Personenwagen erfolgreich gelöscht.")
+        return redirect(url_for('dashboard_admin'))
+
+    if action == "bearbeiten":
+        return redirect(url_for('bearbeite_personenwagen', wagen_id=pw.wagenid))
+
+    return redirect(url_for('dashboard_admin'))
+
+@app.route('/bearbeite_personenwagen/<int:wagen_id>', methods=['GET', 'POST'])
+@login_required
+def bearbeite_personenwagen(wagen_id):
+
+    pw = db.session.get(Personenwagen, wagen_id)
+
+    if not pw:
+        flash("Personenwagen wurde nicht gefunden.")
+        return redirect(url_for('uebers_personenwagen'))
+
+    form = PersonenwagenForm(obj=pw)  # vorbefüllen!
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_personenwagen'))
+
+    if form.validate_on_submit():
+        # Spurweite darf NICHT geändert werden, wenn der Wagen in einem Zug ist
+        if pw.istfrei is not None and pw.spurweite != form.spurweite.data:
+            flash("Spurweite darf nicht geändert werden, wenn der Wagen in einem Zug ist.")
+            return redirect(url_for('bearbeite_personenwagen', wagen_id=wagen_id))
+
+        pw.kapazitaet = form.kapazitaet.data
+        pw.maxgewicht = form.maxgewicht.data
+        pw.spurweite  = form.spurweite.data
+
+        db.session.commit()
+        flash("Personenwagen erfolgreich bearbeitet.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template("bearbeiten_personenwagen.html", form=form, wagen=pw)
 
 @app.route('/uebers_triebwagen')
 @login_required
