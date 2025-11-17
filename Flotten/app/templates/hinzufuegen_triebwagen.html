@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Triebwagen hinzufügen</h1>
+
+<form method="POST" novalidate >
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.maxzugkraft.label }}<br>
+        {{ form.maxzugkraft(size=20) }}
+        {% for error in form.maxzugkraft.errors %}
+            <div style="color:red">{{ error }}</div>
+        {% endfor %}
+    </p>
+    <p>
+        {{ form.spurweite.label }}<br>
+        {{ form.spurweite(size=20) }}
+        {% for error in form.spurweite.errors %}
+            <div style="color:red">{{ error }}</div>
+        {% endfor %}
+    </p>
+    <p>
+        {{ form.speichern() }}
+          <button name="abbrechen" value="1" formnovalidate>Abbrechen</button>
+    </p>
+</form>
+{% endblock %}
+

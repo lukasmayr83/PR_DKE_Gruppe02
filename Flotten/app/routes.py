@@ -1,10 +1,10 @@
 from flask import render_template, flash, redirect, url_for, request
 from urllib.parse import urlsplit
 from app import app,db
-from app.forms import LoginForm, PersonenwagenForm
+from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm
 from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa
-from app.models import User, Role, Personenwagen
+from app.models import User, Role, Personenwagen, Triebwagen
 from sqlalchemy import or_
 
 @app.route('/')
@@ -156,7 +156,105 @@ def bearbeite_personenwagen(wagen_id):
 @app.route('/uebers_triebwagen')
 @login_required
 def uebers_triebwagen():
-    return render_template('uebers_triebwagen.html', title='Triebwagen-Übersicht')
+        # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String
+        # strip() entfernt Leerzeichen am Anfang/Ende.
+        suchbegriff = request.args.get('q', '').strip()
+
+        query = db.select(Triebwagen).order_by(Triebwagen.wagenid)
+
+        if suchbegriff:
+            query = query.where(
+                or_(
+                    Triebwagen.maxzugkraft.cast(sa.String).like(f"%{suchbegriff}%"),
+                    Triebwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%")
+                )
+            )
+
+        triebwagen_liste = db.session.execute(query).scalars().all()
+        return render_template('uebers_triebwagen.html', title='Triebwagen-Übersicht',
+                               triebwagen_liste=triebwagen_liste)
+
+@app.route('/hinzufuegen_triebwagen', methods=['GET', 'POST'])
+@login_required
+def hinzufuegen_triebwagen():
+    form = TriebwagenForm()
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_triebwagen'))
+
+    if form.validate_on_submit():
+        neuer_wagen = Triebwagen(
+            maxzugkraft=form.maxzugkraft.data,
+            spurweite=form.spurweite.data,
+            istfrei=None
+        )
+        db.session.add(neuer_wagen)
+        db.session.commit()
+        flash("Triebwagen erfolgreich hinzugefügt.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template('hinzufuegen_triebwagen.html',title='Neuen Triebwagen hinzufügen',form=form)
+
+@app.route('/triebwagen_action', methods=['POST'])
+@login_required
+def triebwagen_action():
+    wagen_id = request.form.get("selected_wagen")
+    action = request.form.get("action")
+
+    if not wagen_id:
+        flash("Bitte wählen Sie einen Triebwagen aus.")
+        return redirect(url_for('uebers_triebwagen'))
+
+    tw = db.session.get(Triebwagen, wagen_id)
+
+    if not tw:
+        flash("Triebwagen nicht gefunden.")
+        return redirect(url_for('uebers_triebwagen'))
+
+    if action == "loeschen":
+        if tw.istfrei is not None:
+            flash("Wagen ist in einem Zug und kann nicht gelöscht werden.")
+            return redirect(url_for('uebers_triebwagen'))
+
+        db.session.delete(tw)
+        db.session.commit()
+        flash("Triebwagen erfolgreich gelöscht.")
+        return redirect(url_for('dashboard_admin'))
+
+    if action == "bearbeiten":
+        return redirect(url_for('bearbeite_triebwagen', wagen_id=tw.wagenid))
+
+    return redirect(url_for('dashboard_admin'))
+
+@app.route('/bearbeite_triebwagen/<int:wagen_id>', methods=['GET', 'POST'])
+@login_required
+def bearbeite_triebwagen(wagen_id):
+
+    tw = db.session.get(Triebwagen, wagen_id)
+
+    if not tw:
+        flash("Triebwagen wurde nicht gefunden.")
+        return redirect(url_for('uebers_triebwagen'))
+
+    form = TriebwagenForm(obj=tw)  # vorbefüllen!
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_triebwagen'))
+
+    if form.validate_on_submit():
+        # Spurweite darf NICHT geändert werden, wenn der Wagen in einem Zug ist
+        if tw.istfrei is not None and tw.spurweite != form.spurweite.data:
+            flash("Spurweite darf nicht geändert werden, wenn der Wagen in einem Zug ist.")
+            return redirect(url_for('bearbeite_triebwagen', wagen_id=wagen_id))
+
+        tw.maxzugkraft = form.maxzugkraft.data
+        tw.spurweite  = form.spurweite.data
+
+        db.session.commit()
+        flash("Triebwagen erfolgreich bearbeitet.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template("bearbeiten_triebwagen.html", form=form, wagen=tw)
 
 @app.route('/uebers_zuege')
 @login_required
@@ -166,9 +264,9 @@ def uebers_zuege():
 @app.route('/uebers_wartungen')
 @login_required
 def uebers_wartungen():
-    return render_template('uebers_zuege.html', title='Wartungen-Übersicht')
+    return render_template('uebers_wartungen.html', title='Wartungen-Übersicht')
 
 @app.route('/uebers_mitarbeiter')
 @login_required
 def uebers_mitarbeiter():
-    return render_template('uebers_mitarbeiter', title='Mitarbeiter-Übersicht')
+    return render_template('uebers_mitarbeiter.html', title='Mitarbeiter-Übersicht')

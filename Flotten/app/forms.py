@@ -17,3 +17,11 @@ class PersonenwagenForm(FlaskForm):
                                                    NumberRange(min=0.01, message="Spurweite muss positiv sein")])
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
+
+class TriebwagenForm(FlaskForm):
+    maxzugkraft = FloatField('Maximale Zugkraft', validators=[DataRequired(message="Maximale Zugkraft ist erforderlich!"),
+                                                              NumberRange(min=0.01,message="Zugkraft muss positiv sein")])
+    spurweite = FloatField('Spurweite', validators=[DataRequired(message="Spurweite ist erforderlich!"),
+                                                    NumberRange(min=0.01, message="Spurweite muss positiv sein")])
+    speichern = SubmitField('Speichern')
+    abbrechen = SubmitField('Abbrechen')

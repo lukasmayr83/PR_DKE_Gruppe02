@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Admin Dashboard</h2>
-<p>Hello, {{ current_user.username }} </p>
+<h1>Admin Dashboard</h1>
+<h2>Hello, {{ current_user.username }} </h2>
 {% with messages = get_flashed_messages() %}
   {% if messages %}
     {% for msg in messages %}

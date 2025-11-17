@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Triebwagen bearbeiten</h1>
+
+<form method="POST" novalidate >
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.maxzugkraft.label }}<br>
+        {{ form.maxzugkraft(size=20) }}
+        {% for error in form.maxzugkraft.errors %}
+            <div style="color:red">{{ error }}</div>
+        {% endfor %}
+    </p>
+    <p>
+        {{ form.spurweite.label }}<br>
+        {{ form.spurweite(size=20) }}
+        {% for error in form.spurweite.errors %}
+            <div style="color:red">{{ error }}</div>
+        {% endfor %}
+    </p>
+    <p>
+        {{ form.speichern() }}
+          <button name="abbrechen" value="1" formnovalidate>Abbrechen</button>
+    </p>
+</form>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
+        {{ msg }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+{% endblock %}
