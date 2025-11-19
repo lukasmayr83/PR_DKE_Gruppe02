@@ -10,6 +10,24 @@ from flask_login import logout_user
 from flask_login import login_required
 import folium
 
+
+@app.route('/abschnitt')
+@login_required
+def abschnitt():
+    # hier renderst du die Liste der Abschnitte
+    return render_template("abschnitt.html")
+
+@app.route('/abschnitt/add')
+@login_required
+def abschnitt_add():
+    # hier renderst du die Liste der Abschnitte
+    return render_template("abschnitt_add.html")
+
+@app.route("/abschnitt/edit", methods=["GET", "POST"])
+@login_required
+def abschnitt_edit():
+    return render_template("abschnitt_edit.html")
+
 @app.route("/bahnhof/add", methods=["GET", "POST"])
 @login_required
 def bahnhof_add():
@@ -69,7 +87,8 @@ def bahnhof():
         'bahnhof.html',
         title='Home',
         posts=posts,
-        map_html=map_html
+        map_html=map_html,
+        role=current_user.role
     )
 
 
@@ -130,7 +149,7 @@ def login():
         if not next_page or urlsplit(next_page).netloc != '':
             next_page = url_for('bahnhof')
         return redirect(next_page)
-    return render_template('login.html', title='Sign In', form=form)
+    return render_template('login.html', title='Sign In', form=form, role='mitarbeiter')
 
 
 @app.route('/logout')
@@ -158,3 +177,4 @@ def register():
         return redirect(url_for('bahnhof'))
 
     return render_template('register.html', title='Neuer Benutzer', form=form)
+

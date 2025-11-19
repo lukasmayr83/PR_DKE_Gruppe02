@@ -2,11 +2,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from typing import Optional
 import sqlalchemy as sa
+from sqlalchemy import CheckConstraint
 import sqlalchemy.orm as so
 import enum
 from app import db
 from app import login
 import requests
+from hashlib import md5
 from geopy.geocoders import Nominatim
 
 @login.user_loader
@@ -41,6 +43,10 @@ class User( UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def avatar(self, size):
+        digest = md5(self.email.lower().encode('utf-8')).hexdigest()
+        return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
+
 class Bahnhof (db.Model):
     bahnhofId: so.Mapped[int] = so.mapped_column(primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(64), index=True,
@@ -64,4 +70,19 @@ class Bahnhof (db.Model):
             self.latitude = float(data[0]["lat"])
             self.longitude = float(data[0]["lon"])
 
+class  Abschnitt (db.Model):
+    abschnittId: so.Mapped[int] = so.mapped_column(primary_key=True)
+    spurweite: so.Mapped[float] = so.mapped_column()
+    nutzungsentgelt: so.Mapped[float] = so.mapped_column()
+    max_geschwindigkeit: so.Mapped[int] = so.mapped_column()
+    startBahnhof:so.Mapped[Bahnhof] = so.mapped_column(sa.ForeignKey(Bahnhof.bahnhofId),
+                                               index=True)
+    endBahnhof: so.Mapped[Bahnhof] = so.mapped_column(sa.ForeignKey(Bahnhof.bahnhofId),
+                                               index=True)
 
+    __table_args__ = (
+        db.CheckConstraint("startBahnhof <> endBahnhof", name="check_start_end_ungleich"),
+    )
+    @property
+    def name(self):
+        return f"{self.startBahnhof.name} → {self.endBahnhof.name}"

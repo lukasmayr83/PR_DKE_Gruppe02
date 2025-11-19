@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Abschnitt hinzufügen</h1>
+
+<div style="display: flex; gap: 20px;">
+
+    <!-- LINKES PANEL: Formular -->
+    <div style="flex: 1; max-width: 500px;">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+
+            <p>
+                {{ form.name.label }}<br>
+                {{ form.name(size=40) }}
+            </p>
+
+            <p>
+                {{ form.adresse.label }}<br>
+                {{ form.adresse(id="adresse", size=60) }}
+                <span id="adresse-error" style="color:red; display:none;"></span>
+            </p>
+
+            <p>
+                <label for="latitude">Breitengrad:</label><br>
+                <input type="text" id="latitude" name="latitude" readonly>
+            </p>
+
+            <p>
+                <label for="longitude">Längengrad:</label><br>
+                <input type="text" id="longitude" name="longitude" readonly>
+            </p>
+
+            <p>{{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('bahnhof') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
+            </p>
+        </form>
+    </div>
+
+    <!-- RECHTES PANEL: Karte -->
+    <div style="flex: 1; min-width: 400px; height: 80vh;">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
+
+</div>

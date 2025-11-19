@@ -45,15 +45,4 @@
             {% endif %}
         </form>
     </div>
-
-    <!-- RECHTES PANEL: Karte -->
-    <div style="flex: 1; min-width: 400px; height: 80vh;">
-        {% if map_html %}
-            {{ map_html|safe }}
-        {% else %}
-            <p>Keine Bahnhöfe vorhanden.</p>
-        {% endif %}
-    </div>
-
 </div>
-{% endblock %}

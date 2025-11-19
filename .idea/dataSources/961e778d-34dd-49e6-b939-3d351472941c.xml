@@ -499,7 +499,7 @@
     </routine>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-11-12.08:24:07</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-11-19.17:42:06</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1590,74 +1590,170 @@
     <argument id="554" parent="190">
       <Position>1</Position>
     </argument>
-    <table id="555" parent="191" name="alembic_version"/>
-    <table id="556" parent="191" name="sqlite_master">
+    <table id="555" parent="191" name="abschnitt"/>
+    <table id="556" parent="191" name="alembic_version"/>
+    <table id="557" parent="191" name="bahnhof"/>
+    <table id="558" parent="191" name="sqlite_master">
       <System>1</System>
     </table>
-    <table id="557" parent="191" name="user"/>
-    <column id="558" parent="555" name="version_num">
-      <NotNull>1</NotNull>
-      <Position>1</Position>
-      <StoredType>VARCHAR(32)|0s</StoredType>
-    </column>
-    <index id="559" parent="555" name="sqlite_autoindex_alembic_version_1">
-      <ColNames>version_num</ColNames>
-      <NameSurrogate>1</NameSurrogate>
-      <Unique>1</Unique>
-    </index>
-    <key id="560" parent="555" name="alembic_version_pkc">
-      <ColNames>version_num</ColNames>
-      <Primary>1</Primary>
-      <UnderlyingIndexName>sqlite_autoindex_alembic_version_1</UnderlyingIndexName>
-    </key>
-    <column id="561" parent="556" name="type">
-      <Position>1</Position>
-      <StoredType>TEXT|0s</StoredType>
-    </column>
-    <column id="562" parent="556" name="name">
-      <Position>2</Position>
-      <StoredType>TEXT|0s</StoredType>
-    </column>
-    <column id="563" parent="556" name="tbl_name">
-      <Position>3</Position>
-      <StoredType>TEXT|0s</StoredType>
-    </column>
-    <column id="564" parent="556" name="rootpage">
-      <Position>4</Position>
-      <StoredType>INT|0s</StoredType>
-    </column>
-    <column id="565" parent="556" name="sql">
-      <Position>5</Position>
-      <StoredType>TEXT|0s</StoredType>
-    </column>
-    <column id="566" parent="557" name="id">
+    <table id="559" parent="191" name="user"/>
+    <check id="560" parent="555" name="check_start_end_ungleich">
+      <Predicate>startBahnhof &lt;&gt; endBahnhof</Predicate>
+    </check>
+    <column id="561" parent="555" name="abschnittId">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="567" parent="557" name="username">
+    <column id="562" parent="555" name="spurweite">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>FLOAT|0s</StoredType>
+    </column>
+    <column id="563" parent="555" name="nutzungsentgelt">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>FLOAT|0s</StoredType>
+    </column>
+    <column id="564" parent="555" name="max_geschwindigkeit">
+      <NotNull>1</NotNull>
+      <Position>4</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="565" parent="555" name="startBahnhof">
+      <NotNull>1</NotNull>
+      <Position>5</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="566" parent="555" name="endBahnhof">
+      <NotNull>1</NotNull>
+      <Position>6</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <foreign-key id="567" parent="555">
+      <ColNames>startBahnhof</ColNames>
+      <RefColNames>bahnhofId</RefColNames>
+      <RefTableName>bahnhof</RefTableName>
+    </foreign-key>
+    <foreign-key id="568" parent="555">
+      <ColNames>endBahnhof</ColNames>
+      <RefColNames>bahnhofId</RefColNames>
+      <RefTableName>bahnhof</RefTableName>
+    </foreign-key>
+    <index id="569" parent="555" name="ix_abschnitt_startBahnhof">
+      <ColNames>startBahnhof</ColNames>
+    </index>
+    <index id="570" parent="555" name="ix_abschnitt_endBahnhof">
+      <ColNames>endBahnhof</ColNames>
+    </index>
+    <key id="571" parent="555">
+      <ColNames>abschnittId</ColNames>
+      <Primary>1</Primary>
+    </key>
+    <column id="572" parent="556" name="version_num">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>VARCHAR(32)|0s</StoredType>
+    </column>
+    <index id="573" parent="556" name="sqlite_autoindex_alembic_version_1">
+      <ColNames>version_num</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Unique>1</Unique>
+    </index>
+    <key id="574" parent="556" name="alembic_version_pkc">
+      <ColNames>version_num</ColNames>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>sqlite_autoindex_alembic_version_1</UnderlyingIndexName>
+    </key>
+    <column id="575" parent="557" name="bahnhofId">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="576" parent="557" name="name">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(64)|0s</StoredType>
     </column>
-    <column id="568" parent="557" name="email">
+    <column id="577" parent="557" name="adresse">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>VARCHAR(120)|0s</StoredType>
     </column>
-    <column id="569" parent="557" name="password_hash">
+    <column id="578" parent="557" name="latitude">
+      <Position>4</Position>
+      <StoredType>FLOAT|0s</StoredType>
+    </column>
+    <column id="579" parent="557" name="longitude">
+      <Position>5</Position>
+      <StoredType>FLOAT|0s</StoredType>
+    </column>
+    <index id="580" parent="557" name="ix_bahnhof_name">
+      <ColNames>name</ColNames>
+      <Unique>1</Unique>
+    </index>
+    <index id="581" parent="557" name="ix_bahnhof_adresse">
+      <ColNames>adresse</ColNames>
+      <Unique>1</Unique>
+    </index>
+    <key id="582" parent="557">
+      <ColNames>bahnhofId</ColNames>
+      <Primary>1</Primary>
+    </key>
+    <column id="583" parent="558" name="type">
+      <Position>1</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="584" parent="558" name="name">
+      <Position>2</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="585" parent="558" name="tbl_name">
+      <Position>3</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="586" parent="558" name="rootpage">
+      <Position>4</Position>
+      <StoredType>INT|0s</StoredType>
+    </column>
+    <column id="587" parent="558" name="sql">
+      <Position>5</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="588" parent="559" name="id">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="589" parent="559" name="username">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>VARCHAR(64)|0s</StoredType>
+    </column>
+    <column id="590" parent="559" name="email">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>VARCHAR(120)|0s</StoredType>
+    </column>
+    <column id="591" parent="559" name="password_hash">
       <Position>4</Position>
       <StoredType>VARCHAR(256)|0s</StoredType>
     </column>
-    <index id="570" parent="557" name="ix_user_username">
+    <column id="592" parent="559" name="role">
+      <DefaultExpression>&apos;mitarbeiter&apos;</DefaultExpression>
+      <NotNull>1</NotNull>
+      <Position>5</Position>
+      <StoredType>VARCHAR(11)|0s</StoredType>
+    </column>
+    <index id="593" parent="559" name="ix_user_username">
       <ColNames>username</ColNames>
       <Unique>1</Unique>
     </index>
-    <index id="571" parent="557" name="ix_user_email">
+    <index id="594" parent="559" name="ix_user_email">
       <ColNames>email</ColNames>
       <Unique>1</Unique>
     </index>
-    <key id="572" parent="557">
+    <key id="595" parent="559">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>

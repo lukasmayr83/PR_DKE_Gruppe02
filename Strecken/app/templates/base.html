@@ -11,15 +11,29 @@
 <body>
     <div class="header">
         <!-- Menü links -->
-        <ul class="menu">
-            <li class="dropdown">
-                <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
-                <ul class="dropdown-content">
-                    <li><a href="{{ url_for('bahnhof_add') }}">Neuen Bahnhof hinzufügen</a></li>
-                    <li><a href="{{ url_for('bahnhof') }}">Alle Bahnhöfe verwalten</a></li>
-                </ul>
-            </li>
-        </ul>
+            <ul class="menu">
+        <!-- Bahnhof Dropdown -->
+        <li class="dropdown">
+            <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('bahnhof_add') }}">Neuen Bahnhof hinzufügen</a></li>
+                <li><a href="{{ url_for('bahnhof') }}">Alle Bahnhöfe verwalten</a></li>
+            </ul>
+            {% endif %}
+        </li>
+
+        <!-- Abschnitt Dropdown -->
+        <li class="dropdown">
+            <a href="{{ url_for('abschnitt') }}">Abschnitt</a>
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('abschnitt_add') }}">Neuen Abschnitt hinzufügen</a></li>
+                <li><a href="{{ url_for('abschnitt') }}">Alle Abschnitte verwalten</a></li>
+            </ul>
+            {% endif %}
+        </li>
+    </ul>
 
         <!-- Login/Logout rechts -->
         <div class="user-links">
@@ -30,6 +44,9 @@
                 <a href="{{ url_for('logout') }}">Logout</a>
             {% else %}
                 <a href="{{ url_for('logout') }}">Logout</a>
+            {% endif %}
+            {% if not current_user.is_anonymous %}
+            <img src="{{ current_user.avatar(40) }}" alt="Avatar" style="border-radius:50%; vertical-align:middle; margin-right:8px;">
             {% endif %}
         </div>
     </div>
