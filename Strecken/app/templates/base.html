@@ -10,9 +10,9 @@
 </head>
 <body>
     <div class="header">
-        <!-- Menü links -->
+        <!--Menü links-->
             <ul class="menu">
-        <!-- Bahnhof Dropdown -->
+        <!--Bahnhof Dropdown-->
         <li class="dropdown">
             <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
@@ -23,7 +23,7 @@
             {% endif %}
         </li>
 
-        <!-- Abschnitt Dropdown -->
+        <!--Abschnitt Dropdown-->
         <li class="dropdown">
             <a href="{{ url_for('abschnitt') }}">Abschnitt</a>
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
@@ -35,12 +35,12 @@
         </li>
     </ul>
 
-        <!-- Login/Logout rechts -->
+        <!--rechts Login/Logout-->
         <div class="user-links">
             {% if current_user.is_anonymous %}
                 <a href="{{ url_for('login') }}">Login</a>
             {% elif current_user.role.value == 'admin' %}
-                <a href="{{ url_for('register') }}">Register</a>
+                <a href="{{ url_for('register') }}">+ neuer Benutzer</a>
                 <a href="{{ url_for('logout') }}">Logout</a>
             {% else %}
                 <a href="{{ url_for('logout') }}">Logout</a>
@@ -50,9 +50,7 @@
             {% endif %}
         </div>
     </div>
-
     <hr>
-
     {% block content %}{% endblock %}
 </body>
 </html>

@@ -5,11 +5,10 @@
 
 <div style="display: flex; gap: 20px;">
 
-    <!-- LINKES PANEL: Formular -->
+    <!--Links Formular-->
     <div style="flex: 1; max-width: 500px;">
         <form method="POST">
             {{ form.hidden_tag() }}
-
             <p>
                 {{ form.name.label }}<br>
                 {{ form.name(size=40) }}
@@ -17,7 +16,6 @@
                     <span style="color: red;">[{{ error }}]</span>
                 {% endfor %}
             </p>
-
             <p>
                 {{ form.adresse.label }}<br>
                 {{ form.adresse(id="adresse", size=60) }}
@@ -26,31 +24,28 @@
                 {% endfor %}
                 <span id="adresse-error" style="color:red; display:none;"></span>
             </p>
-
             <p>
                 <label for="latitude">Breitengrad:</label><br>
                 <input type="text" id="latitude" name="latitude" value="{{ bahnhof.latitude }}" readonly>
             </p>
-
             <p>
                 <label for="longitude">Längengrad:</label><br>
                 <input type="text" id="longitude" name="longitude" value="{{ bahnhof.longitude }}" readonly>
             </p>
-
             <p>{{ form.submit(class="btn btn-primary") }}
             <a href="{{ url_for('bahnhof') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
         </form>
     </div>
 
-    <!-- RECHTES PANEL: Karte -->
-    <div style="flex: 1; min-width: 400px; height: 80vh;">
+    <!--Rechts Karte-->
+    <div style="flex: 1; min-width: 400px; height: 75vh;">
         <div id="map" style="width:100%; height:100%;"></div>
     </div>
 
 </div>
 
-<!-- Leaflet CSS + JS -->
+<!-- Leaflet CSS + JS (Erklärung siehe bahnhof_add)-->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -62,7 +57,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let marker = null;
 
-// Marker initial auf aktuelle Koordinaten setzen
+
 let latField = document.getElementById("latitude");
 let lonField = document.getElementById("longitude");
 if (latField.value && lonField.value) {

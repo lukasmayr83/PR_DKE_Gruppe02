@@ -1,25 +1,25 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, FloatField
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo
 import sqlalchemy as sa
 from app import db
-from app.models import User, Bahnhof
+from app.models import User, Bahnhof, Abschnitt
 
 
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
+    username = StringField('Benutzername', validators=[DataRequired()])
+    password = PasswordField('Passwort', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
-    submit = SubmitField('Sign In')
+    submit = SubmitField('Login')
 
 class RegistrationForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
+    username = StringField('Benutzername', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
+    password = PasswordField('Passwort', validators=[DataRequired()])
     password2 = PasswordField(
-        'Repeat Password', validators=[DataRequired(), EqualTo('password')])
-    role = SelectField('Role', choices=[('mitarbeiter', 'Mitarbeiter'), ('admin', 'Admin')], validators=[DataRequired()])
-    submit = SubmitField('Register')
+        'Passwort wiederholen', validators=[DataRequired(), EqualTo('password')])
+    role = SelectField('Rolle', choices=[('mitarbeiter', 'Mitarbeiter'), ('admin', 'Admin')], validators=[DataRequired()])
+    submit = SubmitField('Anlegen')
 
     def validate_username(self, username):
         user = db.session.scalar(sa.select(User).where(
@@ -44,7 +44,6 @@ class BahnhofForm(FlaskForm):
         self.original_adresse = original_adresse
 
     def validate_name(self, field):
-        # Nur prüfen, wenn der Name geändert wurde oder beim Erstellen
         if self.original_name is None or field.data != self.original_name:
             bahnhof = db.session.scalar(
                 sa.select(Bahnhof).where(Bahnhof.name == field.data)
@@ -53,10 +52,47 @@ class BahnhofForm(FlaskForm):
                 raise ValidationError('Dieser Bahnhofsname ist bereits vergeben.')
 
     def validate_adresse(self, field):
-        # Nur prüfen, wenn die Adresse geändert wurde oder beim Erstellen
         if self.original_adresse is None or field.data != self.original_adresse:
             bahnhof = db.session.scalar(
                 sa.select(Bahnhof).where(Bahnhof.adresse == field.data)
             )
             if bahnhof is not None:
                 raise ValidationError('Diese Adresse ist bereits vergeben.')
+
+class AbschnittForm(FlaskForm):
+    startBahnhof = SelectField("Startbahnhof", coerce=int, validators=[DataRequired()])
+    endBahnhof = SelectField("Endbahnhof", coerce=int, validators=[DataRequired()])
+    max_geschwindigkeit = IntegerField("Max. Geschwindigkeit", validators=[DataRequired()])
+    spurweite = IntegerField("Spurweite", validators=[DataRequired()])
+    nutzungsentgelt = FloatField("Nutzungsentgelt", validators=[DataRequired()])
+    submit = SubmitField("Speichern")
+
+    def validate(self, extra_validators=None):
+
+        if not super().validate(extra_validators=extra_validators):
+            return False
+
+        start_id = self.startBahnhof.data
+        end_id = self.endBahnhof.data
+
+        if start_id == end_id:
+            msg = 'Start- und Endbahnhof müssen unterschiedlich sein.'
+            self.startBahnhof.errors.append(msg)
+            self.endBahnhof.errors.append(msg)
+            return False
+
+        query = sa.select(Abschnitt).where(
+            (Abschnitt.startBahnhofId == start_id) &
+            (Abschnitt.endBahnhofId == end_id)
+        )
+
+        abschnitt = db.session.scalar(query)
+
+        if abschnitt is not None:
+
+            msg = 'Dieser Abschnitt (gleiches Start- und Endbahnhof-Paar) existiert bereits.'
+            self.startBahnhof.errors.append(msg)
+            self.endBahnhof.errors.append(msg)
+            return False
+
+        return True

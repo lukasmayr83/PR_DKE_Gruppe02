@@ -9,7 +9,12 @@ from app import db
 from app import login
 import requests
 from hashlib import md5
+from datetime import datetime
 from geopy.geocoders import Nominatim
+
+
+
+
 
 @login.user_loader
 def load_user(id):
@@ -48,6 +53,7 @@ class User( UserMixin, db.Model):
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
 
 class Bahnhof (db.Model):
+    __tablename__ = 'bahnhof'
     bahnhofId: so.Mapped[int] = so.mapped_column(primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(64), index=True,
                                                 unique=True)
@@ -70,19 +76,113 @@ class Bahnhof (db.Model):
             self.latitude = float(data[0]["lat"])
             self.longitude = float(data[0]["lon"])
 
-class  Abschnitt (db.Model):
+    start_abschnitte: so.Mapped[list['Abschnitt']] = so.relationship(
+            "Abschnitt",
+            back_populates="startBahnhof",
+            primaryjoin="Bahnhof.bahnhofId == Abschnitt.startBahnhofId"
+    )
+    end_abschnitte: so.Mapped[list['Abschnitt']] = so.relationship(
+            "Abschnitt",
+            back_populates="endBahnhof",
+            primaryjoin="Bahnhof.bahnhofId == Abschnitt.endBahnhofId"
+    )
+
+
+
+abschnitt_warnung_m2m = sa.Table(
+    'abschnitt_warnung',
+    db.metadata,
+    sa.Column('abschnitt_id', sa.Integer, sa.ForeignKey('abschnitt.abschnittId'), primary_key=True),
+    sa.Column('warnung_id', sa.Integer, sa.ForeignKey('warnung.warnungId'), primary_key=True)
+)
+
+
+
+class Warnung(db.Model):
+    __tablename__ = 'warnung'
+
+    warnungId: so.Mapped[int] = so.mapped_column(primary_key=True)
+    bezeichnung: so.Mapped[str] = so.mapped_column(sa.String(100))
+    beschreibung: so.Mapped[Optional[str]] = so.mapped_column(sa.Text)
+    startZeit: so.Mapped[datetime] = so.mapped_column()
+    endZeit: so.Mapped[Optional[datetime]] = so.mapped_column()
+
+
+    abschnitte: so.WriteOnlyMapped['Abschnitt'] = so.relationship(
+        "Abschnitt",
+        secondary=abschnitt_warnung_m2m,
+        back_populates='warnungen'
+    )
+
+    def __repr__(self):
+        return f'<Warnung {self.warnungId}: {self.bezeichnung}>'
+
+
+
+class Abschnitt(db.Model):
+    __tablename__ = 'abschnitt'
+
     abschnittId: so.Mapped[int] = so.mapped_column(primary_key=True)
     spurweite: so.Mapped[float] = so.mapped_column()
     nutzungsentgelt: so.Mapped[float] = so.mapped_column()
     max_geschwindigkeit: so.Mapped[int] = so.mapped_column()
-    startBahnhof:so.Mapped[Bahnhof] = so.mapped_column(sa.ForeignKey(Bahnhof.bahnhofId),
-                                               index=True)
-    endBahnhof: so.Mapped[Bahnhof] = so.mapped_column(sa.ForeignKey(Bahnhof.bahnhofId),
-                                               index=True)
+
+    startBahnhofId: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey('bahnhof.bahnhofId'),
+        index=True,
+        nullable=False
+    )
+    endBahnhofId: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey('bahnhof.bahnhofId'),
+        index=True,
+        nullable=False
+    )
+
+    startBahnhof: so.Mapped["Bahnhof"] = so.relationship(
+        "Bahnhof",
+        foreign_keys=[startBahnhofId],
+        back_populates="start_abschnitte"
+    )
+    endBahnhof: so.Mapped["Bahnhof"] = so.relationship(
+        "Bahnhof",
+        foreign_keys=[endBahnhofId],
+        back_populates="end_abschnitte"
+    )
+
+
+    warnungen: so.WriteOnlyMapped['Warnung'] = so.relationship(
+        "Warnung",
+        secondary=abschnitt_warnung_m2m,
+        primaryjoin=(abschnitt_warnung_m2m.c.abschnitt_id == abschnittId),
+        secondaryjoin=(abschnitt_warnung_m2m.c.warnung_id == so.foreign(Warnung.warnungId)),
+        back_populates='abschnitte',
+        passive_deletes=True
+    )
+
 
     __table_args__ = (
-        db.CheckConstraint("startBahnhof <> endBahnhof", name="check_start_end_ungleich"),
+        db.CheckConstraint(
+            "startBahnhofId <> endBahnhofId",
+            name="check_start_end_ungleich"
+        ),
     )
+
+
     @property
     def name(self):
         return f"{self.startBahnhof.name} → {self.endBahnhof.name}"
+
+
+    def warnung_hinzufuegen(self, warnung):
+        if not self.hat_warnung(warnung):
+            self.warnungen.add(warnung)
+
+    def warnung_entfernen(self, warnung):
+        if self.hat_warnung(warnung):
+            self.warnungen.remove(warnung)
+
+    def hat_warnung(self, warnung):
+        query = self.warnungen.select().where(
+            Warnung.warnungId == warnung.warnungId
+        )
+        return db.session.scalar(query) is not None

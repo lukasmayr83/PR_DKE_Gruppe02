@@ -1,48 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Alle Bahnhöfe</h2>
+
+<h2>Alle Abschnitte</h2>
+
 <div style="display: flex; gap: 20px;">
 
-    <!-- LINKES PANEL: Tabelle + Formular -->
     <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
-        <form method="POST" action="{{ url_for('delete_multiple') }}">
+        <form method="POST" action="{{ url_for('delete_multiple_abschnitt') }}">
             <table border="1" cellpadding="5" style="width:100%;">
                 <tr>
                     {% if role.value != 'mitarbeiter' %}
                     <th></th>
                     {% endif %}
                     <th>Name</th>
-                    <th>Adresse</th>
-                    <th>Breitengrad</th>
-                    <th>Längengrad</th>
+                    <th>Startbahnhof</th>
+                    <th>Endbahnhof</th>
+                    <th>Spurweite</th>
+                    <th>Nutzungsentgelt</th>
+                    <th>max. Geschwindigkeit</th>
                     {% if role.value != 'mitarbeiter' %}
                     <th>Aktion</th>
                     {% endif %}
                 </tr>
-                {% for b in posts %}
+                {% for a in posts %}
                 <tr>
                     {% if role.value != 'mitarbeiter' %}
-                    <td><input type="checkbox" name="bahnhof_ids" value="{{ b.bahnhofId }}"></td>
+                    <td><input type="checkbox" name="abschnitt_ids" value="{{ a.abschnittId }}"></td>
                     {% endif %}
-                    <td>{{ b.name }}</td>
-                    <td>{{ b.adresse }}</td>
-                    <td>{{ b.latitude or '-' }}</td>
-                    <td>{{ b.longitude or '-' }}</td>
+                    <td>{{ a.name }}</td>
+                    <td>{{ a.startBahnhof.name }}</td>
+                    <td>{{ a.endBahnhof.name}}</td>
+                    <td>{{ a.spurweite }}</td>
+                    <td>{{ a.nutzungsentgelt }}</td>
+                    <td>{{ a.max_geschwindigkeit }}</td>
                     {% if role.value != 'mitarbeiter' %}
                     <td>
-                        <a href="{{ url_for('edit_bahnhof', bahnhof_id=b.bahnhofId) }}">Bearbeiten</a>
+                        <a href="{{ url_for('edit_abschnitt', abschnitt_id=a.abschnittId) }}">Bearbeiten</a>
                     </td>
                     {% endif %}
                 </tr>
                 {% endfor %}
             </table>
-            <br>
             {% if role.value != 'mitarbeiter' %}
-            <button type="submit" onclick="return confirm('Willst du wirklich alle ausgewählten Bahnhöfe löschen?');">
+            <button type="submit" onclick="return confirm('Willst du wirklich alle ausgewählten Abschnitte löschen?');">
                 Ausgewählte löschen
             </button>
             {% endif %}
         </form>
     </div>
 </div>
+{% endblock %}

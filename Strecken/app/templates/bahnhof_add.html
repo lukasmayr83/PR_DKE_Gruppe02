@@ -5,27 +5,29 @@
 
 <div style="display: flex; gap: 20px;">
 
-    <!-- LINKES PANEL: Formular -->
+    <!--Links Formular-->
     <div style="flex: 1; max-width: 500px;">
         <form method="POST" action="">
             {{ form.hidden_tag() }}
-
             <p>
                 {{ form.name.label }}<br>
                 {{ form.name(size=40) }}
+                {% for error in form.name.errors %}
+                <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
             </p>
-
             <p>
                 {{ form.adresse.label }}<br>
                 {{ form.adresse(id="adresse", size=60) }}
+                {% for error in form.adresse.errors %}
+                <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
                 <span id="adresse-error" style="color:red; display:none;"></span>
             </p>
-
             <p>
                 <label for="latitude">Breitengrad:</label><br>
                 <input type="text" id="latitude" name="latitude" readonly>
             </p>
-
             <p>
                 <label for="longitude">Längengrad:</label><br>
                 <input type="text" id="longitude" name="longitude" readonly>
@@ -37,64 +39,69 @@
         </form>
     </div>
 
-    <!-- RECHTES PANEL: Karte -->
-    <div style="flex: 1; min-width: 400px; height: 80vh;">
+    <!--Rechts Karte-->
+    <div style="flex: 1; min-width: 400px; height: 75vh;">
         <div id="map" style="width:100%; height:100%;"></div>
     </div>
 
 </div>
 
-<!-- Leaflet CSS + JS -->
+<!--Leaflet CSS + JS-->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-let map = L.map('map').setView([47.5162, 14.5501], 7); // Österreich zentriert
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    //Erstellt die Karte
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+    }).addTo(map);
 
-let marker = null;
+    let marker = null;
 
-document.getElementById("adresse").addEventListener("change", function () {
-    const adresse = this.value.trim();
-    const errorSpan = document.getElementById("adresse-error");
-    errorSpan.style.display = "none";
-    errorSpan.textContent = "";
+    //Wenn User Adresse eingibt/aktualisiert wird der Code ausgeführt
+    document.getElementById("adresse").addEventListener("change", function () {
+        const adresse = this.value.trim();
+        const errorSpan = document.getElementById("adresse-error");
+        errorSpan.style.display = "none";
+        errorSpan.textContent = "";
+        if (adresse.length < 3) return;
 
-    if (adresse.length < 3) return;
+        //Sendet Anfrage an Nominatim von OpenStreetMap; übergibt Adresse
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
+            .then(response => response.json())
+            .then(data => {
+                //Wenn Adresse gefunden wurde
+                if (data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
 
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
+                    document.getElementById("latitude").value = lat;
+                    document.getElementById("longitude").value = lon;
 
-                document.getElementById("latitude").value = lat;
-                document.getElementById("longitude").value = lon;
-
-                if (marker) {
-                    marker.setLatLng([lat, lon]);
+                    //Marker existiert bereits
+                    if (marker) {
+                        marker.setLatLng([lat, lon]); //Kann Marker/Bahnhof verschieben
+                    } else {
+                        //Erstelle Marker
+                        marker = L.marker([lat, lon], {draggable: true}).addTo(map);
+                        marker.on('dragend', function() {
+                            const pos = marker.getLatLng();
+                            document.getElementById("latitude").value = pos.lat;
+                            document.getElementById("longitude").value = pos.lng;
+                        });
+                    }
+                    map.setView([lat, lon], 15);
                 } else {
-                    marker = L.marker([lat, lon], {draggable: true}).addTo(map);
-                    marker.on('dragend', function() {
-                        const pos = marker.getLatLng();
-                        document.getElementById("latitude").value = pos.lat;
-                        document.getElementById("longitude").value = pos.lng;
-                    });
+                    document.getElementById("latitude").value = "";
+                    document.getElementById("longitude").value = "";
+                    //Nominatim konnte Adresse nicht finden
+                    errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
+                    errorSpan.style.display = "inline";
                 }
-
-                map.setView([lat, lon], 15);
-            } else {
-                document.getElementById("latitude").value = "";
-                document.getElementById("longitude").value = "";
-                errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
-                errorSpan.style.display = "inline";
-            }
-        })
-        .catch(err => console.error("Geocoding Fehler:", err));
-});
+            })
+            .catch(err => console.error("Geocoding Fehler:", err));
+    });
 </script>
 {% endblock %}
 
