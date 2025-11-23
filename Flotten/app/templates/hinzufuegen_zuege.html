@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Zug hinzufügen</h1>
+<form id="zug-form" method="POST" novalidate>
+    {{ form.hidden_tag() }}
+</form>
+
+<p>
+    {{ form.bezeichnung.label }}<br>
+    <!--form="zug-form" verknüpft dieses Feld mit dem Formular oben -->
+    {{ form.bezeichnung(size=25, form="zug-form") }}
+    {% for error in form.bezeichnung.errors %}
+        <div style="color:red">{{ error }}</div>
+    {% endfor %}
+</p>
+
+<div style="display: flex; gap: 40px; align-items: flex-start;">
+
+    <div>
+        <h3>Triebwagen hinzufügen</h3>
+
+        <form method="GET" action="{{ url_for('hinzufuegen_zuege') }}">
+            <input type="text" name="search_tw" placeholder="Suchen..."
+                   value="{{ request.args.get('search_tw', '') }}">
+            <input type="hidden" name="search_pw" value="{{ request.args.get('search_pw', '') }}">
+            <button type="submit">Suchen</button>
+        </form>
+
+        <table border="1" style="margin-top:10px;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Maximale Zugkraft</th>
+                    <th>Spurweite</th>
+                    <th>Ist Frei</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for tw in freie_triebwagen %}
+            <tr>
+                <td><input type="radio" name="triebwagen_id" value="{{ tw.wagenid }}" form="zug-form"></td>
+                <td>{{ tw.wagenid }}</td>
+                <td>{{ tw.maxzugkraft }}</td>
+                <td>{{ tw.spurweite }}</td>
+                <td>{{ "Frei" if tw.istfrei is none else tw.istfrei }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <h3>Personenwagen hinzufügen</h3>
+        <form method="GET" action="{{ url_for('hinzufuegen_zuege') }}">
+            <input type="text" name="search_pw" placeholder="Suchen..."
+                   value="{{ request.args.get('search_pw', '') }}">
+            <input type="hidden" name="search_tw" value="{{ request.args.get('search_tw', '') }}">
+            <button type="submit">Suchen</button>
+        </form>
+
+        <table border="1" style="margin-top:10px;">
+            <thead>
+            <tr>
+                <th></th>
+                <th>ID</th>
+                <th>Kapazität</th>
+                <th>Maximales Gewicht</th>
+                <th>Spurweite</th>
+                <th>Ist Frei</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for pw in freie_personenwagen %}
+            <tr>
+                <td><input type="checkbox" name="personenwagen_ids" value="{{ pw.wagenid }}" form="zug-form"></td>
+                <td>{{ pw.wagenid }}</td>
+                <td>{{ pw.kapazitaet }}</td>
+                <td>{{ pw.maxgewicht }}</td>
+                <td>{{ pw.spurweite }}</td>
+                <td>{{ "Frei" if pw.istfrei is none else pw.istfrei }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<br>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+<p>
+    <button type="submit" name="speichern" value="speichern" form="zug-form">Speichern</button>
+
+    <!--formnovalidate verhindert Validierung beim Abbrechen -->
+    <button type="submit" name="abbrechen" value="abbrechen" form="zug-form" formnovalidate>Abbrechen</button>
+</p>
+
+{% endblock %}

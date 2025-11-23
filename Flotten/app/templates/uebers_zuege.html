@@ -2,4 +2,90 @@
 {% block content %}
 <h1>Züge</h1>
 <h2>Übersicht</h2>
+
+<div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
+
+    <div style="display: flex; gap: 5px;">
+        <form action="{{ url_for('hinzufuegen_zuege') }}" method="get">
+            <button type="submit">Hinzufügen</button>
+        </form>
+
+        <button type="submit" form="main-action-form" name="action" value="bearbeiten">
+            Bearbeiten
+        </button>
+
+        <button type="submit" form="main-action-form" name="action" value="loeschen"
+                onclick="return confirm('Willst du den ausgewählten Zug wirklich löschen?');">
+            Löschen
+        </button>
+    </div>
+
+    <form method="GET" action="{{ url_for('uebers_zuege') }}" style="display: flex; gap: 5px;">
+        <input type="text" name="q" placeholder="Suchen..." value="{{ request.args.get('q', '') }}">
+        <button type="submit">Suchen</button>
+    </form>
+
+</div>
+
+<form method="POST" action="{{ url_for('zuege_action') }}" id="main-action-form">
+    <table border="1">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Zug-ID</th>
+                <th>Bezeichnung</th>
+                <th>Triebwagen</th>
+                <th>Personenwagen</th>
+                <th>In Wartung</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for zug in zuege_liste %}
+            <tr>
+                <td><input type="radio" name="selected_zug" value="{{ zug.zugid }}"></td>
+
+                <td>{{ zug.zugid }}</td>
+                <td>{{ zug.bezeichnung }}</td>
+
+                <td>
+                    {% if zug.triebwagen_id %}
+                        {{ zug.triebwagen_id }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if zug.personenwagen_ids %}
+                        {{ zug.personenwagen_ids }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if zug.inwartung %}
+                        Ja
+                    {% else %}
+                        Nein
+                    {% endif %}
+                </td>
+
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
+        {{ msg }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 {% endblock %}

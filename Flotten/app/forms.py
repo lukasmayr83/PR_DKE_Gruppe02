@@ -25,3 +25,9 @@ class TriebwagenForm(FlaskForm):
                                                     NumberRange(min=0.01, message="Spurweite muss positiv sein")])
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
+
+class ZuegeForm(FlaskForm):
+    bezeichnung = StringField('Bezeichnung', validators=[DataRequired(message="Bezeichnung ist erforderlich!"),])
+
+    speichern = SubmitField('Speichern')
+    abbrechen = SubmitField('Abbrechen')

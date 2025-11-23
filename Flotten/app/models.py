@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from app import db
@@ -31,12 +31,42 @@ class User(UserMixin,db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class Zuege(db.Model):
+    __tablename__ = 'zuege'
+
+    zugid: so.Mapped[int] = so.mapped_column(primary_key=True)
+    bezeichnung: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
+    inwartung: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
+
+    wagen: so.Mapped[list['Wagen']] = so.relationship(back_populates='zug', lazy = "selectin")
+
+##Gibt die ID des Triebwagens im Zug zurück
+    @property
+    def triebwagen_id(self):
+        for w in self.wagen:
+            if w.type == "triebwagen":
+                return w.wagenid
+        return None
+
+##Gibt die ids aller Personenwagen in dem Zug zurück mit , getrennt
+    @property
+    def personenwagen_ids(self):
+        ##Liste der Personenwagen im Zug
+        personenwagen = []
+        for w in self.wagen:
+            if w.type == "personenwagen":
+                personenwagen.append(str(w.wagenid))
+
+        return ", ".join(personenwagen)
+
 class Wagen (db.Model):
     __tablename__ = 'wagen'
 
     wagenid: so.Mapped[int] = so.mapped_column(primary_key=True)
-    spurweite: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False)
-    istfrei: so.Mapped[Optional[int]] = so.mapped_column(sa.Integer, default=None)
+    spurweite: so.Mapped[float] = so.mapped_column(sa.Float,index=True, nullable=False)
+    istfrei: so.Mapped[Optional[int]] = so.mapped_column(sa.ForeignKey('zuege.zugid', name="fk_wagen_zug_id"),index=True, nullable=True, default=None)
+
+    zug: so.Mapped[Optional[Zuege]] = so.relationship(back_populates='wagen')
 
     type: so.Mapped[str] = so.mapped_column(sa.String(50), nullable=False)
 
@@ -46,14 +76,14 @@ class Wagen (db.Model):
     }
 
     def __repr__(self):
-        return "<{self.__class__.__name__}(ID={self.wagenid})>"
+        return f"<{self.__class__.__name__}(ID={self.wagenid})>"
 
 class Personenwagen (Wagen):
     __tablename__ = 'personenwagen'
 
     personenwagenid: so.Mapped[int] = so.mapped_column(sa.ForeignKey('wagen.wagenid'), primary_key=True)
-    kapazitaet: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
-    maxgewicht: so.Mapped[float] = so.mapped_column(sa.Float,nullable=False)
+    kapazitaet: so.Mapped[int] = so.mapped_column(sa.Integer, index=True, nullable=False)
+    maxgewicht: so.Mapped[float] = so.mapped_column(sa.Float,index=True, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_identity" : "personenwagen",
@@ -64,7 +94,7 @@ class Triebwagen(Wagen):
 
     triebwagenid: so.Mapped[int] = so.mapped_column(sa.ForeignKey('wagen.wagenid'),primary_key=True)
 
-    maxzugkraft: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False)
+    maxzugkraft: so.Mapped[float] = so.mapped_column(sa.Float,index=True, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_identity" : "triebwagen",
