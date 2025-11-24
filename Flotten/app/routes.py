@@ -1,10 +1,10 @@
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, jsonify
 from urllib.parse import urlsplit
 from app import app,db
 from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm
 from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa
-from app.models import User, Role, Personenwagen, Triebwagen, Zuege
+from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen
 from sqlalchemy import or_
 
 @app.route('/')
@@ -290,7 +290,6 @@ def hinzufuegen_zuege():
     if request.method == "POST" and "abbrechen" in request.form:
         return redirect(url_for('uebers_zuege'))
 
-    # Suchbegriffe aus der URL holen
     suche_tw = request.args.get("search_tw", "").strip()
     suche_pw = request.args.get("search_pw", "").strip()
 
@@ -387,3 +386,102 @@ def uebers_wartungen():
 @login_required
 def uebers_mitarbeiter():
     return render_template('uebers_mitarbeiter.html', title='Mitarbeiter-Übersicht')
+
+#############################################################
+#####################    API    #############################
+#############################################################
+
+# Alle Züge auflisten - nach spurweite oder in Wartung filtern
+@app.route('/zuege', methods=['GET'])
+def get_zuege_api():
+
+    query_term = request.args.get('q', default='', type=str)
+
+    stmt = sa.select(Zuege)
+
+    if query_term:
+        stmt = stmt.join(Zuege.wagen).where(
+            sa.or_(
+                sa.cast(Zuege.inwartung, sa.String).ilike(f"%{query_term}%"),
+                sa.cast(Wagen.spurweite, sa.String).like(f"%{query_term}%")
+            )
+        )
+    zuege_result = db.session.execute(stmt).unique().scalars().all()
+
+    items = []
+    for zug in zuege_result:
+        spurweite = 0
+        tw_id = zug.triebwagen_id
+        if tw_id:
+            tw = db.session.get(Triebwagen, tw_id)
+            if tw:
+                spurweite = tw.spurweite
+
+        items.append({
+            "zugId": str(zug.zugid),
+            "bezeichnung": zug.bezeichnung,
+            "inWartung": zug.inwartung,
+            "spurweite": spurweite
+        })
+    return jsonify(items)
+
+# Zuge mit bestimmter id abfragen
+@app.route('/zug/<int:zug_id>', methods=['GET'])
+def get_zug_api(zug_id):
+
+    zug = db.session.get(Zuege, zug_id)
+    if not zug:
+        return jsonify({"error": "Zug nicht gefunden"})
+
+    spurweite = 0
+    tw = db.session.get(Triebwagen, zug.triebwagen_id)
+    if tw:
+        spurweite = tw.spurweite
+
+    item = {
+        "zugId": str(zug.zugid),
+        "bezeichnung": zug.bezeichnung,
+        "inWartung": zug.inwartung,
+        "spurweite": spurweite
+    }
+    return jsonify(item)
+
+# Detaillierte Wagenbeschreibung eines bestimmten Zuges mit Zugid abfragen
+@app.route('/flotte/kapazitaet/<int:zug_id>', methods=['GET'])
+def get_zug_wagen_api(zug_id):
+
+    zug = db.session.get(Zuege, zug_id)
+    if not zug:
+        return jsonify({"error": "Zug nicht gefunden"})
+
+    zug_spurweite = 0
+    triebwagen_info = None
+    tw = db.session.get(Triebwagen, zug.triebwagen_id)
+
+    if tw:
+        zug_spurweite = tw.spurweite
+        triebwagen_info = {
+            "wagenNr": str(tw.wagenid),
+            "spurweite": tw.spurweite,
+            "maxZugkraft": tw.maxzugkraft
+        }
+
+    wagen_liste = []
+    for wagen in zug.wagen:
+        if wagen.type == 'personenwagen':
+            pw = db.session.get(Personenwagen, wagen.wagenid)
+            if pw:
+                wagen_liste.append({
+                    "wagenNr": str(pw.wagenid),
+                    "spurweite": pw.spurweite,
+                    "maximalgewicht": pw.maxgewicht,
+                    "kapazitaet": pw.kapazitaet
+                })
+    items = {
+        "zugNr": str(zug.zugid),
+        "zugBezeichnung": zug.bezeichnung,
+        "spurweite": zug_spurweite,
+        "triebwagen": triebwagen_info,
+        "personenwagen": wagen_liste
+    }
+    return jsonify(items)
