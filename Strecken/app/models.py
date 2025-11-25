@@ -12,7 +12,7 @@ from hashlib import md5
 from datetime import datetime
 from geopy.geocoders import Nominatim
 
-
+from typing import List
 
 
 
@@ -107,11 +107,10 @@ class Warnung(db.Model):
     startZeit: so.Mapped[datetime] = so.mapped_column()
     endZeit: so.Mapped[Optional[datetime]] = so.mapped_column()
 
-
-    abschnitte: so.WriteOnlyMapped['Abschnitt'] = so.relationship(
+    abschnitte: so.Mapped[list["Abschnitt"]] = so.relationship(
         "Abschnitt",
         secondary=abschnitt_warnung_m2m,
-        back_populates='warnungen'
+        back_populates="warnungen"  # MUSS exakt so heißen wie die property in Abschnitt
     )
 
     def __repr__(self):
@@ -149,14 +148,10 @@ class Abschnitt(db.Model):
         back_populates="end_abschnitte"
     )
 
-
-    warnungen: so.WriteOnlyMapped['Warnung'] = so.relationship(
+    warnungen: so.Mapped[list["Warnung"]] = so.relationship(
         "Warnung",
         secondary=abschnitt_warnung_m2m,
-        primaryjoin=(abschnitt_warnung_m2m.c.abschnitt_id == abschnittId),
-        secondaryjoin=(abschnitt_warnung_m2m.c.warnung_id == so.foreign(Warnung.warnungId)),
-        back_populates='abschnitte',
-        passive_deletes=True
+        back_populates="abschnitte"  # MUSS exakt so heißen wie die property in Warnung
     )
 
 

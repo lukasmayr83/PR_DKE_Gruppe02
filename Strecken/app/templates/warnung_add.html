@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Warnung hinzufügen</h2>
+<div style="display: flex; gap: 20px;">
+
+    <div style="flex: 1; max-width: 500px;">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <p>{{ form.bezeichnung.label }}<br>{{ form.bezeichnung() }}</p>
+            <p>{{ form.beschreibung.label }}<br>{{ form.beschreibung() }}</p>
+            <p class="form-group">
+                {{ form.startZeit.label }}<br>
+                {{ form.startZeit (class="form-control") }}
+                {% for error in form.startZeit.errors %}
+                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+            <p class="form-group">
+                {{ form.endZeit.label }}<br>
+                {{ form.endZeit(class="form-control") }}
+                {% for error in form.endZeit.errors %}
+                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+
+            <!-- Abschnitte (Mehrfachauswahl) -->
+                <div class="mb-3">
+                     {{ form.abschnitt.label(class="form-label") }}
+                    {{ form.abschnitt(class="form-control", id="abschnitte_select", multiple="multiple") }}
+                    {% for error in form.abschnitt.errors %}
+                <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+    </div>
+            <p>{{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('warnung') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
+            </p>
+        </form>
+    </div>
+
+    <!-- jQuery und Select2 einbinden -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!--  Das Script aktivieren -->
+<script>
+    $(document).ready(function() {
+        $('#abschnitte_select').select2({
+            placeholder: "Bitte Abschnitte wählen...",
+            allowClear: true,
+            width: '100%' // Passt sich dem Container an
+        });
+    });
+</script>
+
+    
+</div>
+{% endblock %}
