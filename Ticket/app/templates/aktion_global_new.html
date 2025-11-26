@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Globale-Aktion anlegen{% endblock %}
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Globale-Aktion anlegen</h2>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label for="name">Name</label>
+        {{ form.name(id="name") }}
+      </div>
+      <div>
+        <label for="rabatt">Wert %</label>
+        {{ form.rabattWert(id="rabatt") }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label for="beschreibung">Beschreibung</label>
+        {{ form.beschreibung(id="beschreibung") }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Startdatum (DD.MM.JJJJ)</label>
+        {{ form.startZeit() }}
+      </div>
+      <div>
+        <label>Enddatum (DD.MM.JJJJ)</label>
+        {{ form.endeZeit() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        {{ form.aktiv() }}
+        {{ form.aktiv.label }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Anlegen</button>
+  </form>
+{% endblock %}

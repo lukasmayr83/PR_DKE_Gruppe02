@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Sign in</h2>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label>Username/ E-Mail</label>
+        {{ form.username() }}
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Passwort</label>
+        {{ form.password() }}
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        {{ form.remember_me() }}
+        {{ form.remember_me.label }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+
+<p style="margin-top:16px; font-size:14px;">
+  Noch kein Konto? <a href="{{ url_for('main.register') }}">Jetzt registrieren</a>
+</p>
+
+{% endblock %}

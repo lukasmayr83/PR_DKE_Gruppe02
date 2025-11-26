@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Aktionsübersicht{% endblock %}
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Aktionsübersicht</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Aktions-ID</th>
+        <th>Name</th>
+        <th>Startzeit</th>
+        <th>Endzeit</th>
+        <th>Rabatt</th>
+        <th>aktiv</th>
+        <th>Typ</th>
+        <th>Optionen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in aktionen %}
+      <tr>
+        <td>{{ a.id }}</td>
+        <td>{{ a.name }}</td>
+        <td>{{ a.startZeit.strftime("%d.%m.%Y") }}</td>
+        <td>{{ a.endeZeit.strftime("%d.%m.%Y") }}</td>
+        <td>{{ a.rabattWert }}%</td>
+        <td>{{ "TRUE" if a.aktiv else "FALSE" }}</td>
+        <td>{{ a.typ|upper }}</td>
+        <td>
+          <form method="get" action="{{ url_for('main.aktion_edit', aktion_id=a.id) }}" style="display:inline;">
+            <button class="btn" type="submit">Bearbeiten</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

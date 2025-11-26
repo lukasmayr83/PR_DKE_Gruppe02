@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Fahrplan-Aktion anlegen{% endblock %}
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Fahrplan-Aktion anlegen</h2>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label>Name</label>
+        {{ form.name() }}
+      </div>
+      <div>
+        <label>Wert %</label>
+        {{ form.rabattWert() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Beschreibung</label>
+        {{ form.beschreibung() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Startdatum (DD.MM.JJJJ)</label>
+        {{ form.startZeit() }}
+      </div>
+      <div>
+        <label>Enddatum (DD.MM.JJJJ)</label>
+        {{ form.endeZeit() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Halteplan auswählen</label>
+        {{ form.halteplanId() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        {{ form.aktiv() }}
+        {{ form.aktiv.label }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Anlegen</button>
+  </form>
+{% endblock %}

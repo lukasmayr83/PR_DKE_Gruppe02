@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Registrierung{% endblock %}
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Registrierung</h2>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label>Username</label>
+        {{ form.username() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>E-Mail</label>
+        {{ form.email() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Passwort erstellen</label>
+        {{ form.password() }}
+      </div>
+      <div>
+        <label>Passwort wiederholen</label>
+        {{ form.password2() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        {{ form.accept_terms() }}
+        {{ form.accept_terms.label }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Register</button>
+  </form>
+
+  <p style="margin-top:16px; font-size:14px;">
+    Bereits ein Konto? <a href="{{ url_for('main.login') }}">Jetzt anmelden</a>
+  </p>
+{% endblock %}

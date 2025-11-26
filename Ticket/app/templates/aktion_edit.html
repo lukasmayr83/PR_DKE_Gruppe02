@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Aktion bearbeiten{% endblock %}
+
+{% block content %}
+  <h1>Ticket</h1>
+  <h2>Aktion bearbeiten</h2>
+
+  <!-- Formular zum Aktualisieren -->
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label>Name</label>
+        {{ form.name() }}
+      </div>
+      <div>
+        <label>Wert %</label>
+        {{ form.rabattWert() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Beschreibung</label>
+        {{ form.beschreibung() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Startdatum (DD.MM.JJJJ)</label>
+        {{ form.startZeit() }}
+      </div>
+      <div>
+        <label>Enddatum (DD.MM.JJJJ)</label>
+        {{ form.endeZeit() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Typ</label>
+        {% if aktion.typ == 'global' %}
+          <!-- Nur lesbarer Text -->
+          <input type="text" value="GLOBAL" readonly>
+          <!-- Hidden-Felder -->
+          <input type="hidden" name="{{ form.typ.name }}" value="global">
+          <input type="hidden" name="{{ form.halteplanId.name }}" value="">
+        {% else %}
+          <input type="text" value="HALTEPLAN" readonly>
+          <input type="hidden" name="{{ form.typ.name }}" value="halteplan">
+        {% endif %}
+      </div>
+
+      {% if aktion.typ == 'halteplan' %}
+        <div>
+          <label>Halteplan auswählen</label>
+          {{ form.halteplanId() }}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="field-row">
+      <div>
+        {{ form.aktiv() }}
+        {{ form.aktiv.label }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Änderungen übernehmen</button>
+  </form>
+
+  <!-- Formular zum Löschen -->
+  <form method="post" action="{{ url_for('main.aktion_delete', aktion_id=aktion.id) }}" style="margin-top:16px;">
+    <button class="btn" type="submit">Aktion löschen</button>
+  </form>
+{% endblock %}

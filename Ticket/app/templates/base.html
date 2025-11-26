@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Ticket{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #ffffff;
+        color: #000000;
+      }
+      header {
+        border-bottom: 1px solid #000;
+        padding: 8px 16px;
+      }
+      nav a {
+        margin-right: 16px;
+        text-decoration: none;
+        color: #000;
+        font-size: 14px;
+      }
+      nav a.active {
+        font-weight: 600;
+        text-decoration: underline;
+      }
+      main {
+        max-width: 900px;
+        margin: 24px auto;
+        padding: 0 16px 32px;
+      }
+      h1 {
+        font-size: 36px;
+        margin-bottom: 24px;
+      }
+      h2 {
+        font-size: 24px;
+        margin: 16px 0;
+      }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+      input[type="text"],
+      input[type="password"],
+      input[type="email"],
+      input[type="number"],
+      input[type="datetime"],
+      textarea,
+      select {
+        width: 260px;
+        padding: 4px;
+        border: 1px solid #000;
+        background: #fff;
+        font-size: 14px;
+      }
+      textarea {
+        width: 320px;
+        min-height: 60px;
+      }
+      .field-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 12px;
+        align-items: flex-start;
+      }
+      .btn {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 6px 16px;
+        border: 1px solid #000;
+        background: #e0e0e0;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 16px;
+        font-size: 14px;
+      }
+      th, td {
+        border: 1px solid #000;
+        padding: 4px 8px;
+        text-align: left;
+      }
+      .flash {
+        margin-bottom: 12px;
+        padding: 8px;
+        border: 1px solid #000;
+        background: #f5f5f5;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav>
+        {% if current_user.is_authenticated and current_user.username == 'admin' %}
+          <!-- Admin-Menü -->
+          <a href="{{ url_for('main.aktionen_uebersicht') }}"
+             class="{% if request.endpoint == 'main.aktionen_uebersicht' %}active{% endif %}">
+            Aktionsübersicht
+          </a>
+          <a href="{{ url_for('main.aktion_global_new') }}"
+             class="{% if request.endpoint == 'main.aktion_global_new' %}active{% endif %}">
+            Globale-Aktion anlegen
+          </a>
+          <a href="{{ url_for('main.aktion_fahrplan_new') }}"
+             class="{% if request.endpoint == 'main.aktion_fahrplan_new' %}active{% endif %}">
+            Fahrplan-Aktion anlegen
+          </a>
+          <a href="{{ url_for('main.logout') }}">Logout</a>
+          <span style="font-size: 12px; margin-left: 8px;">Eingeloggt als {{ current_user.username }}</span>
+
+        {% elif current_user.is_authenticated %}
+          <!-- Kunden-Menü -->
+          <a href="{{ url_for('main.verbindungssuche') }}"
+             class="{% if request.endpoint == 'main.verbindungssuche' %}active{% endif %}">
+            Verbindungssuche
+          </a>
+          <a href="{{ url_for('main.meine_tickets') }}"
+             class="{% if request.endpoint == 'main.meine_tickets' %}active{% endif %}">
+            Meine Tickets
+          </a>
+          <a href="{{ url_for('main.logout') }}">Login/Logout</a>
+          <span style="font-size: 12px; margin-left: 8px;">Eingeloggt als {{ current_user.username }}</span>
+
+        {% else %}
+          <!-- Nicht eingeloggt -->
+          <a href="{{ url_for('main.login') }}">Login</a>
+        {% endif %}
+      </nav>
+
+    </header>
+
+    <main>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">
+            {% for m in messages %}
+              <div>{{ m }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
