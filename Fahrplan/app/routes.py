@@ -463,3 +463,53 @@ def fahrten_alle():
         mitarbeiter=mitarbeiter,
         zugewiesene_fahrten_ids=zugewiesene_fahrten_ids,
     )
+
+
+
+
+@app.route("/api/mitarbeiter", methods=["GET"])
+def api_mitarbeiter():
+    mitarbeiter = Mitarbeiter.query.all()
+
+    data = []
+    for m in mitarbeiter:
+        data.append({
+            "id": m.id,
+            "name": m.name,
+            "username": m.user.username
+        })
+
+    return {"mitarbeiter": data}
+
+
+@app.route("/api/fahrten", methods=["GET"])
+def api_fahrten():
+    fahrten = Fahrtdurchfuehrung.query.all()
+
+    data = []
+    for f in fahrten:
+        data.append({
+            "fahrt_id": f.fahrt_id,
+            "halteplan": f.halteplan.bezeichnung,
+            "zug_id": f.zug_id,
+            "status": f.status.value,
+            "verspaetung": f.verspaetung_min,
+            "mitarbeiter": [dz.mitarbeiter_id for dz in f.dienstzuweisungen]
+        })
+
+    return {"fahrten": data}
+
+
+@app.route("/api/dienstzuweisung", methods=["GET"])
+def api_dienstzuweisung():
+    dienstzuweisungen = Dienstzuweisung.query.all()
+
+    data = []
+    for d in dienstzuweisungen:
+        data.append({
+            "dienst_id": d.dienst_id,
+            "fahrt_id": d.fahrt_id,
+            "mitarbeiter_id": d.mitarbeiter_id
+        })
+
+    return {"Dienstzuweisungen": data}
