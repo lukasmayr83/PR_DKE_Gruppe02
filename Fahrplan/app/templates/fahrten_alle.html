@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title or "Alle Fahrten" }}</h1>
+
+<div class="card">
+    <div class="card-header-row">
+        <div>
+            <h2>Alle Fahrtdurchführungen</h2>
+            <p class="info-text">
+                Angemeldet als: <strong>{{ mitarbeiter.name }}</strong><br>
+                In der Tabelle ist markiert, ob du einer Fahrt zugewiesen bist.
+            </p>
+        </div>
+
+        <div>
+            <a href="{{ url_for('index') }}" class="btn-secondary-small">
+                Zurück zum Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table table-striped fahrten-table-alle">
+            <thead>
+                <tr>
+                    <th class="col-id">Fahrt-ID</th>
+                    <th class="col-halteplan">Halteplan</th>
+                    <th class="col-zug">Zug-ID</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-verspaetung">Verspätung (Min)</th>
+                    <th class="col-zugewiesen">Zugewiesen?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fahrten %}
+                <tr>
+                    <td>{{ f.fahrt_id }}</td>
+                    <td>{{ f.halteplan.bezeichnung }}</td>
+                    <td>
+                        {% if f.zug_id and f.zug_id != 0 %}
+                            {{ f.zug_id }}
+                        {% else %}
+                            <span class="badge-grey">kein Zug</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ f.status.value }}</td>
+                    <td>{{ f.verspaetung_min or '-' }}</td>
+                    <td>
+                        {% if f.fahrt_id in zugewiesene_fahrten_ids %}
+                            <span class="badge-green">Ja</span>
+                        {% else %}
+                            <span class="badge-grey">Nein</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">
+                        Es sind aktuell keine Fahrtdurchführungen erfasst.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .fahrten-table-alle .col-id {
+        width: 80px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-alle .col-halteplan {
+        min-width: 200px;
+    }
+
+    .fahrten-table-alle .col-zug {
+        width: 110px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-alle .col-status {
+        width: 130px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-alle .col-verspaetung {
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-alle .col-zugewiesen {
+        width: 120px;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 15px;
+        gap: 10px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #555;
+        margin: 4px 0 0 0;
+    }
+
+    .badge-green {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        background: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
+    }
+
+    .badge-grey {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        background: #e9ecef;
+        color: #555;
+        border: 1px solid #ced4da;
+    }
+</style>
+
+{% endblock %}

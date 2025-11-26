@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+    <h2>Mitarbeiter löschen</h2>
+
+    <div class="dataset-info">
+        <strong>Aktueller Datensatz:</strong><br>
+        ID: {{ mitarbeiter.id }}<br>
+        Name: {{ mitarbeiter.name }}<br>
+        Benutzername: {{ mitarbeiter.user.username }}
+    </div>
+
+    <p class="warning-text">
+        Bist du sicher, dass du diesen Mitarbeiter und das zugehörige Benutzerkonto
+        <strong>dauerhaft löschen</strong> möchtest? Diese Aktion kann nicht
+        rückgängig gemacht werden.
+    </p>
+
+    <form method="post" class="form-styled">
+        <div class="btn-container" style="margin-top: 25px;">
+            <button type="submit" class="btn-danger-small">
+                Mitarbeiter endgültig löschen
+            </button>
+
+            <a href="{{ url_for('mitarbeiter_edit', mitarbeiter_id=mitarbeiter.id) }}"
+               class="btn-secondary-small">
+                Abbrechen
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-styled {
+        max-width: 450px;
+        margin-top: 20px;
+    }
+
+    .dataset-info {
+        background: #f6f6f6;
+        border: 1px solid #ddd;
+        padding: 12px 15px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+    }
+
+    .warning-text {
+        color: #c0392b;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .btn-danger-small {
+        background: #c0392b;
+        color: white;
+        padding: 6px 14px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: bold;
+        border: none;
+        display: inline-block;
+    }
+
+    .btn-danger-small:hover {
+        background: #e74c3c;
+    }
+</style>
+{% endblock %}

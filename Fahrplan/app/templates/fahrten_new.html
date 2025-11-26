@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+    <h2>Neue Fahrtdurchführung anlegen</h2>
+
+    <!-- Info-Box wie bei "bearbeiten" -->
+    <div class="dataset-info">
+        <strong>Hinweis:</strong><br>
+        Die Fahrtdurchführung wird im Status <strong>planmäßig</strong> angelegt.<br>
+        Statusänderungen können später auf der Bearbeitungsseite gepflegt werden.
+    </div>
+
+    <form method="post" class="form-styled">
+        {{ form.hidden_tag() }}
+
+        <!-- Halteplan -->
+        <div class="form-group">
+            {{ form.halteplan_id.label(class="form-label") }}
+            {{ form.halteplan_id(class="form-input") }}
+        </div>
+
+        <!-- Zug-Hinweis -->
+        <div class="form-group">
+            <label class="form-label">Zug</label>
+            <span class="tag-grey">Zug hinzufügen (in Arbeit)</span>
+        </div>
+
+        <!-- Mitarbeiter-Zuweisung (gleiches Design wie im Edit-Formular) -->
+        <h3 style="margin-top: 30px;">Mitarbeiterzuweisung</h3>
+
+        <p class="info-text">
+            Wähle aus, welche Mitarbeiter dieser neuen Fahrtdurchführung zugeordnet werden sollen.
+        </p>
+
+        <div class="mitarbeiter-list">
+            {% if mitarbeiter_liste %}
+                {% for m in mitarbeiter_liste %}
+                    <label class="checkbox-row">
+                        <input type="checkbox"
+                               name="mitarbeiter_ids"
+                               value="{{ m.id }}">
+                        {{ m.name }}
+                        {% if m.user %}
+                            <span class="subtext">({{ m.user.username }})</span>
+                        {% endif %}
+                    </label>
+                {% endfor %}
+            {% else %}
+                <p>Es sind noch keine Mitarbeiter angelegt.</p>
+            {% endif %}
+        </div>
+
+        <div class="btn-container" style="margin-top: 25px;">
+            <button type="submit" class="btn-primary-small">
+                Fahrtdurchführung anlegen
+            </button>
+
+            <a href="{{ url_for('fahrten_list') }}" class="btn-secondary-small">
+                Abbrechen
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* wie bei fahrt_edit.html */
+
+    .form-styled {
+        max-width: 520px;
+        margin-top: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 22px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 15px;
+        box-sizing: border-box;
+    }
+
+    .dataset-info {
+        background: #f6f6f6;
+        border: 1px solid #ddd;
+        padding: 12px 15px;
+        margin-bottom: 25px;
+        border-radius: 6px;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+        display: inline-block;
+    }
+
+    .tag-grey {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #e9ecef;
+        color: #555;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #555;
+        margin-bottom: 10px;
+    }
+
+    .mitarbeiter-list {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 10px 12px;
+        max-height: 260px;
+        overflow-y: auto;
+        background: #fafafa;
+        margin-bottom: 20px;
+    }
+
+    .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 14px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+        margin: 0;
+    }
+
+    .subtext {
+        font-size: 12px;
+        color: #777;
+        margin-left: 4px;
+    }
+</style>
+
+{% endblock %}

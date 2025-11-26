@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title or "Meine Fahrten" }}</h1>
+
+<div class="card">
+    <div class="card-header-row">
+        <div>
+            <h2>Mein Dienstplan</h2>
+            <p class="info-text">
+                Mitarbeiter: <strong>{{ mitarbeiter.name }}</strong>
+            </p>
+        </div>
+
+        <div>
+            <a href="{{ url_for('index') }}" class="btn-secondary-small">
+                Zurück zum Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="table table-striped fahrten-table-mitarbeiter">
+            <thead>
+                <tr>
+                    <th class="col-id">Fahrt-ID</th>
+                    <th class="col-halteplan">Halteplan</th>
+                    <th class="col-zug">Zug-ID</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-verspaetung">Verspätung (Min)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fahrten %}
+                <tr>
+                    <td>{{ f.fahrt_id }}</td>
+                    <td>{{ f.halteplan.bezeichnung }}</td>
+                    <td>{{ f.zug_id }}</td>
+                    <td>{{ f.status.value }}</td>
+                    <td>{{ f.verspaetung_min or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">
+                        Dir wurden noch keine Fahrten zugewiesen.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* etwas feinere Spaltenbreiten für die Mitarbeiter-Ansicht */
+
+    .fahrten-table-mitarbeiter .col-id {
+        width: 80px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-mitarbeiter .col-halteplan {
+        min-width: 180px;
+    }
+
+    .fahrten-table-mitarbeiter .col-zug {
+        width: 110px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-mitarbeiter .col-status {
+        width: 130px;
+        white-space: nowrap;
+    }
+
+    .fahrten-table-mitarbeiter .col-verspaetung {
+        width: 140px;
+        white-space: nowrap;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 15px;
+        gap: 10px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #555;
+        margin: 4px 0 0 0;
+    }
+</style>
+
+{% endblock %}
