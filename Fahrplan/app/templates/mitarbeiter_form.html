@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+    <h2>Mitarbeiter anlegen</h2>
+
+    <form method="post" class="form-styled">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-input") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-input") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-input") }}
+        </div>
+
+        <div class="btn-container" style="margin-top: 25px;">
+            <button type="submit" class="btn-primary-small">
+                Mitarbeiter speichern
+            </button>
+
+            <a href="{{ url_for('mitarbeiter_list') }}" class="btn-secondary-small">
+                Zurück zur Übersicht
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-styled {
+        max-width: 450px;
+        margin-top: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 22px !important;
+    }
+
+    .form-label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 15px;
+    }
+</style>
+
+{% endblock %}

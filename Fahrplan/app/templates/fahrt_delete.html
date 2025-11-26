@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 style="color: #b30000;">Fahrtdurchführung löschen</h1>
+
+<div class="card warning-card">
+    <h2>Achtung!</h2>
+    <p>
+        Möchten Sie die Fahrtdurchführung <strong>#{{ fahrt.fahrt_id }}</strong>
+        wirklich dauerhaft löschen?
+    </p>
+
+    <p>
+        <strong>Halteplan:</strong> {{ fahrt.halteplan.bezeichnung }}<br>
+        <strong>Status:</strong> {{ fahrt.status.value }}<br>
+        <strong>Zug:</strong>
+        {% if fahrt.zug_id %}
+            {{ fahrt.zug_id }}
+        {% else %}
+            <span class="badge-grey">kein Zug</span>
+        {% endif %}
+        <br>
+        <strong>Mitarbeiter zugewiesen:</strong> {{ fahrt.dienstzuweisungen|length }}
+    </p>
+
+    <p style="color: #7a0000; font-weight: bold;">
+        Diese Aktion kann <u>nicht</u> rückgängig gemacht werden.
+    </p>
+</div>
+
+<form method="post">
+    <button type="submit" class="btn-danger">
+        Ja, endgültig löschen
+    </button>
+
+    <a href="{{ url_for('fahrt_edit', fahrt_id=fahrt.fahrt_id) }}"
+       class="btn-secondary" style="margin-left: 10px;">
+        Abbrechen
+    </a>
+</form>
+
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+    <h2>Mitarbeiter bearbeiten</h2>
+
+    <div class="dataset-info">
+        <strong>Aktueller Datensatz:</strong><br>
+        ID: {{ mitarbeiter.id }}<br>
+        Name: {{ mitarbeiter.name }}<br>
+        Benutzername: {{ mitarbeiter.user.username }}
+    </div>
+
+    <form method="post" class="form-styled">
+        {{ form.hidden_tag() }}
+
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-input") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-input") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-input") }}
+            <small class="hint">
+                Nur ausfüllen, wenn das Passwort geändert werden soll.
+            </small>
+        </div>
+
+        <div class="btn-container" style="margin-top: 25px;">
+            <button type="submit" class="btn-primary-small">
+                Änderungen speichern
+            </button>
+
+            <a href="{{ url_for('mitarbeiter_list') }}" class="btn-secondary-small">
+                Abbrechen
+            </a>
+
+            <a href="{{ url_for('mitarbeiter_delete', mitarbeiter_id=mitarbeiter.id) }}"
+               class="btn-danger-small"
+               style="margin-left: auto;">
+                Mitarbeiter löschen
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-styled {
+        max-width: 450px;
+        margin-top: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 22px !important;
+    }
+
+    .form-label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 15px;
+    }
+
+    .dataset-info {
+        background: #f6f6f6;
+        border: 1px solid #ddd;
+        padding: 12px 15px;
+        margin-bottom: 25px;
+        border-radius: 6px;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+        display: inline-block;
+    }
+
+    .btn-danger-small {
+        background: #c0392b;
+        color: white;
+        padding: 6px 14px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: bold;
+        border: none;
+        display: inline-block;
+    }
+    .btn-danger-small:hover {
+        background: #e74c3c;
+    }
+</style>
+
+{% endblock %}
