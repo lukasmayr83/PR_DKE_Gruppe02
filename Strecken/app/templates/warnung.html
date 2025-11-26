@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Alle Bahnhöfe</h2>
+<div style="display: flex; gap: 20px;">
+
+    <!--Links Tabelle-->
+    <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
+        <form method="POST" action="{{ url_for('delete_multiple_warnung') }}">
+            <table border="1" cellpadding="5" style="width:100%;">
+                <tr>
+                    {% if role.value != 'mitarbeiter' %}
+                    <th></th>
+                    {% endif %}
+                    <th>Bezeichnung</th>
+                    <th>Beschreibung</th>
+                    <th>Startzeit</th>
+                    <th>Endzeit</th>
+
+
+
+                    {% if role.value != 'mitarbeiter' %}
+                    <th>Aktion</th>
+                    {% endif %}
+                </tr>
+                {% for w in posts %}
+                <tr>
+                    {% if role.value != 'mitarbeiter' %}
+                    <td><input type="checkbox" name="warnung_ids" value="{{ w.warnungId }}"></td>
+                    {% endif %}
+                    <td>{{ w.bezeichnung }}</td>
+                    <td>{{ w.beschreibung }}</td>
+                    <td>{{ w.startZeit }}</td>
+                    <td>{{ w.endZeit }}</td>
+
+
+
+                    {% if role.value != 'mitarbeiter' %}
+                    <td>
+                        <a href="{{ url_for('edit_warnung', warnung_id=w.warnungId) }}">Bearbeiten</a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </table>
+            <br>
+            {% if role.value != 'mitarbeiter' %}
+            <button type="submit" onclick="return confirm('Willst du wirklich alle ausgewählten Warnungen löschen?');">
+                Ausgewählte löschen
+            </button>
+            {% endif %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-top: 15px;">
+                {% for category, message in messages %}
+                    {% if category == 'error' or category == 'success' %}
+                    <div class="alert alert-{{ category }}"
+                         style="padding: 10px; margin-bottom: 10px; border-radius: 4px;
+                                background-color: {% if category == 'error' %}#f8d7da{% elif category == 'success' %}#d4edda{% else %}#fff3cd{% endif %};
+                                color: {% if category == 'error' %}#721c24{% elif category == 'success' %}#155724{% else %}#856404{% endif %};
+                                border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'success' %}#c3e6cb{% else %}#ffeeba{% endif %};">
+                        {{ message }}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        </form>
+    </div>
+
+
+
+</div>
+{% endblock %}

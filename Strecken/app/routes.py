@@ -1,11 +1,11 @@
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from app import app
-from app.forms import LoginForm, RegistrationForm, BahnhofForm, AbschnittForm
+from app.forms import LoginForm, RegistrationForm, BahnhofForm, AbschnittForm, WarnungForm
 from flask_login import current_user, login_user
 import sqlalchemy as sa
 from app import db
-from app.models import User, Bahnhof, Abschnitt
+from app.models import User, Bahnhof, Abschnitt, Warnung
 from flask_login import logout_user
 from flask_login import login_required
 import folium
@@ -133,6 +133,123 @@ def delete_multiple_abschnitt():
 
 
 #############################################################
+#################    Strecke     ############################
+#############################################################
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/strecke', methods=['GET', 'POST'])
+@login_required
+def strecke():
+    return render_template(
+        'strecke.html',
+        title='Home'
+    )
+
+@app.route("/strecke/add", methods=["GET", "POST"])
+@login_required
+def strecke_add():
+    return render_template(
+        'strecke_add.html',
+    )
+
+#############################################################
+#################    Warnung     ############################
+#############################################################
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/warnung', methods=['GET', 'POST'])
+@login_required
+def warnung():
+    #Alle Warnungen aus der DB laden
+    posts = Warnung.query.all()
+
+    return render_template(
+        'warnung.html',
+        posts=posts,
+        role=current_user.role
+    )
+
+@app.route("/warnung/add", methods=["GET", "POST"])
+@login_required
+def warnung_add():
+    form = WarnungForm()
+    form.abschnitt.choices = [(a.abschnittId, a.name) for a in Abschnitt.query.all()]
+
+    if form.validate_on_submit():
+
+        # Neue Warnung erzeugen
+        warnung = Warnung(
+            bezeichnung=form.bezeichnung.data,
+            beschreibung=form.beschreibung.data,
+            startZeit=form.startZeit.data,
+            endZeit=form.endZeit.data or None
+        )
+
+        db.session.add(warnung)
+        db.session.commit()  # ID wird benötigt, bevor Beziehungen gesetzt werden
+
+        # Ausgewählte Abschnitte laden
+        gewaehlte_ids = form.abschnitt.data
+        if not isinstance(gewaehlte_ids, list):
+            gewaehlte_ids = [gewaehlte_ids]
+
+        if gewaehlte_ids:
+            abschnitte = Abschnitt.query.filter(
+                Abschnitt.abschnittId.in_(gewaehlte_ids)
+            ).all()
+
+            warnung.abschnitte.clear()
+            for abschnitt in abschnitte:
+                warnung.abschnitte.append(abschnitt)
+
+        db.session.commit()
+
+        flash(f'Warnung "{warnung.bezeichnung}" wurde gespeichert!', 'success')
+        return redirect(url_for("warnung"))
+
+    return render_template("warnung_add.html", form=form)
+
+@app.route("/warnung/delete_multiple", methods=["POST"])
+@login_required
+def delete_multiple_warnung():
+    ids = request.form.getlist("warnung_ids")
+
+    deleted_count = 0
+
+    if not ids:
+        flash("Keine Warnungen ausgewählt.", "error")
+        return redirect(url_for('warnung'))
+
+    for bid in ids:
+        try:
+
+            warnung_query = (
+                sa.select(Warnung)
+                .where(Warnung.warnungId == int(bid))
+            )
+            warnung = db.session.execute(warnung_query).scalar_one_or_none()
+
+            if warnung:
+                db.session.delete(warnung)
+                deleted_count += 1
+
+        except Exception as e:
+            print(f"Fehler beim Laden von Warnung {bid}: {e}")
+            continue
+
+
+    if deleted_count > 0:
+        db.session.commit()
+        flash(f"{deleted_count} Warnung/Warnungen erfolgreich gelöscht.", "success")
+
+
+    return redirect(url_for('warnung'))
+
+@app.route("/warnung/edit/<int:warnung_id>", methods=["GET", "POST"])
+@login_required
+def edit_warnung(warnung_id):
+    return render_template("abschnitt_edit.html")
+#############################################################
 #################    Bahnhof     ############################
 #############################################################
 
@@ -254,7 +371,6 @@ def delete_multiple_bahnhof():
             continue
 
         if bahnhof:
-            # PRÜFUNG DER ABHÄNGIGKEITEN: Funktioniert jetzt zuverlässig
             if bahnhof.start_abschnitte or bahnhof.end_abschnitte:
                 blocked_names.append(bahnhof.name)
             else:

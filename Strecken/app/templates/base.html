@@ -11,7 +11,30 @@
 <body>
     <div class="header">
         <!--Menü links-->
-            <ul class="menu">
+        <ul class="menu">
+
+            <!--Strecken Dropdown-->
+        <li class="dropdown">
+            <a href="{{ url_for('strecke') }}">Strecken</a>
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('strecke_add') }}">Neue Strecke hinzufügen</a></li>
+                <li><a href="{{ url_for('strecke') }}">Alle Strecken verwalten</a></li>
+            </ul>
+            {% endif %}
+        </li>
+            <!--Abschnitt Dropdown-->
+        <li class="dropdown">
+            <a href="{{ url_for('abschnitt') }}">Abschnitt</a>
+            {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('abschnitt_add') }}">Neuen Abschnitt hinzufügen</a></li>
+                <li><a href="{{ url_for('abschnitt') }}">Alle Abschnitte verwalten</a></li>
+            </ul>
+            {% endif %}
+        </li>
+
+
         <!--Bahnhof Dropdown-->
         <li class="dropdown">
             <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
@@ -23,13 +46,15 @@
             {% endif %}
         </li>
 
-        <!--Abschnitt Dropdown-->
+
+
+        <!--Warnung Dropdown-->
         <li class="dropdown">
-            <a href="{{ url_for('abschnitt') }}">Abschnitt</a>
+            <a href="{{ url_for('warnung') }}">Warnung</a>
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <ul class="dropdown-content">
-                <li><a href="{{ url_for('abschnitt_add') }}">Neuen Abschnitt hinzufügen</a></li>
-                <li><a href="{{ url_for('abschnitt') }}">Alle Abschnitte verwalten</a></li>
+                <li><a href="{{ url_for('warnung_add') }}">Neue Warnung hinzufügen</a></li>
+                <li><a href="{{ url_for('warnung') }}">Alle Warnungen verwalten</a></li>
             </ul>
             {% endif %}
         </li>

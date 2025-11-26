@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Admin-Dashboard</h1>
+
+<div class="card">
+    <h2>Verwaltung</h2>
+
+    <div class="btn-group">
+    <a class="btn-wide" href="{{ url_for('mitarbeiter_list') }}">
+        Mitarbeiter verwalten
+    </a>
+
+    <a class="btn-wide" href="{{ url_for('fahrten_list') }}">
+        Fahrtdurchführungen verwalten
+    </a>
+
+    <button class="btn-disabled" disabled>
+        Haltepläne (in Arbeit)
+    </button>
+     </div>
+
+</div>
+{% endblock %}

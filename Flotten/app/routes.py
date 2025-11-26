@@ -6,6 +6,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa
 from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen
 from sqlalchemy import or_
+from app.zug_validation import validate_zug
 
 @app.route('/')
 def index():
@@ -320,40 +321,10 @@ def hinzufuegen_zuege():
     # Prüfung ob Speicherbutton gedrückt wurde
     if form.validate_on_submit() and "speichern" in request.form:
 
-        # Ausgewählte Trieb- und Personenwagen IDs holen
-        tw_id = request.form.get("triebwagen_id")  # Radio button (ein Wert)
-        pw_ids = request.form.getlist("personenwagen_ids")  # Checkboxen (Liste von Werten)
-
-        # Prüfung ob ein Triebwagen und mindestens ein Personenwagen ausgewählt wurde
-        if not tw_id:
-            flash("Bitte wählen Sie einen Triebwagen aus!")
-        elif not pw_ids:
-            flash("Bitte wählen Sie mindestens einen Personenwagen aus!")
+        valid,tw,pws,msg = validate_zug(request.form)
+        if not valid:
+            flash(msg)
         else:
-            # Trieb- und Personenwagen aus der Datenbank holen
-            selected_tw = db.session.get(Triebwagen, tw_id)
-            selected_pws = [db.session.get(Personenwagen, pid) for pid in pw_ids]
-
-            # Logische Prüfungen
-            valid = True  # Flag, ob alles okay ist
-
-            # Spurweite
-            target_spur = selected_tw.spurweite
-            for pw in selected_pws:
-                if pw.spurweite != target_spur:
-                    flash(f"Fehler: Spurweite stimmt nicht überein! Triebwagen hat {target_spur}, Personenwagen {pw.wagenid} hat {pw.spurweite}!")
-                    valid = False
-                    break  # Abbrechen
-
-            # Zugkraft > Summe von maximalem Gewicht aller Personenwagen
-            if valid:
-                 total_gewicht = sum(pw.maxgewicht for pw in selected_pws)
-            if selected_tw.maxzugkraft < total_gewicht:
-                    flash(f"Fehler: Zu schwer! Triebwagen schafft {selected_tw.maxzugkraft}t, aber Wagen wiegen zusammen {total_gewicht}t.")
-                    valid = False
-
-            #Speichern (nur wenn valid)
-            if valid:
                 # Zug erstellen
                 neuer_zug = Zuege(bezeichnung=form.bezeichnung.data, inwartung=False)
                 db.session.add(neuer_zug)
@@ -361,8 +332,8 @@ def hinzufuegen_zuege():
                 # flush() generiert die ID für neuer_zug (ohne die Transaktoin zu beenden) - brauche ich damit diese direkt den ausgewählten Wagen zugewiesen wird
 
                 # Wagen (Trieb- und Personenwagen) dem Zug zuweisen - Update Foreign Key
-                selected_tw.istfrei = neuer_zug.zugid
-                for pw in selected_pws:
+                tw.istfrei = neuer_zug.zugid
+                for pw in pws:
                     pw.istfrei = neuer_zug.zugid
 
                 db.session.commit()
@@ -374,8 +345,111 @@ def hinzufuegen_zuege():
 @app.route('/zuege_action', methods=['POST'])
 @login_required
 def zuege_action():
+        zug_id = request.form.get("selected_zug")
+        action = request.form.get("action")
 
-    return redirect(url_for('dashboard_admin'))
+        if not zug_id:
+            flash("Bitte wählen Sie einen Zug aus!")
+            return redirect(url_for('uebers_zuege'))
+
+        zug = db.session.get(Zuege, zug_id)
+
+        if not zug:
+            flash("Zug nicht gefunden.")
+            return redirect(url_for('uebers_zuege'))
+
+        if action == "loeschen":
+            for w in zug.wagen:
+                w.istfrei = None
+            db.session.delete(zug)
+            db.session.commit()
+            flash("Zug erfolgreich gelöscht.")
+            return redirect(url_for('dashboard_admin'))
+
+        if action == "bearbeiten":
+            return redirect(url_for('bearbeite_zuege', zug_id=zug.zugid))
+
+        return redirect(url_for('dashboard_admin'))
+
+@app.route('/bearbeite_zuege/<int:zug_id>', methods=['GET', 'POST'])
+@login_required
+def bearbeite_zuege(zug_id):
+
+    zug = db.session.get(Zuege, zug_id)
+
+    form = ZuegeForm(obj=zug)  # vorbefüllen!
+
+    if request.method == "POST" and request.form.get("action") == "abbrechen" :
+        return redirect(url_for('uebers_zuege'))
+
+    search_tw = request.args.get("search_tw", "").strip()
+    search_pw = request.args.get("search_pw", "").strip()
+
+    # Abfrage - zeige alle freien Triebwagen oder die, die bei ist Frei die Zug ID haben
+    stmt_tw = db.select(Triebwagen).where(
+        sa.or_(
+            Triebwagen.istfrei == None,
+            Triebwagen.istfrei == zug.zugid
+        )
+    ).order_by(Triebwagen.wagenid)
+
+    # Suche Triebwagen
+    if search_tw:
+        stmt_tw = stmt_tw.where(
+            sa.or_(
+                Triebwagen.wagenid.cast(sa.String).like(f"%{search_tw}%"),
+                Triebwagen.maxzugkraft.cast(sa.String).like(f"%{search_tw}%"),
+                Triebwagen.spurweite.cast(sa.String).like(f"%{search_tw}%")
+            )
+        )
+    verfuegbare_triebwagen = db.session.execute(stmt_tw).scalars().all()
+
+    # Abfrage - zeige alle freien Personenwagen oder die, die bei ist Frei die Zug ID haben
+    stmt_pw = db.select(Personenwagen).where(
+        sa.or_(
+            Personenwagen.istfrei == None,
+            Personenwagen.istfrei == zug.zugid
+        )
+    ).order_by(Personenwagen.wagenid)
+
+    # Suche Personenwagen
+    if search_pw:
+        stmt_pw = stmt_pw.where(
+            sa.or_(
+                Personenwagen.wagenid.cast(sa.String).like(f"%{search_pw}%"),
+                Personenwagen.kapazitaet.cast(sa.String).like(f"%{search_pw}%"),
+                Personenwagen.spurweite.cast(sa.String).like(f"%{search_pw}%")
+            )
+        )
+    verfuegbare_personenwagen = db.session.execute(stmt_pw).scalars().all()
+
+    # SPEICHERN
+    if form.validate_on_submit() and "speichern" in request.form:
+        valid, tw, pws, msg = validate_zug(request.form)
+        if not valid:
+            flash(msg)
+        else:
+                # ALLE Wagen dieses Zuges freigeben
+                for old_w in zug.wagen:
+                    old_w.istfrei = None
+
+                zug.bezeichnung = form.bezeichnung.data
+                tw.istfrei = zug.zugid  # Triebwagen zuweisen
+
+                # Personenwagen zuweisen
+                for pw in pws:
+                    pw.istfrei = zug.zugid
+
+                db.session.commit()
+                flash(f"Zug {zug.bezeichnung} erfolgreich aktualisiert.", "success")
+                return redirect(url_for('dashboard_admin'))
+
+    aktueller_tw_id = zug.triebwagen_id
+    # Alle IDs der Personenwagen die aktuell diesem Zug zugeordnet sind
+    aktuelle_pw_ids = [w.wagenid for w in zug.wagen if w.type == 'personenwagen']
+
+    return render_template("bearbeiten_zuege.html",form=form,zug=zug,freie_triebwagen=verfuegbare_triebwagen,
+                           freie_personenwagen=verfuegbare_personenwagen,aktueller_tw_id=aktueller_tw_id,aktuelle_pw_ids=aktuelle_pw_ids)
 
 @app.route('/uebers_wartungen')
 @login_required

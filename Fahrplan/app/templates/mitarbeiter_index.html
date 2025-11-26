@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Mein Dashboard</h1>
+
+<div class="card">
+    <h2>Mein Dienstplan</h2>
+    <p class="info-text">
+        Willkommen, <strong>{{ current_user.username }}</strong>!
+        Wähle eine Aktion:
+    </p>
+
+    <div class="btn-group">
+        <a class="btn-wide" href="{{ url_for('meine_fahrten') }}">
+            Meine Fahrten
+        </a>
+
+        <a class="btn-wide" href="{{ url_for('fahrten_alle') }}">
+            Alle Fahrten anzeigen
+        </a>
+    </div>
+</div>
+{% endblock %}

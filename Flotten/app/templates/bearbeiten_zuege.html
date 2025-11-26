@@ -1,5 +1,133 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Triebwagen bearbeiten</h1>
+<h1>Zug bearbeiten</h1>
+
+<form id="zug-form" method="POST" novalidate>
+    {{ form.hidden_tag() }}
+</form>
+<p>
+    {{ form.bezeichnung.label }}<br>
+    <!-- Das Feld ist mit form="zug-form" verknüpft -->
+    {{ form.bezeichnung(size=25, form="zug-form") }}
+    {% for error in form.bezeichnung.errors %}
+        <div style="color:red">{{ error }}</div>
+    {% endfor %}
+</p>
+
+<div style="display: flex; gap: 40px; align-items: flex-start;">
+
+    <!-- TRIEBWAGEN -->
+    <div>
+        <h3>Triebwagen wählen</h3>
+
+        <!-- Suchformular für Triebwagen (GET) -->
+        <form method="GET" action="{{ url_for('bearbeite_zuege', zug_id=zug.zugid) }}">
+            <input type="text" name="search_tw" placeholder="Suchen..."
+                   value="{{ request.args.get('search_tw', '') }}">
+            <input type="hidden" name="search_pw" value="{{ request.args.get('search_pw', '') }}">
+            <button type="submit">Suchen</button>
+        </form>
+
+        <table border="1" style="margin-top:10px;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Zugkraft</th>
+                    <th>Spurweite</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for tw in freie_triebwagen %}
+            <tr>
+                <td>
+                    <!-- Radio Button: checked wird gesetzt, wenn tw.wagenid gleich der ID des aktuellen Triebwagens ist -->
+                    <input type="radio" name="triebwagen_id" value="{{ tw.wagenid }}" form="zug-form"
+                           {% if tw.wagenid == aktueller_tw_id %}checked{% endif %}>
+                </td>
+                <td>{{ tw.wagenid }}</td>
+                <td>{{ tw.maxzugkraft }}</td>
+                <td>{{ tw.spurweite }}</td>
+                <td>
+                    {% if tw.istfrei == zug.zugid %}
+                        <span style="color: green; font-weight: bold;">Aktueller Zug</span>
+                    {% elif tw.istfrei is none %}
+                        Frei
+                    {% else %}
+                        Besetzt (Zug {{ tw.istfrei }})
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PERSONENWAGEN -->
+    <div>
+        <h3>Personenwagen wählen</h3>
+
+        <!-- Suchformular für Personenwagen (GET) -->
+        <form method="GET" action="{{ url_for('bearbeite_zuege', zug_id=zug.zugid) }}">
+            <input type="text" name="search_pw" placeholder="Suchen..."
+                   value="{{ request.args.get('search_pw', '') }}">
+            <input type="hidden" name="search_tw" value="{{ request.args.get('search_tw', '') }}">
+            <button type="submit">Suchen</button>
+        </form>
+
+        <table border="1" style="margin-top:10px;">
+            <thead>
+            <tr>
+                <th></th>
+                <th>ID</th>
+                <th>Kapazität</th>
+                <th>Max. Gewicht</th>
+                <th>Spurweite</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for pw in freie_personenwagen %}
+            <tr>
+                <td>
+                    <!-- Checkbox: checked wird gesetzt, wenn die ID in der Liste der aktuell zugewiesenen IDs enthalten ist -->
+                    <input type="checkbox" name="personenwagen_ids" value="{{ pw.wagenid }}" form="zug-form"
+                           {% if pw.wagenid in aktuelle_pw_ids %}checked{% endif %}>
+                </td>
+                <td>{{ pw.wagenid }}</td>
+                <td>{{ pw.kapazitaet }}</td>
+                <td>{{ pw.maxgewicht }}</td>
+                <td>{{ pw.spurweite }}</td>
+                <td>
+                    {% if pw.istfrei == zug.zugid %}
+                        <span style="color: green; font-weight: bold;">Aktueller Zug</span>
+                    {% elif pw.istfrei is none %}
+                        Frei
+                    {% else %}
+                        Besetzt (Zug {{ pw.istfrei }})
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<br>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<p>
+    <button type="submit" name="speichern" value="speichern" form="zug-form">Speichern</button>
+
+    <button type="submit" name="action" value="abbrechen" form="zug-form" formnovalidate>Abbrechen</button>
+</p>
 {% endblock %}

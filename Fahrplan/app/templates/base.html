@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="de">
+<head>
+    {% if title %}
+        <title>{{ title }} – Fahrplan</title>
+    {% else %}
+        <title>Fahrplan</title>
+    {% endif %}
+
+    <style>
+        /* ---------- GLOBAL ---------- */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+        }
+
+        /* ---------- TOP NAV ---------- */
+        .navbar {
+            background: #2c3e50;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .nav-left, .nav-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-nav {
+            padding: 8px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            background: #34495e;
+            color: white;
+            transition: 0.2s;
+        }
+        .btn-nav:hover {
+            background: #3d5a73;
+        }
+
+        .btn-logout {
+            background: #c0392b;
+        }
+        .btn-logout:hover {
+            background: #e74c3c;
+        }
+
+        /* ---------- BUTTONS ---------- */
+        .btn-primary {
+            background: #2980b9;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #3498db;
+        }
+
+        .btn-secondary {
+            background: #7f8c8d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #95a5a6;
+        }
+
+        .btn-danger {
+            background: #c0392b;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #e74c3c;
+        }
+
+        /* ---------- TABLES ---------- */
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .nice-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .nice-table th {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            position: sticky;
+            top: 0;
+        }
+
+        .nice-table td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .nice-table tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+
+        /* ---------- FLASH MESSAGES ---------- */
+        .flash-message {
+            background: #f1c40f;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        /* ---------- CONTENT AREA ---------- */
+        .container {
+            padding: 25px;
+        }
+
+       .btn-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        /* Primärer Button – neutral, kein Blau */
+        .btn-primary-full {
+            display: block;
+            width: 100%;
+            padding: 12px 18px;
+            background-color: #444;      /* dunkles Grau */
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .btn-primary-full:hover {
+            background-color: #222;      /* dunkler bei Hover */
+        }
+
+        .btn-wide {
+            display: block;
+            width: 60%;
+            max-width: 500px;
+            margin: 10px auto;
+            padding: 15px;
+            background: #3b3b3b;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+        }
+        .btn-wide:hover {
+            background: #555;
+        }
+
+        /* deaktivierter Button */
+        .btn-disabled {
+            display: block;
+            width: 60%;
+            max-width: 500px;
+            margin: 10px auto;
+            padding: 15px;
+            background: #d3d3d3;
+            color: #666;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+        }
+
+        .btn-small,
+        .btn-primary-small,
+        .btn-secondary-small {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* dunkelgrau, wie dein Admin-Dashboard */
+        .btn-small,
+        .btn-primary-small {
+            background-color: #444;
+            color: #fff;
+        }
+
+        .btn-small:hover,
+        .btn-primary-small:hover {
+            background-color: #222;
+        }
+
+        /* neutrale Variante */
+        .btn-secondary-small {
+            background-color: #777;
+            color: #fff;
+        }
+
+        .btn-secondary-small:hover {
+            background-color: #555;
+        }
+
+        /* deaktivierter Button in Tabellen */
+        .btn-small-disabled {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            background-color: #d3d3d3;
+            color: #666;
+            border: none;
+            cursor: not-allowed;
+        }
+
+          .fahrten-table th,
+          .fahrten-table td {
+              padding: 0.6rem 0.9rem;
+              vertical-align: middle;
+          }
+
+          .fahrten-table .col-id {
+              width: 60px;
+              white-space: nowrap;
+          }
+
+          .fahrten-table .col-halteplan {
+              min-width: 180px;
+          }
+
+          .fahrten-table .col-zug {
+              min-width: 100px;
+              white-space: nowrap;
+          }
+
+          .fahrten-table .col-status,
+          .fahrten-table .col-verspaetung {
+              min-width: 120px;
+              white-space: nowrap;
+          }
+
+          .fahrten-table .col-mitarbeiter {
+              min-width: 140px;
+              white-space: nowrap;
+          }
+
+          .fahrten-table .col-aktionen {
+              min-width: 220px;
+              white-space: nowrap;
+          }
+
+          .btn-group-vertical {
+              display: flex;
+              flex-direction: column;
+              gap: 0.25rem;
+          }
+
+          .btn-inline {
+              text-align: center;
+          }
+
+        .warning-card {
+            border-left: 5px solid #cc0000;
+            background: #fff5f5;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .btn-danger {
+            background: #cc0000;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .btn-danger:hover {
+            background: #990000;
+        }
+
+
+    </style>
+</head>
+
+<body>
+
+<!-- ---------- NAVIGATION ---------- -->
+<div class="navbar">
+
+    <div class="nav-left">
+        <span style="font-size: 20px; font-weight: bold;">Fahrplan</span>
+
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <a class="btn-nav" href="{{ url_for('index') }}">Dashboard</a>
+            <a class="btn-nav" href="{{ url_for('mitarbeiter_list') }}">Mitarbeiter</a>
+            <a class="btn-nav" href="{{ url_for('fahrten_list') }}">Fahrten</a>
+            <button class="btn-disabled" disabled>Haltepläne (in Arbeit)</button>
+
+        {% elif current_user.is_authenticated %}
+            <a class="btn-nav" href="{{ url_for('index') }}">Dashboard</a>
+            <a class="btn-nav" href="{{ url_for('meine_fahrten') }}">Meine Fahrten</a>
+            <a class="btn-nav" href="{{ url_for('fahrten_alle') }}">Alle Fahrten</a>
+        {% endif %}
+    </div>
+
+    <div class="nav-right">
+        {% if current_user.is_anonymous %}
+            <a class="btn-nav" href="{{ url_for('login') }}">Login</a>
+        {% else %}
+            <span>{{ current_user.username }}</span>
+            <a class="btn-nav btn-logout" href="{{ url_for('logout') }}">Logout</a>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ---------- FLASH MESSAGES ---------- -->
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for message in messages %}
+        <div class="flash-message">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- ---------- PAGE CONTENT ---------- -->
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

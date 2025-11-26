@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, FloatField
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, FloatField, \
+    DateField, SelectMultipleField
+from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Optional
 import sqlalchemy as sa
 from app import db
 from app.models import User, Bahnhof, Abschnitt
@@ -96,3 +97,35 @@ class AbschnittForm(FlaskForm):
             return False
 
         return True
+
+class WarnungForm(FlaskForm):
+    bezeichnung = StringField('Bezeichnung der Warnung', validators=[DataRequired()])
+    beschreibung = StringField('Beschreibung der Warnung', validators=[DataRequired()])
+    abschnitt =  SelectMultipleField("Abschnitt", coerce=int, validators=[DataRequired()])
+    startZeit = DateField("gültig ab", validators=[DataRequired()])
+    endZeit = DateField("gültig bis (optional)", validators=[Optional()])
+    submit = SubmitField('Warnung speichern')
+
+    def validate(self, extra_validators=None):
+
+        if not super().validate(extra_validators=extra_validators):
+            return False
+
+
+
+        startZeit = self.startZeit.data
+        endZeit = self.endZeit.data
+
+        if endZeit == None:
+            return True
+
+        if endZeit <= startZeit:
+            msg = 'Startzeit der Warnung muss vor der Endzeit liegen.'
+
+            self.startZeit.errors.append(msg)
+            self.endZeit.errors.append(msg)
+
+            return False
+
+        return True
+

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Personalzuweisung für Fahrt {{ fahrt.fahrt_id }}</h1>
+
+<div class="card">
+  <h2>Fahrtdetails</h2>
+  <p><strong>Halteplan:</strong> {{ fahrt.halteplan.bezeichnung }}</p>
+  <p><strong>Zug-ID:</strong> {{ fahrt.zug_id or 'nicht eingetragen' }}</p>
+  <p><strong>Status:</strong> {{ fahrt.status.value }}</p>
+  <p><strong>Verspätung (Min):</strong> {{ fahrt.verspaetung_min or '-' }}</p>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+  <h2>Mitarbeiter zuweisen / bearbeiten</h2>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="table-wrapper">
+      <table class="nice-table">
+        <thead>
+          <tr>
+            <th>Zugeteilt</th>
+            <th>Mitarbeiter-ID</th>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in mitarbeiter_liste %}
+          <tr>
+            <td style="text-align: center;">
+              <input
+                type="checkbox"
+                name="mitarbeiter_ids"
+                value="{{ m.id }}"
+                {% if m.id in zugewiesene_ids %}checked{% endif %}
+              >
+            </td>
+            <td>{{ m.id }}</td>
+            <td>{{ m.name }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3">Keine Mitarbeiter vorhanden.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 15px; display: flex; gap: 10px;">
+      <button type="submit" class="btn-primary-small">
+        Zuweisungen speichern
+      </button>
+      <a href="{{ url_for('fahrten_list') }}" class="btn-secondary-small">
+        Zurück zur Übersicht
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

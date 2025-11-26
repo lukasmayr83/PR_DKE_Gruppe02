@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Fahrtdurchführungen</h1>
+
+<div class="btn-container">
+    <a href="{{ url_for('fahrten_new') }}" class="btn-primary-small">
+        Neue Fahrtdurchführung anlegen
+    </a>
+</div>
+
+<div class="table-wrapper">
+<table class="table table-striped fahrten-table">
+    <thead>
+        <tr>
+            <th class="col-id">ID</th>
+            <th class="col-halteplan">Halteplan</th>
+            <th class="col-zug">Zug</th>
+            <th class="col-status">Status</th>
+            <th class="col-verspaetung">Verspätung</th>
+            <th class="col-mitarbeiter">Mitarbeiter</th>
+            <th class="col-aktionen">Aktionen</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for f in fahrten %}
+        <tr>
+            <td>{{ f.fahrt_id }}</td>
+            <td>{{ f.halteplan.bezeichnung }}</td>
+
+            <td>
+                {% if f.zug_id %}
+                    {{ f.zug_id }}
+                {% else %}
+                    <span class="badge-grey">kein Zug</span>
+                {% endif %}
+            </td>
+
+            <td>{{ f.status.value }}</td>
+            <td>{{ f.verspaetung_min or "-" }}</td>
+
+            <td>
+                {{ mitarbeiter_counts[f.fahrt_id] | default(0) }} Mitarbeiter
+            </td>
+
+            <td>
+                <a href="{{ url_for('fahrt_edit', fahrt_id=f.fahrt_id) }}"
+                   class="btn-primary-small btn-inline">
+                    Fahrt bearbeiten
+                </a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">Keine Fahrten vorhanden.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}
