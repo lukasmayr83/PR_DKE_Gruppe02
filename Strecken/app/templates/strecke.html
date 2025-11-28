@@ -1,9 +1,76 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <h2>Alle Strecken</h2>
+
+<a href="{{ url_for('strecke_add') }}" class="btn btn-success mb-3">
+    + Neue Strecke anlegen
+</a>
+
 <div style="display: flex; gap: 20px;">
 
+    <!-- Hauptcontainer für die Tabelle -->
+    <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
+
+        <!-- Das Formular umschließt die Tabelle für die Mehrfachauswahl/Löschung -->
+        <form method="POST" action="{{ url_for('delete_multiple_strecke') }}">
+
+            <table class="table table-striped" border="1" cellpadding="5" style="width:100%;">
+                <thead>
+                    <tr>
+                        {% if role.value != 'mitarbeiter' %}
+                        <th></th> <!-- Checkbox für Admin/Mitarbeiter -->
+                        {% endif %}
+                        <th>Streckenname</th>
+                        <th>Startbahnhof</th>
+                        <th>Endbahnhof</th>
+                        <th>Abschnitte</th>
+                        {% if role.value != 'mitarbeiter' %}
+                        <th>Aktion</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+
+                    {% for s in strecken %}
+                    <tr>
+                        {% if role.value != 'mitarbeiter' %}
+                        <td><input type="checkbox" name="strecke_ids" value="{{ s.id }}"></td>
+                        {% endif %}
+
+                        <td>{{ s.name }}</td>
+                        <!-- Verwendung der im Python-Code vorbereiteten Daten -->
+                        <td>{{ s.start_bahnhof }}</td>
+                        <td>{{ s.end_bahnhof }}</td>
+                        <td>{{ s.anzahl_abschnitte }}</td>
+
+                        {% if role.value != 'mitarbeiter' %}
+                        <td>
+                            <!-- Detail-Link behalten und auf ID basieren -->
+                            <a href="{{ url_for('strecke_add', strecke_id=s.id) }}" class="btn btn-info btn-sm">Details</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if role.value != 'mitarbeiter' %}
+            <br>
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
+                Ausgewählte löschen
+            </button>
+            {% endif %}
+        </form>
+    </div>
 
 </div>
+
+{% if not strecken %}
+    <div class="alert alert-warning mt-4" role="alert">
+        Es wurden noch keine Strecken definiert.
+    </div>
+{% endif %}
+
 {% endblock %}

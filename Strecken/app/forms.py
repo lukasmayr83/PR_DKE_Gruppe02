@@ -4,7 +4,7 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, Selec
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Optional
 import sqlalchemy as sa
 from app import db
-from app.models import User, Bahnhof, Abschnitt
+from app.models import User, Bahnhof, Abschnitt, Strecke, Reihenfolge
 
 
 class LoginForm(FlaskForm):
@@ -128,4 +128,10 @@ class WarnungForm(FlaskForm):
             return False
 
         return True
+
+class StreckenForm(FlaskForm):
+    name = StringField('Name der Strecke', validators=[DataRequired()])
+    abschnitt = SelectMultipleField("Abschnitte", coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Strecke speichern')
+
 

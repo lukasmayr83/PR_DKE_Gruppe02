@@ -52,8 +52,8 @@
 
 <script>
     //Erstellt die Karte
-    let map = L.map('map').setView([47.5162, 14.5501], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    let map = L.map('map').setView([47.5162, 14.5501], 7); //L. steht für Leaflet
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { // z..Zoomlevel; x,y..Koordinaten
     attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 

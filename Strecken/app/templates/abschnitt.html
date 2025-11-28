@@ -6,73 +6,110 @@
 
 <div style="display: flex; gap: 20px;">
 
-    <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
-        <form method="POST" action="{{ url_for('delete_multiple_abschnitt') }}">
-            <table border="1" cellpadding="5" style="width:100%;">
-                <thead>
-                    <tr>
-                        {% if role.value != 'mitarbeiter' %}
-                        <th></th>
-                        {% endif %}
-                        <th>Name</th>
-                        <th>Startbahnhof</th>
-                        <th>Endbahnhof</th>
-                        <th>Spurweite</th>
-                        <th>Nutzungsentgelt</th>
-                        <th>max. Geschwindigkeit</th>
-                        <!-- Spalte für Warnungen -->
-                        <th>Warnungen</th>
-                        {% if role.value != 'mitarbeiter' %}
-                        <th>Aktion</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
 
-                    {% for a in posts %}
-                    <tr>
-                        {% if role.value != 'mitarbeiter' %}
-                        <td><input type="checkbox" name="abschnitt_ids" value="{{ a.abschnittId }}"></td>
-                        {% endif %}
-                        <td>{{ a.name }}</td>
+    <div style="min-width: 0; display: flex; flex-direction: column;">
 
 
-                        <td>{{ a.startBahnhof.name if a.startBahnhof else '-' }}</td>
-                        <td>{{ a.endBahnhof.name if a.endBahnhof else '-' }}</td>
+        <div style="overflow-y: auto; overflow-x: auto; max-height: 60vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
 
-                        <td>{{ a.spurweite }}</td>
-                        <td>{{ a.nutzungsentgelt }}</td>
-                        <td>{{ a.max_geschwindigkeit }}</td>
-
-                        <td>
-                            {% if a.warnungen %}
-                                {% for warnung in a.warnungen %}
-                                    <span class="badge bg-warning text-dark" style="margin-right: 2px;">
-                                        {{ warnung.bezeichnung }}
-                                    </span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-muted">-</span>
+            <form id="abschnitt-form" method="POST" action="{{ url_for('delete_multiple_abschnitt') }}">
+                <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; min-width: 900px; margin-bottom: 0;">
+                    <thead>
+                        <tr style="background-color: #f1f1f1; position: sticky; top: 0; z-index: 10;">
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 30px;"></th>
                             {% endif %}
-                        </td>
+                            <th style="min-width: 150px;">Startbahnhof</th>
+                            <th style="min-width: 150px;">Endbahnhof</th>
+                            <th style="min-width: 100px;">Spurweite</th>
+                            <th style="min-width: 120px;">Nutzungsentgelt</th>
+                            <th style="min-width: 160px;">max. Geschwindigkeit</th>
+                            <th style="min-width: 150px;">Warnungen</th>
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 100px;">Aktion</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
 
-                        {% if role.value != 'mitarbeiter' %}
-                        <td>
-                            <a href="{{ url_for('edit_abschnitt', abschnitt_id=a.abschnittId) }}">Bearbeiten</a>
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        {% for a in posts %}
+                        <tr>
+                            {% if role.value != 'mitarbeiter' %}
+                            <td><input type="checkbox" name="abschnitt_ids" value="{{ a.abschnittId }}"></td>
+                            {% endif %}
 
-            {% if role.value != 'mitarbeiter' %}
-            <br>
-            <button type="submit" onclick="return confirm('Willst du wirklich alle ausgewählten Abschnitte löschen?');">
-                Ausgewählte löschen
-            </button>
+                            <td>{{ a.startBahnhof.name if a.startBahnhof else '-' }}</td>
+                            <td>{{ a.endBahnhof.name if a.endBahnhof else '-' }}</td>
+
+                            <td>{{ a.spurweite }}</td>
+                            <td>{{ a.nutzungsentgelt }}</td>
+                            <td>{{ a.max_geschwindigkeit }}</td>
+
+                            <td>
+                                {% if a.warnungen %}
+                                    {% for warnung in a.warnungen %}
+                                        <span class="badge bg-warning text-dark" style="margin-right: 2px;">
+                                            {{ warnung.bezeichnung }}
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+
+                            {% if role.value != 'mitarbeiter' %}
+                            <td>
+                                <a href="{{ url_for('edit_abschnitt', abschnitt_id=a.abschnittId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <input type="submit" id="hidden_submit" style="display:none;">
+            </form>
+
+        </div>
+
+
+
+        <div style="margin-top: 10px;">
+             {% if role.value != 'mitarbeiter' %}
+
+                <button type="button" class="btn btn-danger"
+                        onclick="if (confirm('Willst du wirklich alle ausgewählten Abschnitte löschen?')) { document.getElementById('abschnitt-form').submit(); }">
+                    Ausgewählte löschen
+                </button>
             {% endif %}
-        </form>
+
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-top: 15px;">
+                {% for category, message in messages %}
+                    {% if category == 'error' or category == 'success' %}
+                    <div class="alert alert-{{ category }}"
+                         style="padding: 10px; margin-bottom: 10px; border-radius: 4px;
+                                background-color: {% if category == 'error' %}#f8d7da{% elif category == 'success' %}#d4edda{% else %}#fff3cd{% endif %};
+                                color: {% if category == 'error' %}#721c24{% elif category == 'success' %}#155724{% else %}#856404{% endif %};
+                                border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'success' %}#c3e6cb{% else %}#ffeeba{% endif %};">
+                        {{ message }}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+
+    </div>
+
+    <div style="flex: 1; min-width: 400px; height: 80vh;">
+        {% if map_html %}
+        {{ map_html | safe }}
+        {% else %}
+        <p>Keine Abschnitte vorhanden.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

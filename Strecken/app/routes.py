@@ -1,15 +1,16 @@
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from app import app
-from app.forms import LoginForm, RegistrationForm, BahnhofForm, AbschnittForm, WarnungForm
+from app.forms import LoginForm, RegistrationForm, BahnhofForm, AbschnittForm, WarnungForm, StreckenForm
 from flask_login import current_user, login_user
 import sqlalchemy as sa
 from app import db
-from app.models import User, Bahnhof, Abschnitt, Warnung
+from app.models import User, Bahnhof, Abschnitt, Warnung, Strecke, Reihenfolge
 from flask_login import logout_user
 from flask_login import login_required
 import folium
 from sqlalchemy.orm import selectinload
+import sqlalchemy.orm as so
 
 #############################################################
 #################    Abschnitt   ############################
@@ -19,13 +20,105 @@ from sqlalchemy.orm import selectinload
 @app.route('/abschnitt')
 @login_required
 def abschnitt():
-    # Alle Abschnitte aus der DB laden
+    # nur für DEBUGGING
+    #print("--- START: Kartengenerierung für Abschnitte ---")
+
+
     posts = Abschnitt.query.all()
+
+    all_coords = []
+    section_groups = {}
+
+
+    fallback_lat, fallback_lon = 47.5162, 14.5501
+    m = folium.Map(location=[fallback_lat, fallback_lon], zoom_start=7, height='100%')
+
+
+    for abschnitt in posts:
+        abschnitt_name = getattr(abschnitt, 'name')
+
+        #nur für DEBUGGING
+        #print("\nVerarbeite Abschnitt: {abschnitt_name}")
+
+        startbahnhof = getattr(abschnitt, 'startBahnhof', None)
+        endbahnhof = getattr(abschnitt, 'endBahnhof', None)
+
+
+        bahnhoefe_zu_markieren = []
+        if startbahnhof:
+            bahnhoefe_zu_markieren.append(('Startbahnhof', startbahnhof, 'green'))
+        if endbahnhof:
+            bahnhoefe_zu_markieren.append(('Endbahnhof', endbahnhof, 'red'))
+
+
+        if not bahnhoefe_zu_markieren:
+            # nur für DEBUGGING
+            #print(f"WARNUNG: Abschnitt '{abschnitt_name}' hat keine gültigen Start/End-Bahnhöfe und wird übersprungen.")
+            continue
+
+        group = folium.FeatureGroup(name=abschnitt_name)
+        section_groups[abschnitt_name] = group
+        group.add_to(m)
+
+        route_coords = []
+
+        for typ, b, farbe in bahnhoefe_zu_markieren:
+
+            if not b.latitude or not b.longitude:
+                # nur für DEBUGGING
+                #print(f"  --> Koordinate fehlt für {b.name}. Führe Geocoding aus...")
+                b.geocode_address()
+
+            if b.latitude and b.longitude:
+                lat_lon = (b.latitude, b.longitude)
+                route_coords.append(lat_lon)
+                all_coords.append(lat_lon)
+
+                #print(f"  --> ERFOLG: {b.name} ({typ}) bei {b.latitude}, {b.longitude}")
+
+                marker = folium.Marker(
+                    lat_lon,
+                    tooltip=f"{typ}: {b.name}",
+                    popup=f"Abschnitt: {abschnitt_name}<br>{typ}: {b.name}<br>Adresse: {b.adresse}",
+                    icon=folium.Icon(color=farbe)
+                )
+
+                marker.add_to(group)
+            #else:
+                #print(f"  --> FEHLER: Konnte keine Koordinaten für {b.name} finden/speichern.")
+
+        if len(route_coords) == 2:
+            folium.PolyLine(
+                route_coords,
+                color='blue',
+                weight=5,
+                opacity=0.7,
+                tooltip=f"Route: {abschnitt_name}"
+            ).add_to(group)
+        #else:
+
+            #print(
+                #f"WARNUNG: PolyLine kann für '{abschnitt_name}' nicht gezeichnet werden (Nur {len(route_coords)} von 2 Endpunkten gefunden).")
+
+    db.session.commit()
+
+    if all_coords:
+        center_lat = sum(lat for lat, lon in all_coords) / len(all_coords)
+        center_lon = sum(lon for lat, lon in all_coords) / len(all_coords)
+
+        m.location = [center_lat, center_lon]
+
+    folium.LayerControl().add_to(m)
+
+    #print("--- ENDE: Kartengenerierung erfolgreich ---")
+
+    map_html = m._repr_html_()
 
     return render_template(
         'abschnitt.html',
-        title='Home',
+        title='Abschnitte',
         posts=posts,
+        map_html=map_html,
         role=current_user.role
     )
 
@@ -140,17 +233,195 @@ def delete_multiple_abschnitt():
 @app.route('/strecke', methods=['GET', 'POST'])
 @login_required
 def strecke():
+    alle_strecken = Strecke.query.all()
+
+    # Bereite die Daten für das Template vor
+    strecken_daten = []
+    for strecke in alle_strecken:
+        # 1. Start- und Endbahnhof über die Property abrufen
+        start_bhf, end_bhf = strecke.start_end_bahnhoefe
+
+        strecken_daten.append({
+            'id': strecke.streckenId,
+            'name': strecke.name,
+
+            # 2. Daten für die Anzeige berechnen
+            'start_bahnhof': start_bhf.name if start_bhf else 'N/A',
+            'end_bahnhof': end_bhf.name if end_bhf else 'N/A',
+
+            # 3. Anzahl der Abschnitte zählen
+            'anzahl_abschnitte': len(strecke.reihenfolge)
+        })
+
     return render_template(
         'strecke.html',
-        title='Home'
+        title='Alle definierten Strecken',
+        strecken=strecken_daten,
+        # Stellen Sie sicher, dass 'role' ebenfalls übergeben wird, falls es benötigt wird
+        role=current_user.role
     )
+
+
+@app.route("/api/abschnitte_daten", methods=["GET"])
+def api_abschnitte_daten():
+    """Stellt Abschnitte und Bahnhofsnamen als JSON für das Frontend bereit."""
+
+
+    from sqlalchemy.orm import joinedload
+    from flask import jsonify
+
+    abschnitte = Abschnitt.query.options(
+        joinedload(Abschnitt.startBahnhof),
+        joinedload(Abschnitt.endBahnhof)
+    ).all()
+
+    abschnitt_data = []
+    bahnhoefe_map = {}
+
+    for a in abschnitte:
+
+        start_name = a.startBahnhof.name if a.startBahnhof else "Unbekannt"
+        end_name = a.endBahnhof.name if a.endBahnhof else "Unbekannt"
+
+        abschnitt_data.append({
+            "abschnittId": a.abschnittId,
+            "name": f"{start_name} → {end_name}",
+            "startBahnhofId": a.startBahnhofId,
+            "endBahnhofId": a.endBahnhofId
+        })
+
+        if a.startBahnhof:
+            bahnhoefe_map[a.startBahnhof.bahnhofId] = start_name
+        if a.endBahnhof:
+            bahnhoefe_map[a.endBahnhof.bahnhofId] = end_name
+
+    return jsonify({
+        'abschnitte': abschnitt_data,
+        'bahnhoefe': bahnhoefe_map
+    })
+
 
 @app.route("/strecke/add", methods=["GET", "POST"])
 @login_required
 def strecke_add():
+    form = StreckenForm()
+
+    if form.validate_on_submit():
+
+        gewaehlte_ids_str = request.form.get('abschnitt_ids')
+
+        gewaehlte_ids = []
+        if gewaehlte_ids_str:
+            try:
+
+                gewaehlte_ids = [int(id_str) for id_str in gewaehlte_ids_str.split(',') if id_str]
+            except ValueError:
+
+                flash('Fehler: Ungültiges Format der Abschnitts-IDs.', 'danger')
+                return render_template("strecke_add.html", form=form)
+
+
+        if not gewaehlte_ids:
+            flash('Bitte definieren Sie mindestens einen Abschnitt für die Strecke.', 'danger')
+            return render_template("strecke_add.html", form=form)
+
+
+        abschnitte_in_reihenfolge = []
+        for abschnitt_id in gewaehlte_ids:
+            abschnitt = Abschnitt.query.get(abschnitt_id)
+            if abschnitt:
+                abschnitte_in_reihenfolge.append(abschnitt)
+            else:
+                print(f"WARNUNG: Abschnitts-ID {abschnitt_id} nicht gefunden.")
+
+
+        validierung_erfolgreich = True
+
+        for i in range(1, len(abschnitte_in_reihenfolge)):
+            vorheriger_abschnitt = abschnitte_in_reihenfolge[i - 1]
+            aktueller_abschnitt = abschnitte_in_reihenfolge[i]
+
+            if vorheriger_abschnitt.endBahnhofId != aktueller_abschnitt.startBahnhofId:
+                flash(
+                    f'Fehler: Die Abschnitte sind nicht zusammenhängend. '
+                    f'Ende von "{vorheriger_abschnitt.name}" ist nicht Start von "{aktueller_abschnitt.name}".',
+                    'danger'
+                )
+                validierung_erfolgreich = False
+                break
+
+        if not validierung_erfolgreich:
+            return render_template("strecke_add.html", form=form)
+
+
+
+
+        neue_strecke = Strecke(
+            name=form.name.data,
+        )
+
+        db.session.add(neue_strecke)
+
+
+        if abschnitte_in_reihenfolge:
+            for i, abschnitt in enumerate(abschnitte_in_reihenfolge):
+
+                reihenfolge_objekt = Reihenfolge(
+                    abschnitt=abschnitt,
+                    reihenfolge=i + 1
+                )
+
+
+                neue_strecke.reihenfolge.append(reihenfolge_objekt)
+
+
+        db.session.commit()
+
+        flash(f'Strecke "{neue_strecke.name}" wurde gespeichert!', 'success')
+        return redirect(url_for("strecke"))
+
+
     return render_template(
-        'strecke_add.html',
+        "strecke_add.html",
+        form=form,
+        api_url=url_for('api_abschnitte_daten')
     )
+
+@app.route("/strecke/delete_multiple", methods=["POST"])
+@login_required
+def delete_multiple_strecke():
+    ids = request.form.getlist("strecke_ids")
+
+    deleted_count = 0
+
+    if not ids:
+        flash("Keine Strecken ausgewählt.", "error")
+        return redirect(url_for('strecke'))
+
+    for bid in ids:
+        try:
+
+            strecke_query = (
+                sa.select(Strecke)
+                .where(Strecke.streckeId == int(bid))
+            )
+            strecke = db.session.execute(strecke_query).scalar_one_or_none()
+
+            if strecke:
+                db.session.delete(strecke)
+                deleted_count += 1
+
+        except Exception as e:
+            print(f"Fehler beim Laden von Strecke {bid}: {e}")
+            continue
+
+
+    if deleted_count > 0:
+        db.session.commit()
+        flash(f"{deleted_count} Strecke/Strecken erfolgreich gelöscht.", "success")
+
+
+    return redirect(url_for('strecke'))
 
 #############################################################
 #################    Warnung     ############################
@@ -186,7 +457,7 @@ def warnung_add():
         )
 
         db.session.add(warnung)
-        db.session.commit()  # ID wird benötigt, bevor Beziehungen gesetzt werden
+        db.session.commit()
 
         # Ausgewählte Abschnitte laden
         gewaehlte_ids = form.abschnitt.data
@@ -461,14 +732,8 @@ def register():
 
 
 def get_bahnhoefe_api():
-    """
-    API-Endpunkt zum Suchen und Auflisten von Bahnhöfen.
-    Unterstützt den optionalen Query-Parameter 'q' zur Volltextsuche (Name/ID).
-    """
-
 
     query_term = request.args.get('q', default='', type=str)
-
 
     stmt = sa.select(Bahnhof)
 
@@ -477,7 +742,6 @@ def get_bahnhoefe_api():
         stmt = stmt.where(
             sa.or_(
                 Bahnhof.name.ilike(f'%{query_term}%'),
-                # Optional: Suche nach ID, falls q eine Zahl ist
                 Bahnhof.bahnhofId == query_term
             )
         )

@@ -11,10 +11,11 @@ import requests
 from hashlib import md5
 from datetime import datetime
 from geopy.geocoders import Nominatim
-
 from typing import List
 
-
+#############################################################
+#################      User      ############################
+#############################################################
 
 @login.user_loader
 def load_user(id):
@@ -52,6 +53,10 @@ class User( UserMixin, db.Model):
         digest = md5(self.email.lower().encode('utf-8')).hexdigest()
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
 
+#############################################################
+#################     Bahnhof    ############################
+#############################################################
+
 class Bahnhof (db.Model):
     __tablename__ = 'bahnhof'
     bahnhofId: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -62,6 +67,7 @@ class Bahnhof (db.Model):
     latitude: so.Mapped[float] = so.mapped_column(sa.Float, nullable=True)
     longitude: so.Mapped[float] = so.mapped_column(sa.Float, nullable=True)
 
+    #Wandelt übergebene Adresse des übergebenen Bahnhofs in Koordinaten um indem sie nominatim aufruft
     def geocode_address(self):
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -88,6 +94,9 @@ class Bahnhof (db.Model):
     )
 
 
+#############################################################
+#################     Warnung    ############################
+#############################################################
 
 abschnitt_warnung_m2m = sa.Table(
     'abschnitt_warnung',
@@ -95,7 +104,6 @@ abschnitt_warnung_m2m = sa.Table(
     sa.Column('abschnitt_id', sa.Integer, sa.ForeignKey('abschnitt.abschnittId'), primary_key=True),
     sa.Column('warnung_id', sa.Integer, sa.ForeignKey('warnung.warnungId'), primary_key=True)
 )
-
 
 
 class Warnung(db.Model):
@@ -110,13 +118,15 @@ class Warnung(db.Model):
     abschnitte: so.Mapped[list["Abschnitt"]] = so.relationship(
         "Abschnitt",
         secondary=abschnitt_warnung_m2m,
-        back_populates="warnungen"  # MUSS exakt so heißen wie die property in Abschnitt
+        back_populates="warnungen"
     )
 
     def __repr__(self):
         return f'<Warnung {self.warnungId}: {self.bezeichnung}>'
 
-
+#############################################################
+#################    Abschnitt   ############################
+#############################################################
 
 class Abschnitt(db.Model):
     __tablename__ = 'abschnitt'
@@ -181,3 +191,59 @@ class Abschnitt(db.Model):
             Warnung.warnungId == warnung.warnungId
         )
         return db.session.scalar(query) is not None
+
+#############################################################
+#################   Reigenfolge  ############################
+#############################################################
+
+class Reihenfolge(db.Model):
+    __tablename__ = 'strecke_abschnitt'
+
+
+    streckeId: so.Mapped[int] = so.mapped_column(sa.ForeignKey('strecken.streckenId'), primary_key=True)
+    abschnittId: so.Mapped[int] = so.mapped_column(sa.ForeignKey('abschnitt.abschnittId'), primary_key=True)
+    reihenfolge: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
+    abschnitt: so.Mapped['Abschnitt'] = so.relationship(backref="strecken_abschnitt_ref")
+
+
+    __table_args__ = (db.UniqueConstraint('streckeId', 'reihenfolge', name='_strecke_reihenfolge_uc'),)
+
+    def __repr__(self):
+        return f"<Reihenfolge StreckeID={self.streckeId} AbschnittID={self.abschnittId} Pos={self.reihenfolge}>"
+
+
+
+#############################################################
+#################    Strecke     ############################
+#############################################################
+
+class Strecke(db.Model):
+    __tablename__ = 'strecken'
+
+    streckenId: so.Mapped[int] = so.mapped_column(sa.Integer, primary_key=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False, unique=True)
+
+
+    reihenfolge: so.Mapped[List['Reihenfolge']] = so.relationship(
+        'Reihenfolge',
+        order_by='Reihenfolge.reihenfolge',
+        cascade='all, delete-orphan'
+    )
+
+    def __repr__(self):
+        return f"<Strecke {self.name}>"
+
+    @property
+    def abschnitte_in_reihenfolge(self):
+        return [verbindung.abschnitt for verbindung in self.reihenfolge]
+
+    @property
+    def start_end_bahnhoefe(self):
+        abschnitte = self.abschnitte_in_reihenfolge
+        if not abschnitte:
+            return None, None
+
+        start_bhf = abschnitte[0].startBahnhof
+        end_bhf = abschnitte[-1].endBahnhof
+
+        return start_bhf, end_bhf

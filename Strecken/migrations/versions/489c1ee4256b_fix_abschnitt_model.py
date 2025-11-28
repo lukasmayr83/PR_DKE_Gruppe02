@@ -7,7 +7,6 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # 1️⃣ Neue Tabelle erstellen
     op.create_table(
         '_alembic_tmp_abschnitt',
         sa.Column('abschnittId', sa.Integer, primary_key=True, nullable=False),
@@ -21,7 +20,6 @@ def upgrade():
         sa.CheckConstraint('startBahnhofId <> endBahnhofId', name='check_start_end_ungleich')
     )
 
-    # 2️⃣ Daten aus alter Tabelle übertragen
     op.execute(
         '''
         INSERT INTO _alembic_tmp_abschnitt (abschnittId, spurweite, nutzungsentgelt, max_geschwindigkeit, startBahnhofId, endBahnhofId)
@@ -30,15 +28,14 @@ def upgrade():
         '''
     )
 
-    # 3️⃣ Alte Tabelle löschen
+
     op.drop_table('abschnitt')
 
-    # 4️⃣ Neue Tabelle umbenennen
     op.rename_table('_alembic_tmp_abschnitt', 'abschnitt')
 
 
 def downgrade():
-    # 1️⃣ Alte Tabelle wiederherstellen
+
     op.create_table(
         '_alembic_tmp_abschnitt',
         sa.Column('abschnittId', sa.Integer, primary_key=True, nullable=False),
@@ -52,7 +49,6 @@ def downgrade():
         sa.CheckConstraint('startBahnhof <> endBahnhof')
     )
 
-    # 2️⃣ Daten übertragen
     op.execute(
         '''
         INSERT INTO _alembic_tmp_abschnitt (abschnittId, spurweite, nutzungsentgelt, max_geschwindigkeit, startBahnhof, endBahnhof)
@@ -61,8 +57,8 @@ def downgrade():
         '''
     )
 
-    # 3️⃣ Neue Tabelle löschen
+
     op.drop_table('abschnitt')
 
-    # 4️⃣ Alte Tabelle umbenennen
+
     op.rename_table('_alembic_tmp_abschnitt', 'abschnitt')

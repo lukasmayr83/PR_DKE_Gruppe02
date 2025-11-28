@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataSource name="app">
   <database-model serializer="dbm" dbms="SQLITE" family-id="SQLITE" format-version="4.53">
-    <root id="1"/>
+    <root id="1">
+      <ServerVersion>3.45.1</ServerVersion>
+    </root>
     <collation id="2" parent="1" name="BINARY"/>
     <collation id="3" parent="1" name="NOCASE"/>
     <collation id="4" parent="1" name="RTRIM"/>
@@ -497,7 +499,7 @@
     </routine>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-11-21.09:22:42</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-11-27.09:54:24</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1595,218 +1597,297 @@
     <table id="559" parent="191" name="sqlite_master">
       <System>1</System>
     </table>
-    <table id="560" parent="191" name="user"/>
-    <table id="561" parent="191" name="warnung"/>
-    <check id="562" parent="555" name="check_start_end_ungleich">
+    <table id="560" parent="191" name="strecke_abschnitt"/>
+    <table id="561" parent="191" name="strecken"/>
+    <table id="562" parent="191" name="user"/>
+    <table id="563" parent="191" name="warnung"/>
+    <check id="564" parent="555" name="check_start_end_ungleich">
       <Predicate>startBahnhofId &lt;&gt; endBahnhofId</Predicate>
     </check>
-    <column id="563" parent="555" name="abschnittId">
+    <column id="565" parent="555" name="abschnittId">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="564" parent="555" name="spurweite">
+    <column id="566" parent="555" name="spurweite">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>FLOAT|0s</StoredType>
     </column>
-    <column id="565" parent="555" name="nutzungsentgelt">
+    <column id="567" parent="555" name="nutzungsentgelt">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>FLOAT|0s</StoredType>
     </column>
-    <column id="566" parent="555" name="max_geschwindigkeit">
+    <column id="568" parent="555" name="max_geschwindigkeit">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="567" parent="555" name="startBahnhofId">
+    <column id="569" parent="555" name="startBahnhofId">
       <NotNull>1</NotNull>
       <Position>5</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="568" parent="555" name="endBahnhofId">
+    <column id="570" parent="555" name="endBahnhofId">
       <NotNull>1</NotNull>
       <Position>6</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <foreign-key id="569" parent="555" name="fk_abschnitt_startBahnhofId">
+    <foreign-key id="571" parent="555" name="fk_abschnitt_startBahnhofId">
       <ColNames>startBahnhofId</ColNames>
       <RefColNames>bahnhofId</RefColNames>
       <RefTableName>bahnhof</RefTableName>
     </foreign-key>
-    <foreign-key id="570" parent="555" name="fk_abschnitt_endBahnhofId">
+    <foreign-key id="572" parent="555" name="fk_abschnitt_endBahnhofId">
       <ColNames>endBahnhofId</ColNames>
       <RefColNames>bahnhofId</RefColNames>
       <RefTableName>bahnhof</RefTableName>
     </foreign-key>
-    <key id="571" parent="555">
+    <index id="573" parent="555" name="ix_abschnitt_startBahnhofId">
+      <ColNames>startBahnhofId</ColNames>
+    </index>
+    <index id="574" parent="555" name="ix_abschnitt_endBahnhofId">
+      <ColNames>endBahnhofId</ColNames>
+    </index>
+    <key id="575" parent="555">
       <ColNames>abschnittId</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="572" parent="556" name="abschnitt_id">
+    <column id="576" parent="556" name="abschnitt_id">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="573" parent="556" name="warnung_id">
+    <column id="577" parent="556" name="warnung_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <foreign-key id="574" parent="556">
+    <foreign-key id="578" parent="556">
       <ColNames>abschnitt_id</ColNames>
       <RefColNames>abschnittId</RefColNames>
       <RefTableName>abschnitt</RefTableName>
     </foreign-key>
-    <foreign-key id="575" parent="556">
+    <foreign-key id="579" parent="556">
       <ColNames>warnung_id</ColNames>
       <RefColNames>warnungId</RefColNames>
       <RefTableName>warnung</RefTableName>
     </foreign-key>
-    <index id="576" parent="556" name="sqlite_autoindex_abschnitt_warnung_1">
+    <index id="580" parent="556" name="sqlite_autoindex_abschnitt_warnung_1">
       <ColNames>abschnitt_id
 warnung_id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="577" parent="556">
+    <key id="581" parent="556">
       <ColNames>abschnitt_id
 warnung_id</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_abschnitt_warnung_1</UnderlyingIndexName>
     </key>
-    <column id="578" parent="557" name="version_num">
+    <column id="582" parent="557" name="version_num">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>VARCHAR(32)|0s</StoredType>
     </column>
-    <index id="579" parent="557" name="sqlite_autoindex_alembic_version_1">
+    <index id="583" parent="557" name="sqlite_autoindex_alembic_version_1">
       <ColNames>version_num</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="580" parent="557" name="alembic_version_pkc">
+    <key id="584" parent="557" name="alembic_version_pkc">
       <ColNames>version_num</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_alembic_version_1</UnderlyingIndexName>
     </key>
-    <column id="581" parent="558" name="bahnhofId">
+    <column id="585" parent="558" name="bahnhofId">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="582" parent="558" name="name">
+    <column id="586" parent="558" name="name">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(64)|0s</StoredType>
     </column>
-    <column id="583" parent="558" name="adresse">
+    <column id="587" parent="558" name="adresse">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>VARCHAR(120)|0s</StoredType>
     </column>
-    <column id="584" parent="558" name="latitude">
+    <column id="588" parent="558" name="latitude">
       <Position>4</Position>
       <StoredType>FLOAT|0s</StoredType>
     </column>
-    <column id="585" parent="558" name="longitude">
+    <column id="589" parent="558" name="longitude">
       <Position>5</Position>
       <StoredType>FLOAT|0s</StoredType>
     </column>
-    <index id="586" parent="558" name="ix_bahnhof_name">
+    <index id="590" parent="558" name="ix_bahnhof_name">
       <ColNames>name</ColNames>
       <Unique>1</Unique>
     </index>
-    <index id="587" parent="558" name="ix_bahnhof_adresse">
+    <index id="591" parent="558" name="ix_bahnhof_adresse">
       <ColNames>adresse</ColNames>
       <Unique>1</Unique>
     </index>
-    <key id="588" parent="558">
+    <key id="592" parent="558">
       <ColNames>bahnhofId</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="589" parent="559" name="type">
+    <column id="593" parent="559" name="type">
       <Position>1</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="590" parent="559" name="name">
+    <column id="594" parent="559" name="name">
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="591" parent="559" name="tbl_name">
+    <column id="595" parent="559" name="tbl_name">
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="592" parent="559" name="rootpage">
+    <column id="596" parent="559" name="rootpage">
       <Position>4</Position>
       <StoredType>INT|0s</StoredType>
     </column>
-    <column id="593" parent="559" name="sql">
+    <column id="597" parent="559" name="sql">
       <Position>5</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="594" parent="560" name="id">
+    <column id="598" parent="560" name="streckeId">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="595" parent="560" name="username">
+    <column id="599" parent="560" name="abschnittId">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="600" parent="560" name="reihenfolge">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <foreign-key id="601" parent="560">
+      <ColNames>streckeId</ColNames>
+      <RefColNames>streckenId</RefColNames>
+      <RefTableName>strecken</RefTableName>
+    </foreign-key>
+    <foreign-key id="602" parent="560">
+      <ColNames>abschnittId</ColNames>
+      <RefColNames>abschnittId</RefColNames>
+      <RefTableName>abschnitt</RefTableName>
+    </foreign-key>
+    <index id="603" parent="560" name="sqlite_autoindex_strecke_abschnitt_1">
+      <ColNames>streckeId
+abschnittId</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Unique>1</Unique>
+    </index>
+    <index id="604" parent="560" name="sqlite_autoindex_strecke_abschnitt_2">
+      <ColNames>streckeId
+reihenfolge</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Unique>1</Unique>
+    </index>
+    <key id="605" parent="560">
+      <ColNames>streckeId
+abschnittId</ColNames>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>sqlite_autoindex_strecke_abschnitt_1</UnderlyingIndexName>
+    </key>
+    <key id="606" parent="560" name="_strecke_reihenfolge_uc">
+      <ColNames>streckeId
+reihenfolge</ColNames>
+      <UnderlyingIndexName>sqlite_autoindex_strecke_abschnitt_2</UnderlyingIndexName>
+    </key>
+    <column id="607" parent="561" name="streckenId">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="608" parent="561" name="name">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>VARCHAR(100)|0s</StoredType>
+    </column>
+    <index id="609" parent="561" name="sqlite_autoindex_strecken_1">
+      <ColNames>name</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <Unique>1</Unique>
+    </index>
+    <key id="610" parent="561">
+      <ColNames>streckenId</ColNames>
+      <Primary>1</Primary>
+    </key>
+    <key id="611" parent="561">
+      <ColNames>name</ColNames>
+      <UnderlyingIndexName>sqlite_autoindex_strecken_1</UnderlyingIndexName>
+    </key>
+    <column id="612" parent="562" name="id">
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="613" parent="562" name="username">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(64)|0s</StoredType>
     </column>
-    <column id="596" parent="560" name="email">
+    <column id="614" parent="562" name="email">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>VARCHAR(120)|0s</StoredType>
     </column>
-    <column id="597" parent="560" name="password_hash">
+    <column id="615" parent="562" name="password_hash">
       <Position>4</Position>
       <StoredType>VARCHAR(256)|0s</StoredType>
     </column>
-    <column id="598" parent="560" name="role">
+    <column id="616" parent="562" name="role">
       <DefaultExpression>&apos;mitarbeiter&apos;</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>5</Position>
       <StoredType>VARCHAR(11)|0s</StoredType>
     </column>
-    <index id="599" parent="560" name="ix_user_username">
+    <index id="617" parent="562" name="ix_user_username">
       <ColNames>username</ColNames>
       <Unique>1</Unique>
     </index>
-    <index id="600" parent="560" name="ix_user_email">
+    <index id="618" parent="562" name="ix_user_email">
       <ColNames>email</ColNames>
       <Unique>1</Unique>
     </index>
-    <key id="601" parent="560">
+    <key id="619" parent="562">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="602" parent="561" name="warnungId">
+    <column id="620" parent="563" name="warnungId">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="603" parent="561" name="bezeichnung">
+    <column id="621" parent="563" name="bezeichnung">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(100)|0s</StoredType>
     </column>
-    <column id="604" parent="561" name="beschreibung">
+    <column id="622" parent="563" name="beschreibung">
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="605" parent="561" name="startZeit">
+    <column id="623" parent="563" name="startZeit">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>DATETIME|0s</StoredType>
     </column>
-    <column id="606" parent="561" name="endZeit">
+    <column id="624" parent="563" name="endZeit">
       <Position>5</Position>
       <StoredType>DATETIME|0s</StoredType>
     </column>
-    <key id="607" parent="561">
+    <key id="625" parent="563">
       <ColNames>warnungId</ColNames>
       <Primary>1</Primary>
     </key>
