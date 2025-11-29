@@ -2,15 +2,7 @@ from app import db
 from app.models import Triebwagen, Personenwagen
 
 def validate_zug(request_form):
-    """
-    Liest TW + PW IDs aus dem Form, lädt die Objekte,
-    führt alle logischen Prüfungen durch und gibt zurück:
 
-    (valid, selected_tw, selected_pws, error_msg)
-    """
-
-
-    # --- IDs lesen ---
     tw_id = request_form.get("triebwagen_id")
     pw_ids = request_form.getlist("personenwagen_ids")
 
@@ -19,12 +11,10 @@ def validate_zug(request_form):
     if not pw_ids:
         return False, None, None, "Bitte wählen Sie mindestens einen Personenwagen aus!"
 
-    # --- Objekte laden ---
     tw = db.session.get(Triebwagen, tw_id)
     pws = [db.session.get(Personenwagen, pid) for pid in pw_ids]
 
-
-    # --- Prüfen: Spurweite ---
+    # Prüfung Spurweite
     target = tw.spurweite
     for pw in pws:
         if pw.spurweite != target:
@@ -33,7 +23,7 @@ def validate_zug(request_form):
                 f"Triebwagen: {target}, Personenwagen {pw.wagenid}: {pw.spurweite}"
             )
 
-    # --- Prüfen: Gesamtgewicht ---
+    # Prüfung Gesamtgewicht
     total_weight = sum(pw.maxgewicht for pw in pws)
     if tw.maxzugkraft < total_weight:
         return False, None, None, (

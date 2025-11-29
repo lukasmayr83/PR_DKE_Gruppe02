@@ -1,12 +1,14 @@
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from urllib.parse import urlsplit
 from app import app,db
-from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm
+from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm, MitarbeiterAddForm, MitarbeiterEditForm
 from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa
-from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen
+from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen, Mitarbeiter
 from sqlalchemy import or_
 from app.zug_validation import validate_zug
+from app.mitarbeiter_validation import validate_unique_svnr, validate_unique_username
+import app.suchhelfer as suchhelfer
 
 @app.route('/')
 def index():
@@ -52,22 +54,7 @@ def dashboard_mitarbeiter():
 @app.route('/uebers_personenwagen')
 @login_required
 def uebers_personenwagen():
-    # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String
-    # strip() entfernt Leerzeichen am Anfang/Ende.
-    suchbegriff = request.args.get('q', '').strip()
-
-    query = db.select(Personenwagen).order_by(Personenwagen.wagenid)
-
-    if suchbegriff:
-        query = query.where(
-            or_(
-                Personenwagen.kapazitaet.cast(sa.String).like(f"%{suchbegriff}%"),
-                Personenwagen.maxgewicht.cast(sa.String).like(f"%{suchbegriff}%"),
-                Personenwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%")
-            )
-        )
-
-    personenwagen_liste = db.session.execute(query).scalars().all()
+    personenwagen_liste = suchhelfer.search_personenwagen(request)
     return render_template('uebers_personenwagen.html',title='Personenwagen-Übersicht',personenwagen_liste=personenwagen_liste)
 
 @app.route('/hinzufuegen_personenwagen', methods=['GET', 'POST'])
@@ -161,23 +148,8 @@ def bearbeite_personenwagen(wagen_id):
 @app.route('/uebers_triebwagen')
 @login_required
 def uebers_triebwagen():
-        # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String
-        # strip() entfernt Leerzeichen am Anfang/Ende.
-        suchbegriff = request.args.get('q', '').strip()
-
-        query = db.select(Triebwagen).order_by(Triebwagen.wagenid)
-
-        if suchbegriff:
-            query = query.where(
-                or_(
-                    Triebwagen.maxzugkraft.cast(sa.String).like(f"%{suchbegriff}%"),
-                    Triebwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%")
-                )
-            )
-
-        triebwagen_liste = db.session.execute(query).scalars().all()
-        return render_template('uebers_triebwagen.html', title='Triebwagen-Übersicht',
-                               triebwagen_liste=triebwagen_liste)
+        triebwagen_liste = suchhelfer.search_triebwagen(request)
+        return render_template('uebers_triebwagen.html', title='Triebwagen-Übersicht',triebwagen_liste=triebwagen_liste)
 
 @app.route('/hinzufuegen_triebwagen', methods=['GET', 'POST'])
 @login_required
@@ -264,24 +236,12 @@ def bearbeite_triebwagen(wagen_id):
         flash("Triebwagen erfolgreich bearbeitet.")
         return redirect(url_for('dashboard_admin'))
 
-    return render_template("bearbeiten_triebwagen.html", form=form, wagen=tw)
+    return render_template("bearbeiten_triebwagen.html",title="Triebwagen bearbeiten", form=form, wagen=tw)
 
 @app.route('/uebers_zuege')
 @login_required
 def uebers_zuege():
-    # get('q', '')  - falls "q" vorhanden → Wert nehmen - sonst leerer String
-    # strip() entfernt Leerzeichen am Anfang/Ende.
-    suchbegriff = request.args.get('q', '').strip()
-
-    query = db.select(Zuege).order_by(Zuege.zugid)
-
-    if suchbegriff:
-        query = query.where(
-            Zuege.bezeichnung.like(f"%{suchbegriff}%")
-        )
-
-    zuege_liste = db.session.execute(query).scalars().all()
-
+    zuege_liste = suchhelfer.search_zuege(request)
     return render_template('uebers_zuege.html', title='Züge-Übersicht', zuege_liste=zuege_liste)
 
 @app.route('/hinzufuegen_zuege', methods=['GET', 'POST'])
@@ -291,36 +251,11 @@ def hinzufuegen_zuege():
     if request.method == "POST" and "abbrechen" in request.form:
         return redirect(url_for('uebers_zuege'))
 
-    suche_tw = request.args.get("search_tw", "").strip()
-    suche_pw = request.args.get("search_pw", "").strip()
-
-    # Query für freie Triebwagen (istfrei == None)
-    query_tw = db.select(Triebwagen).where(Triebwagen.istfrei == None).order_by(Triebwagen.wagenid)
-    if suche_tw:
-        query_tw = query_tw.where(
-            or_(
-                Triebwagen.wagenid.cast(sa.String).like(f"%{suche_tw}%"),
-                Triebwagen.maxzugkraft.cast(sa.String).like(f"%{suche_tw}%"),
-                Triebwagen.spurweite.cast(sa.String).like(f"%{suche_tw}%")
-            )
-        )
-    # Query für freie Personenwagen (istfrei == None)
-    query_pw = db.select(Personenwagen).where(Personenwagen.istfrei == None).order_by(Personenwagen.wagenid)
-    if suche_pw:
-        query_pw = query_pw.where(
-            or_(
-                Personenwagen.wagenid.cast(sa.String).like(f"%{suche_pw}%"),
-                Personenwagen.kapazitaet.cast(sa.String).like(f"%{suche_pw}%"),
-                Personenwagen.spurweite.cast(sa.String).like(f"%{suche_pw}%")
-            )
-        )
-    # Ausführen der Queries
-    freie_triebwagen = db.session.execute(query_tw).scalars().all()
-    freie_personenwagen = db.session.execute(query_pw).scalars().all()
+    freie_triebwagen =suchhelfer.search_freie_triebwagen(request)
+    freie_personenwagen =suchhelfer.search_freie_personenwagen(request)
 
     # Prüfung ob Speicherbutton gedrückt wurde
     if form.validate_on_submit() and "speichern" in request.form:
-
         valid,tw,pws,msg = validate_zug(request.form)
         if not valid:
             flash(msg)
@@ -340,7 +275,7 @@ def hinzufuegen_zuege():
                 flash(f"Zug '{neuer_zug.bezeichnung}' erfolgreich erstellt!")
                 return redirect(url_for("dashboard_admin"))
 
-    return render_template("hinzufuegen_zuege.html", freie_triebwagen=freie_triebwagen, freie_personenwagen=freie_personenwagen, form=form)
+    return render_template("hinzufuegen_zuege.html",title="Züge hinzufügen" ,freie_triebwagen=freie_triebwagen, freie_personenwagen=freie_personenwagen, form=form)
 
 @app.route('/zuege_action', methods=['POST'])
 @login_required
@@ -374,55 +309,13 @@ def zuege_action():
 @app.route('/bearbeite_zuege/<int:zug_id>', methods=['GET', 'POST'])
 @login_required
 def bearbeite_zuege(zug_id):
-
     zug = db.session.get(Zuege, zug_id)
-
     form = ZuegeForm(obj=zug)  # vorbefüllen!
-
     if request.method == "POST" and request.form.get("action") == "abbrechen" :
         return redirect(url_for('uebers_zuege'))
 
-    search_tw = request.args.get("search_tw", "").strip()
-    search_pw = request.args.get("search_pw", "").strip()
-
-    # Abfrage - zeige alle freien Triebwagen oder die, die bei ist Frei die Zug ID haben
-    stmt_tw = db.select(Triebwagen).where(
-        sa.or_(
-            Triebwagen.istfrei == None,
-            Triebwagen.istfrei == zug.zugid
-        )
-    ).order_by(Triebwagen.wagenid)
-
-    # Suche Triebwagen
-    if search_tw:
-        stmt_tw = stmt_tw.where(
-            sa.or_(
-                Triebwagen.wagenid.cast(sa.String).like(f"%{search_tw}%"),
-                Triebwagen.maxzugkraft.cast(sa.String).like(f"%{search_tw}%"),
-                Triebwagen.spurweite.cast(sa.String).like(f"%{search_tw}%")
-            )
-        )
-    verfuegbare_triebwagen = db.session.execute(stmt_tw).scalars().all()
-
-    # Abfrage - zeige alle freien Personenwagen oder die, die bei ist Frei die Zug ID haben
-    stmt_pw = db.select(Personenwagen).where(
-        sa.or_(
-            Personenwagen.istfrei == None,
-            Personenwagen.istfrei == zug.zugid
-        )
-    ).order_by(Personenwagen.wagenid)
-
-    # Suche Personenwagen
-    if search_pw:
-        stmt_pw = stmt_pw.where(
-            sa.or_(
-                Personenwagen.wagenid.cast(sa.String).like(f"%{search_pw}%"),
-                Personenwagen.kapazitaet.cast(sa.String).like(f"%{search_pw}%"),
-                Personenwagen.spurweite.cast(sa.String).like(f"%{search_pw}%")
-            )
-        )
-    verfuegbare_personenwagen = db.session.execute(stmt_pw).scalars().all()
-
+    verfuegbare_triebwagen = suchhelfer.search_triebwagen_for_zug_bearbeiten(request,zug_id)
+    verfuegbare_personenwagen = suchhelfer.search_personenwagen_for_zug_bearbeiten(request, zug_id)
     # SPEICHERN
     if form.validate_on_submit() and "speichern" in request.form:
         valid, tw, pws, msg = validate_zug(request.form)
@@ -448,7 +341,7 @@ def bearbeite_zuege(zug_id):
     # Alle IDs der Personenwagen die aktuell diesem Zug zugeordnet sind
     aktuelle_pw_ids = [w.wagenid for w in zug.wagen if w.type == 'personenwagen']
 
-    return render_template("bearbeiten_zuege.html",form=form,zug=zug,freie_triebwagen=verfuegbare_triebwagen,
+    return render_template("bearbeiten_zuege.html", title="Züge bearbeiten ",form=form,zug=zug,freie_triebwagen=verfuegbare_triebwagen,
                            freie_personenwagen=verfuegbare_personenwagen,aktueller_tw_id=aktueller_tw_id,aktuelle_pw_ids=aktuelle_pw_ids)
 
 @app.route('/uebers_wartungen')
@@ -459,7 +352,108 @@ def uebers_wartungen():
 @app.route('/uebers_mitarbeiter')
 @login_required
 def uebers_mitarbeiter():
-    return render_template('uebers_mitarbeiter.html', title='Mitarbeiter-Übersicht')
+        mitarbeiter_liste = suchhelfer.search_mitarbeiter(request)
+        return render_template('uebers_mitarbeiter.html', title='Mitarbeiter-Übersicht', mitarbeiter_liste=mitarbeiter_liste)
+
+@app.route('/hinzufuegen_mitarbeiter', methods=['GET', 'POST'])
+@login_required
+def hinzufuegen_mitarbeiter():
+    form = MitarbeiterAddForm()
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_mitarbeiter'))
+
+    if form.validate_on_submit():
+        svnr_ok, msg = validate_unique_svnr(form.svnr.data)
+        if not svnr_ok:
+            flash(msg)
+            return render_template("hinzufuegen_mitarbeiter.html",title='Mitarbeiter hinzufügen', form=form)
+
+        benutzername_ok, msg = validate_unique_username(form.username.data)
+        if not benutzername_ok:
+            flash(msg)
+            return render_template("hinzufuegen_mitarbeiter.html",title='Mitarbeiter hinzufügen', form=form)
+        user = User(username=form.username.data,role=Role.MITARBEITER)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.flush()  # erzeugt user.id
+
+        # 2) Mitarbeiter anlegen
+        neuer_mitarbeiter = Mitarbeiter(
+            vorname=form.vorname.data,
+            nachname=form.nachname.data,
+            svnr=form.svnr.data,
+            user_id=user.id
+        )
+        db.session.add(neuer_mitarbeiter)
+        db.session.commit()
+        flash("Mitarbeiter erfolgreich hinzugefügt.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template('hinzufuegen_mitarbeiter.html',title='Mitarbeiter hinzufügen',form=form)
+
+@app.route('/mitarbeiter_action', methods=['POST'])
+@login_required
+def mitarbeiter_action():
+    svnr = request.form.get("selected_mitarbeiter")
+    action = request.form.get("action")
+
+    if not svnr:
+        flash("Bitte wählen Sie einen Mitarbeiter aus!")
+        return redirect(url_for('uebers_mitarbeiter'))
+
+    mitarbeiter = db.session.get(Mitarbeiter, svnr)
+
+    if action == "loeschen":
+        user_to_delete =mitarbeiter.user
+        db.session.delete(mitarbeiter)
+        if user_to_delete:
+            db.session.delete(user_to_delete)
+        db.session.commit()
+        flash("Mitarbeiter Daten erfolgreich gelöscht.")
+        return redirect(url_for('dashboard_admin'))
+
+    if action == "bearbeiten":
+        return redirect(url_for('bearbeite_mitarbeiter', svnr=mitarbeiter.svnr))
+
+    return redirect(url_for('dashboard_admin'))
+
+@app.route('/bearbeite_mitarbeiter/<int:svnr>', methods=['GET', 'POST'])
+@login_required
+def bearbeite_mitarbeiter(svnr):
+    mitarbeiter = db.session.get(Mitarbeiter, svnr)
+
+    form = MitarbeiterEditForm(obj=mitarbeiter) # vorbefüllen!
+    form.username.data = mitarbeiter.user.username
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_mitarbeiter'))
+
+    if form.validate_on_submit():
+        svnr_ok, msg = validate_unique_svnr(form.svnr.data, current_svnr=mitarbeiter.svnr)
+        if not svnr_ok:
+            flash(msg)
+            return render_template("bearbeiten_mitarbeiter.html", form=form, mitarbeiter=mitarbeiter)
+
+        benutzername_ok, msg = validate_unique_username(form.username.data, current_user_id=mitarbeiter.user.id)
+        if not benutzername_ok:
+            flash(msg)
+            return render_template("bearbeiten_mitarbeiter.html", form=form, mitarbeiter=mitarbeiter)
+
+        mitarbeiter.svnr = form.svnr.data
+        mitarbeiter.vorname = form.vorname.data
+        mitarbeiter.nachname = form.nachname.data
+        mitarbeiter.user.username = form.username.data
+        mitarbeiter.user.set_password(form.password.data)
+        if form.password.data:
+            mitarbeiter.user.set_password(form.password.data)
+            flash("Mitarbeiterdaten und Passwort bearbeitet.")
+        else:
+            flash("Mitarbeiterdaten bearbeitet.")
+        db.session.commit()
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template("bearbeiten_mitarbeiter.html", title="Mitarbeiter Daten bearbeiten", form=form, mitarbeiter=mitarbeiter)
 
 #############################################################
 #####################    API    #############################

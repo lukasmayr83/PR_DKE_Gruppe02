@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField, FloatField
-from wtforms.validators import DataRequired, NumberRange, InputRequired
+from wtforms.validators import DataRequired, NumberRange, InputRequired, EqualTo, Optional
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(message="Ungültiger Username")])
@@ -31,3 +31,23 @@ class ZuegeForm(FlaskForm):
 
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
+
+
+class MitarbeiterBaseForm(FlaskForm):
+    vorname = StringField('Vorname', validators=[DataRequired(message="Vorname ist erforderlich!")])
+    nachname = StringField('Nachname', validators=[DataRequired(message="Nachname ist erforderlich!")])
+    svnr = IntegerField('Sozialversicherungsnummer',validators=[DataRequired(message="Sozialversicherungsnummer ist erforderlich!")])
+    username = StringField("Benutzername", validators=[DataRequired(message="Benutzername ist erforderlich!")])
+
+    speichern = SubmitField('Speichern')
+    abbrechen = SubmitField('Abbrechen')
+
+
+# Formular zum hinzufügen (Passwort ist PFLICHT)
+class MitarbeiterAddForm(MitarbeiterBaseForm):
+    password = PasswordField("Passwort", validators=[DataRequired(message="Passwort ist erforderlich!")])
+    password2 = PasswordField("Passwort wiederholen", validators=[DataRequired(message="Wiederholung ist erforderlich!"),EqualTo('password', message="Passwörter stimmen nicht überein!")])
+# Formular zum bearbeiten  (Passwort ändern OPTIONAL)
+class MitarbeiterEditForm(MitarbeiterBaseForm):
+    password = PasswordField("Neues Passwort (leer lassen zum Behalten)", validators=[ Optional()])
+    password2 = PasswordField("Passwort wiederholen", validators=[ Optional(),EqualTo('password', message="Passwörter stimmen nicht überein!")])

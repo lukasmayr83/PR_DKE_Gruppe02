@@ -19,8 +19,8 @@ class User(UserMixin,db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     username: so.Mapped[str] = so.mapped_column(sa.String(64), index=True,unique=True)
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
-
     role: so.Mapped[Role] = so.mapped_column(sa.Enum(Role), nullable=False, default=Role.MITARBEITER)
+    mitarbeiter: so.Mapped["Mitarbeiter"] = so.relationship(back_populates="user",uselist=False) #1zu1 beziehung
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -99,3 +99,14 @@ class Triebwagen(Wagen):
     __mapper_args__ = {
         "polymorphic_identity" : "triebwagen",
     }
+
+class Mitarbeiter(db.Model):
+    __tablename__ = 'mitarbeiter'
+
+    svnr: so.Mapped[int] = so.mapped_column(primary_key=True)
+    vorname: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
+    nachname: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), unique=True, nullable=False)
+
+    user: so.Mapped["User"] = so.relationship(back_populates="mitarbeiter")
+
