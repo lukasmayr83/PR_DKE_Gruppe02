@@ -25,7 +25,9 @@ def search_personenwagen(request):
             or_(
                 Personenwagen.kapazitaet.cast(sa.String).like(f"%{suchbegriff}%"),
                 Personenwagen.maxgewicht.cast(sa.String).like(f"%{suchbegriff}%"),
-                Personenwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%")
+                Personenwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%"),
+                Personenwagen.wagenid.cast(sa.String).like(f"%{suchbegriff}%"),
+                Personenwagen.istfrei.cast(sa.String).like(f"%{suchbegriff}%")
             )
         )
     return db.session.execute(query).scalars().all()
@@ -37,7 +39,9 @@ def search_triebwagen(request):
         query = query.where(
             or_(
                 Triebwagen.maxzugkraft.cast(sa.String).like(f"%{suchbegriff}%"),
-                Triebwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%")
+                Triebwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%"),
+                Triebwagen.wagenid.cast(sa.String).like(f"%{suchbegriff}%"),
+                Triebwagen.istfrei.cast(sa.String).like(f"%{suchbegriff}%")
             )
         )
     return db.session.execute(query).scalars().all()
@@ -47,7 +51,9 @@ def search_zuege(request):
     query = db.select(Zuege).order_by(Zuege.zugid)
     if suchbegriff:
         query = query.where(
-            Zuege.bezeichnung.like(f"%{suchbegriff}%")
+            Zuege.bezeichnung.like(f"%{suchbegriff}%"),
+            Zuege.inwartung.cast(sa.String).like(f"%{suchbegriff}%"),
+            Zuege.zugid.cast(sa.String).like(f"%{suchbegriff}%")
         )
     return db.session.execute(query).scalars().all()
 

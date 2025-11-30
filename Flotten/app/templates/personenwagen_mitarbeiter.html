@@ -1,0 +1,39 @@
+{% extends "base_mitarbeiter.html" %}
+{% block content %}
+<h1>Personenwagen</h1>
+<h2>Übersicht</h2>
+
+<form method="GET" action="{{ url_for('personenwagen_mitarbeiter') }}" style="margin-bottom: 15px;">
+    <input type="text" name="q" placeholder="Suchen..." value="{{ request.args.get('q', '') }}">
+    <button type="submit">Suchen</button>
+</form>
+<table border="1">
+        <thead>
+            <tr>
+
+                <th>Personenwagenid</th>
+                <th>Kapazität</th>
+                <th>Maximales Gewicht</th>
+                <th>Spurweite</th>
+                <th>Ist Frei</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wagen in personenwagen_liste %}
+            <tr>
+                <td>{{ wagen.personenwagenid }}</td>
+                <td>{{ wagen.kapazitaet }}</td>
+                <td>{{ wagen.maxgewicht }}</td>
+                <td>{{ wagen.spurweite }}</td>
+                <td>
+                    {% if wagen.istfrei is none %}
+                        Frei
+                    {% else %}
+                        Zug {{ wagen.istfrei }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

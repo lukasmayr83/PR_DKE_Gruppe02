@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        {% if title %}
+        <title>{{ title }} - Flotten</title>
+        {% else %}
+        <title>Flotten</title>
+        {% endif %}
+    </head>
+    <body>
+        <div>Flotten:
+            <a href="{{ url_for('personenwagen_mitarbeiter') }}">Personenwagen</a>
+            <a href="{{ url_for('triebwagen_mitarbeiter') }}">Triebwagen</a>
+            <a href="{{ url_for('zuege_mitarbeiter') }}">Züge</a>
+            <a href="{{ url_for('wartungen_mitarbeiter') }}">Wartungen</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+        <hr>
+        {% block content %}{% endblock %}
+    </body>
+</html>

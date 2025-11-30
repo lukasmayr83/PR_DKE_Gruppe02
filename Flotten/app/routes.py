@@ -51,6 +51,29 @@ def dashboard_admin():
 def dashboard_mitarbeiter():
     return render_template('dashboard_mitarbeiter.html', title='Mitarbeiter Dashboard')
 
+@app.route('/personenwagen_mitarbeiter')
+@login_required
+def personenwagen_mitarbeiter():
+    personenwagen_liste = suchhelfer.search_personenwagen(request)
+    return render_template('personenwagen_mitarbeiter.html', title='Personenwagen Übersicht',personenwagen_liste=personenwagen_liste)
+
+@app.route('/triebwagen_mitarbeiter')
+@login_required
+def triebwagen_mitarbeiter():
+    triebwagen_liste = suchhelfer.search_triebwagen(request)
+    return render_template('triebwagen_mitarbeiter.html', title='Triebwagen Übersicht', triebwagen_liste=triebwagen_liste)
+
+@app.route('/zuege_mitarbeiter')
+@login_required
+def zuege_mitarbeiter():
+    zuege_liste = suchhelfer.search_zuege(request)
+    return render_template('zuege_mitarbeiter.html', title='Züge Übersicht', zuege_liste=zuege_liste)
+
+@app.route('/wartungen_mitarbeiter')
+@login_required
+def wartungen_mitarbeiter():
+    return render_template('wartungen_mitarbeiter.html', title='Wartungen Übersicht')
+
 @app.route('/uebers_personenwagen')
 @login_required
 def uebers_personenwagen():
@@ -91,9 +114,6 @@ def personenwagen_action():
 
     pw = db.session.get(Personenwagen, wagen_id)
 
-    if not pw:
-        flash("Personenwagen nicht gefunden.")
-        return redirect(url_for('uebers_personenwagen'))
     # Personenwagen kann nicht gelöscht werden, wenn er einem Zug zugeordnet ist
     if action == "loeschen":
         if pw.istfrei is not None:
@@ -115,11 +135,6 @@ def personenwagen_action():
 def bearbeite_personenwagen(wagen_id):
 
     pw = db.session.get(Personenwagen, wagen_id)
-
-    if not pw:
-        flash("Personenwagen wurde nicht gefunden.")
-        return redirect(url_for('uebers_personenwagen'))
-
     form = PersonenwagenForm(obj=pw)  # vorbefüllen!
 
     if request.method == "POST" and "abbrechen" in request.form:
@@ -184,10 +199,6 @@ def triebwagen_action():
 
     tw = db.session.get(Triebwagen, wagen_id)
 
-    if not tw:
-        flash("Triebwagen nicht gefunden.")
-        return redirect(url_for('uebers_triebwagen'))
-
 # Triebwagen kann nicht gelöscht werden, wenn er einem Zug zugeordnet ist
     if action == "loeschen":
         if tw.istfrei is not None:
@@ -209,11 +220,6 @@ def triebwagen_action():
 def bearbeite_triebwagen(wagen_id):
 
     tw = db.session.get(Triebwagen, wagen_id)
-
-    if not tw:
-        flash("Triebwagen wurde nicht gefunden.")
-        return redirect(url_for('uebers_triebwagen'))
-
     form = TriebwagenForm(obj=tw)  # vorbefüllen!
 
     if request.method == "POST" and "abbrechen" in request.form:
@@ -289,10 +295,6 @@ def zuege_action():
 
         zug = db.session.get(Zuege, zug_id)
 
-        if not zug:
-            flash("Zug nicht gefunden.")
-            return redirect(url_for('uebers_zuege'))
-
         if action == "loeschen":
             for w in zug.wagen:
                 w.istfrei = None
@@ -343,11 +345,6 @@ def bearbeite_zuege(zug_id):
 
     return render_template("bearbeiten_zuege.html", title="Züge bearbeiten ",form=form,zug=zug,freie_triebwagen=verfuegbare_triebwagen,
                            freie_personenwagen=verfuegbare_personenwagen,aktueller_tw_id=aktueller_tw_id,aktuelle_pw_ids=aktuelle_pw_ids)
-
-@app.route('/uebers_wartungen')
-@login_required
-def uebers_wartungen():
-    return render_template('uebers_wartungen.html', title='Wartungen-Übersicht')
 
 @app.route('/uebers_mitarbeiter')
 @login_required
@@ -422,9 +419,9 @@ def mitarbeiter_action():
 @login_required
 def bearbeite_mitarbeiter(svnr):
     mitarbeiter = db.session.get(Mitarbeiter, svnr)
-
-    form = MitarbeiterEditForm(obj=mitarbeiter) # vorbefüllen!
-    form.username.data = mitarbeiter.user.username
+    form = MitarbeiterEditForm(obj=mitarbeiter) # vorbefüllen von Mitarbeiter Daten!
+    if request.method == 'GET':
+        form.username.data = mitarbeiter.user.username
 
     if request.method == "POST" and "abbrechen" in request.form:
         return redirect(url_for('uebers_mitarbeiter'))
@@ -433,12 +430,12 @@ def bearbeite_mitarbeiter(svnr):
         svnr_ok, msg = validate_unique_svnr(form.svnr.data, current_svnr=mitarbeiter.svnr)
         if not svnr_ok:
             flash(msg)
-            return render_template("bearbeiten_mitarbeiter.html", form=form, mitarbeiter=mitarbeiter)
+            return render_template("bearbeiten_mitarbeiter.html",title="Mitarbeiter Daten bearbeiten", form=form, mitarbeiter=mitarbeiter)
 
         benutzername_ok, msg = validate_unique_username(form.username.data, current_user_id=mitarbeiter.user.id)
         if not benutzername_ok:
             flash(msg)
-            return render_template("bearbeiten_mitarbeiter.html", form=form, mitarbeiter=mitarbeiter)
+            return render_template("bearbeiten_mitarbeiter.html",title="Mitarbeiter Daten bearbeiten", form=form, mitarbeiter=mitarbeiter)
 
         mitarbeiter.svnr = form.svnr.data
         mitarbeiter.vorname = form.vorname.data
@@ -454,6 +451,11 @@ def bearbeite_mitarbeiter(svnr):
         return redirect(url_for('dashboard_admin'))
 
     return render_template("bearbeiten_mitarbeiter.html", title="Mitarbeiter Daten bearbeiten", form=form, mitarbeiter=mitarbeiter)
+
+@app.route('/uebers_wartungen')
+@login_required
+def uebers_wartungen():
+    return render_template('uebers_wartungen.html', title='Wartungen-Übersicht')
 
 #############################################################
 #####################    API    #############################
