@@ -1,5 +1,5 @@
 from urllib.parse import urlsplit
-from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask import render_template, flash, redirect, url_for, request, jsonify, abort
 from app import app
 from app.forms import LoginForm, RegistrationForm, BahnhofForm, AbschnittForm, WarnungForm, StreckenForm
 from flask_login import current_user, login_user
@@ -732,7 +732,7 @@ def register():
 
 
 def get_bahnhoefe_api():
-
+    #liest den Suchbegriff aus der URL
     query_term = request.args.get('q', default='', type=str)
 
     stmt = sa.select(Bahnhof)
@@ -754,8 +754,122 @@ def get_bahnhoefe_api():
     for b in bahnhoefe:
         items.append({
             "bahnhofId": b.bahnhofId,
-            "name": b.name,
+            "name": b.name
         })
     total_count = len(bahnhoefe)
+
+    return jsonify({"total": total_count, "items": items})
+
+
+@app.route('/strecken', methods=['GET'])
+def get_strecken_api():
+    # liest den Suchbegriff aus der URL
+    query_term = request.args.get('q', default='', type=str)
+
+    stmt = sa.select(Strecke)
+
+    if query_term:
+        stmt = stmt.where(
+            sa.or_(
+                Strecke.name.ilike(f'%{query_term}%'),
+                Strecke.streckenId == query_term
+            )
+        )
+
+    strecken = db.session.scalars(stmt).all()
+
+    items = []
+    for s in strecken:
+        startBahnhof, endBahnhof = s.start_end_bahnhoefe
+
+        items.append({
+            "streckeId": s.streckenId,
+            "name": s.name,
+            "startBahnhof": startBahnhof.bahnhofId,
+            "endBahnhof": endBahnhof.bahnhofId
+        }
+
+        )
+    total_count = len(strecken)
+
+    return jsonify({"total": total_count, "items": items})
+
+
+@app.route('/strecken/<int:streckeId>/abschnitte', methods=['GET'])
+def get_strecke_abschnitte_api(streckeId):
+    """
+    API-Endpunkt zum Abrufen aller Abschnitte einer bestimmten Strecke
+    inklusive technischer Daten und sequenzieller Reihenfolge.
+    """
+    # Lade die Strecke, lade die verknüpften Abschnitte und Bahnhöfe effizient
+    strecke = db.session.scalar(
+        sa.select(Strecke)
+        .filter_by(streckenId=streckeId)
+        .options(
+            # Eagerly load the sorted Reihenfolge objects
+            so.joinedload(Strecke.reihenfolge)
+            .joinedload(Reihenfolge.abschnitt)
+            .joinedload(Abschnitt.startBahnhof),
+            so.joinedload(Strecke.reihenfolge)
+            .joinedload(Reihenfolge.abschnitt)
+            .joinedload(Abschnitt.endBahnhof),
+        )
+    )
+
+    if strecke is None:
+        # 404 Not Found, wenn die Strecke nicht existiert
+        abort(404)
+
+    items = []
+
+
+
+    for reihenfolge_obj in strecke.reihenfolge:
+        abschnitt = reihenfolge_obj.abschnitt
+
+
+        start_bhf_name = abschnitt.startBahnhof.name
+        end_bhf_name = abschnitt.endBahnhof.name
+
+        items.append({
+            "abschnittId": abschnitt.abschnittId,
+            "reihenfolgeId": reihenfolge_obj.reihenfolge,  # Die Position in der Kette
+            "startBahnhof": start_bhf_name,
+            "endBahnhof": end_bhf_name,
+            "spurweite": abschnitt.spurweite,
+            "nutzungsentgelt": abschnitt.nutzungsentgelt,
+            "maxGeschwindigkeit": abschnitt.max_geschwindigkeit
+        })
+
+    total_count = len(items)
+    # Rückgabe der Daten im JSON-Format (HTTP 200)
+    return jsonify({"total": total_count, "items": items}), 200
+
+
+@app.route('/warnungen', methods=['GET'])
+def get_warnung_api():
+    query_term = request.args.get('q', default='', type=str)
+
+    stmt = sa.select(Warnung)
+
+    if query_term:
+        stmt = stmt.where(
+            sa.or_(
+                Warnung.bezeichnung.ilike(f'%{query_term}%'),
+                Warnung.warnungId == query_term
+            )
+        )
+
+    warnung = db.session.scalars(stmt).all()
+
+    items = []
+    for w in warnung:
+        items.append({
+            "warnungId": w.warnungId,
+            "bezeichnung": w.bezeichnung,
+            "startZeit": w.startZeit,
+            "endZeit": w.endZeit
+        })
+    total_count = len(warnung)
 
     return jsonify({"total": total_count, "items": items})
