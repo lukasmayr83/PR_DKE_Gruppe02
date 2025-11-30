@@ -1,8 +1,7 @@
-
+{% extends "base.html" %}
 
 {% block content %}
 <style>
-    /* Minimale Styles für die dynamischen Felder */
     .segment-chain { max-width: 600px; }
     .segment-field { margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; }
     select { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db; }
@@ -22,32 +21,30 @@
 
             <p>
                 <label for="startBahnhof">Startbahnhof der Strecke:</label><br>
-                <!-- Wird automatisch durch JS gefüllt -->
+
                 <input type="text" id="startBahnhof" name="startBahnhof_display" class="form-control bg-light" readonly>
             </p>
 
             <p>
                 <label for="endBahnhof">Endbahnhof der Strecke:</label><br>
-                <!-- Wird automatisch durch JS gefüllt -->
+
                 <input type="text" id="endBahnhof" name="endBahnhof_display" class="form-control bg-light" readonly>
             </p>
 
             <h3 class="mt-4 mb-2">Abschnitts-Kette definieren:</h3>
 
-            <!-- HIER WIRD DIE DYNAMISCHE KETTE EINGEFÜGT -->
+
             <div id="segment-chain" class="segment-chain">
-                <!-- Die Auswahlfelder werden per JS eingefügt -->
+
                 <p class="text-gray-500" id="loading-message">Lade Abschnittsdaten...</p>
             </div>
 
-            <!-- Verstecktes Feld: Speichert die finalen, sequenziellen IDs für die Flask-Route -->
             <input type="hidden" id="abschnitt_ids_hidden" name="abschnitt_ids" value="">
 
-            <!-- Die Fehlermeldung, falls die Kette leer ist -->
+
             <p id="error-message" class="text-danger mt-2 hidden">Bitte wählen Sie mindestens einen Abschnitt aus.</p>
 
             <p>
-                <!-- Der Submit-Button wird durch JS aktiviert, wenn die Eingaben gültig sind -->
                 <button type="submit" id="submit-button" class="btn btn-primary" disabled>
                     {{ form.submit.label.text }}
                 </button>
@@ -57,26 +54,25 @@
     </div>
 </div>
 
-<!-- jQuery (für AJAX und DOM-Manipulation) -->
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<!-- Das Script für die dynamische Kettenauswahl -->
+
 <script>
     let allAbschnitte = [];
-    let allBahnhoefe = {}; // Zum Speichern von Bahnhof-Namen {ID: Name}
+    let allBahnhoefe = {};
     let selectedChain = [];
 
-    // 1. Initiales Laden der Abschnittsdaten (AJAX-Endpoint erforderlich!)
-    function loadInitialData() {
-        const apiUrl = "{{ api_url }}"; // URL des Flask-API-Endpoints
 
-        // Führe AJAX-Aufruf aus
+    function loadInitialData() {
+        const apiUrl = "{{ api_url }}";
+
         $.ajax({
             url: apiUrl,
             method: 'GET',
             dataType: 'json',
             success: function(data) {
-                $('#loading-message').remove(); // Ladeanzeige entfernen
+                $('#loading-message').remove();
 
                 if (data.abschnitte && data.bahnhoefe) {
                     allAbschnitte = data.abschnitte;
@@ -99,31 +95,29 @@
         });
     }
 
-    // 2. Fügt ein neues Auswahlfeld hinzu und füllt es mit gültigen Optionen
-    function addNextSegmentField(currentIndex) {
-        // Endbahnhof des vorherigen Abschnitts
-        const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
 
-        // Filtert die Abschnitte
+    function addNextSegmentField(currentIndex) {
+
+        const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
         const filteredAbschnitte = allAbschnitte.filter(abschnitt => {
-            // Verhindert Duplikate und erzwingt Angrenzung
+
             const isAlreadySelected = selectedChain.some(s => s.abschnittId === abschnitt.abschnittId);
 
             if (currentIndex === 0) {
-                return !isAlreadySelected; // Erster Abschnitt: Alle verfügbaren
+                return !isAlreadySelected;
             } else {
-                // Folgeabschnitte: Start muss am Ende des vorherigen Abschnitts liegen UND darf nicht schon verwendet sein
+
                 return abschnitt.startBahnhofId === lastEndStationId && !isAlreadySelected;
             }
         });
 
-        // Wenn keine angrenzenden Abschnitte mehr existieren ODER keine Abschnitte verfügbar sind, stoppe.
+
         if (filteredAbschnitte.length === 0 && currentIndex > 0) {
              $('#submit-button').prop('disabled', selectedChain.length === 0 || $('#name_input').val().trim().length === 0);
              return;
         }
 
-        // Erstelle das HTML für das neue Feld
+
         const fieldHtml = `
             <div class="segment-field flex items-center space-x-2 bg-gray-50" data-index="${currentIndex}">
                 <span style="min-width: 90px;" class="font-medium text-gray-600">${currentIndex === 0 ? 'Start' : 'Weiterer'} Segment:</span>
@@ -139,12 +133,12 @@
         $('#submit-button').prop('disabled', true);
     }
 
-    // 3. Event Listener für Änderungen im Auswahlfeld
+
     $('#segment-chain').on('change', '.segment-select', function() {
         const index = parseInt($(this).data('index'));
         const selectedId = parseInt($(this).val());
 
-        // Lösche alle nachfolgenden Felder und kürze die Kette
+
         $(`.segment-field[data-index]`).filter(function() {
             return parseInt($(this).data('index')) > index;
         }).remove();
@@ -154,41 +148,36 @@
             const selectedAbschnitt = allAbschnitte.find(a => a.abschnittId === selectedId);
             selectedChain.push(selectedAbschnitt);
 
-            // Füge das nächste Feld hinzu
+
             addNextSegmentField(index + 1);
         }
 
         updateDisplayAndButton();
     });
 
-    // 4. Event Listener für das Entfernen eines Abschnitts
+
     $('#segment-chain').on('click', '.remove-segment', function() {
         const fieldToRemove = $(this).closest('.segment-field');
         const indexToRemove = parseInt(fieldToRemove.data('index'));
 
-        // Entferne alle Felder ab diesem Index
+
         $(`.segment-field[data-index]`).filter(function() {
             return parseInt($(this).data('index')) >= indexToRemove;
         }).remove();
 
-        // Kürze die Kette
-        selectedChain.splice(indexToRemove);
 
-        // Füge das Feld neu hinzu, basierend auf dem neuen Ende der Kette
+        selectedChain.splice(indexToRemove);
         addNextSegmentField(selectedChain.length);
 
         updateDisplayAndButton();
     });
 
-
-    // 5. Aktualisiert die Anzeigen und den Speichern-Button
     function updateDisplayAndButton() {
         const ids = selectedChain.map(a => a.abschnittId);
 
-        // A. Verstecktes Feld aktualisieren (für die Flask POST-Route)
         $('#abschnitt_ids_hidden').val(ids.join(','));
 
-        // B. Anzeige Start-/Endbahnhof aktualisieren
+
         if (selectedChain.length > 0) {
             const startBhfId = selectedChain[0].startBahnhofId;
             const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
@@ -200,7 +189,7 @@
             $('#endBahnhof').val('');
         }
 
-        // C. Speichern-Button aktivieren/deaktivieren
+
         const isNameValid = $('#name_input').val().trim().length > 0;
         const isChainValid = ids.length > 0;
         const enableSubmit = isChainValid && isNameValid;
@@ -214,10 +203,10 @@
         }
     }
 
-    // Listener für den Streckennamen
+
     $('#name_input').on('input', updateDisplayAndButton);
 
-    // Start
+
     $(document).ready(loadInitialData);
 </script>
 {% endblock %}

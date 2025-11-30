@@ -1,76 +1,101 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .table thead tr {
+        background-color: #f1f1f1;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+</style>
 
 <h2>Alle Strecken</h2>
 
-<a href="{{ url_for('strecke_add') }}" class="btn btn-success mb-3">
-    + Neue Strecke anlegen
-</a>
-
 <div style="display: flex; gap: 20px;">
 
-    <!-- Hauptcontainer für die Tabelle -->
-    <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
+    <div style="flex: 1; display: flex; flex-direction: column;">
 
-        <!-- Das Formular umschließt die Tabelle für die Mehrfachauswahl/Löschung -->
-        <form method="POST" action="{{ url_for('delete_multiple_strecke') }}">
+        <form method="POST" action="{{ url_for('delete_multiple_strecke') }}" id="strecken-form">
 
-            <table class="table table-striped" border="1" cellpadding="5" style="width:100%;">
-                <thead>
-                    <tr>
-                        {% if role.value != 'mitarbeiter' %}
-                        <th></th> <!-- Checkbox für Admin/Mitarbeiter -->
+            <div style="overflow-y: auto; max-height: 80vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
+
+                <table class="table table-striped table-hover" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 21px;"></th>
+                            {% endif %}
+                            <th style="min-width: 150px;">Streckenname</th>
+                            <th style="min-width: 150px;">Startbahnhof</th>
+                            <th style="min-width: 150px;">Endbahnhof</th>
+                            <th style="min-width: 100px;">Abschnitte</th>
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 80px;">Aktion</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        {% for s in strecken %}
+                        <tr>
+                            {% if role.value != 'mitarbeiter' %}
+                            <td><input type="checkbox" name="strecke_ids" value="{{ s.id }}"></td>
+                            {% endif %}
+
+                            <td>{{ s.name }}</td>
+                            <td>{{ s.start_bahnhof }}</td>
+                            <td>{{ s.end_bahnhof }}</td>
+                            <td class="text-center">{{ s.anzahl_abschnitte }}</td>
+
+                            {% if role.value != 'mitarbeiter' %}
+                            <td>
+                                <a href="{{ url_for('strecke_add', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Details</a>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+
+                        {% if not strecken %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Es wurden noch keine Strecken definiert.</td>
+                        </tr>
                         {% endif %}
-                        <th>Streckenname</th>
-                        <th>Startbahnhof</th>
-                        <th>Endbahnhof</th>
-                        <th>Abschnitte</th>
-                        {% if role.value != 'mitarbeiter' %}
-                        <th>Aktion</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
 
-                    {% for s in strecken %}
-                    <tr>
-                        {% if role.value != 'mitarbeiter' %}
-                        <td><input type="checkbox" name="strecke_ids" value="{{ s.id }}"></td>
-                        {% endif %}
+                    </tbody>
+                </table>
+            </div> <div style="margin-top: 10px;">
 
-                        <td>{{ s.name }}</td>
-                        <!-- Verwendung der im Python-Code vorbereiteten Daten -->
-                        <td>{{ s.start_bahnhof }}</td>
-                        <td>{{ s.end_bahnhof }}</td>
-                        <td>{{ s.anzahl_abschnitte }}</td>
+                {% if role.value != 'mitarbeiter' %}
+                    <button type="submit" class="btn btn-danger"
+                            onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
+                        Ausgewählte löschen
+                    </button>
+                {% endif %}
 
-                        {% if role.value != 'mitarbeiter' %}
-                        <td>
-                            <!-- Detail-Link behalten und auf ID basieren -->
-                            <a href="{{ url_for('strecke_add', strecke_id=s.id) }}" class="btn btn-info btn-sm">Details</a>
-                        </td>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div style="margin-top: 15px;">
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'success' %}
+                        <div class="alert alert-{{ category }}"
+                             style="padding: 10px; margin-bottom: 10px; border-radius: 4px;
+                                    background-color: {% if category == 'error' %}#f8d7da{% elif category == 'success' %}#d4edda{% else %}#fff3cd{% endif %};
+                                    color: {% if category == 'error' %}#721c24{% elif category == 'success' %}#155724{% else %}#856404{% endif %};
+                                    border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'success' %}#c3e6cb{% else %}#ffeeba{% endif %};">
+                            {{ message }}
+                        </div>
                         {% endif %}
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
+                    </div>
+                {% endif %}
+                {% endwith %}
 
-            {% if role.value != 'mitarbeiter' %}
-            <br>
-            <button type="submit" class="btn btn-danger" onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
-                Ausgewählte löschen
-            </button>
-            {% endif %}
+            </div>
+
         </form>
     </div>
 
 </div>
-
-{% if not strecken %}
-    <div class="alert alert-warning mt-4" role="alert">
-        Es wurden noch keine Strecken definiert.
-    </div>
-{% endif %}
 
 {% endblock %}

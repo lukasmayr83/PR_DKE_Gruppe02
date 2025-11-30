@@ -157,7 +157,7 @@ def abschnitt_add():
 
 
 
-    return render_template("abschnitt_add.html", form=form)
+    return render_template("abschnitt_add.html", form=form,bahnhoefe=bahnhoefe)
 
 
 @app.route("/abschnitt/edit/<int:abschnitt_id>", methods=["GET", "POST"])
@@ -403,7 +403,7 @@ def delete_multiple_strecke():
 
             strecke_query = (
                 sa.select(Strecke)
-                .where(Strecke.streckeId == int(bid))
+                .where(Strecke.streckenId == int(bid))
             )
             strecke = db.session.execute(strecke_query).scalar_one_or_none()
 
@@ -873,3 +873,14 @@ def get_warnung_api():
     total_count = len(warnung)
 
     return jsonify({"total": total_count, "items": items})
+
+#damit Javascript auf die Koordinaten der Bahnhöfe zugreifen kann; für das anzeigen der Abschnitte beim hinzufügen
+@app.route('/api/bahnhof/<int:bahnhof_id>')
+def get_bahnhof_coords(bahnhof_id):
+    bahnhof = Bahnhof.query.get(bahnhof_id)
+
+    return jsonify({
+        'id': bahnhof.bahnhofId,
+        'latitude': bahnhof.latitude,
+        'longitude': bahnhof.longitude
+    })

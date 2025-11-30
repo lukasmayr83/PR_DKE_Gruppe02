@@ -1,71 +1,89 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Styling für die sticky Kopfzeile, falls nicht durch Bootstrap abgedeckt */
+    .table thead tr {
+        background-color: #f1f1f1; /* Hintergrund für die Kopfzeile */
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+</style>
+
 <h2>Alle Bahnhöfe</h2>
+
 <div style="display: flex; gap: 20px;">
 
-    <!--Links Tabelle-->
-    <div style="flex: 1; overflow-y: auto; max-height: 80vh;">
-        <form method="POST" action="{{ url_for('delete_multiple_bahnhof') }}">
-            <table border="1" cellpadding="5" style="width:100%;">
-                <tr>
-                    {% if role.value != 'mitarbeiter' %}
-                    <th></th>
-                    {% endif %}
-                    <th>Name</th>
-                    <th>Adresse</th>
-                    <th>Breitengrad</th>
-                    <th>Längengrad</th>
-                    {% if role.value != 'mitarbeiter' %}
-                    <th>Aktion</th>
-                    {% endif %}
-                </tr>
-                {% for b in posts %}
-                <tr>
-                    {% if role.value != 'mitarbeiter' %}
-                    <td><input type="checkbox" name="bahnhof_ids" value="{{ b.bahnhofId }}"></td>
-                    {% endif %}
-                    <td>{{ b.name }}</td>
-                    <td>{{ b.adresse }}</td>
-                    <td>{{ b.latitude or '-' }}</td>
-                    <td>{{ b.longitude or '-' }}</td>
-                    {% if role.value != 'mitarbeiter' %}
-                    <td>
-                        <a href="{{ url_for('edit_bahnhof', bahnhof_id=b.bahnhofId) }}">Bearbeiten</a>
-                    </td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            </table>
-            <br>
-            {% if role.value != 'mitarbeiter' %}
-            <button type="submit" onclick="return confirm('Willst du wirklich alle ausgewählten Bahnhöfe löschen?');">
-                Ausgewählte löschen
-            </button>
-            {% endif %}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div style="margin-top: 15px;">
-                {% for category, message in messages %}
-                    {% if category == 'error' or category == 'success' %}
-                    <div class="alert alert-{{ category }}"
-                         style="padding: 10px; margin-bottom: 10px; border-radius: 4px;
-                                background-color: {% if category == 'error' %}#f8d7da{% elif category == 'success' %}#d4edda{% else %}#fff3cd{% endif %};
-                                color: {% if category == 'error' %}#721c24{% elif category == 'success' %}#155724{% else %}#856404{% endif %};
-                                border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'success' %}#c3e6cb{% else %}#ffeeba{% endif %};">
-                        {{ message }}
+    <div style="min-width: 0; display: flex; flex-direction: column;">
+
+        <form method="POST" action="{{ url_for('delete_multiple_bahnhof') }}" id="bahnhof-form">
+
+            <div style="overflow-y: auto; max-height: 60vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
+
+                <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 21px;"></th>
+                            {% endif %}
+                            <th style="min-width: 150px;">Name</th>
+                            <th style="min-width: 200px;">Adresse</th>
+                            <th style="min-width: 100px;">Breitengrad</th>
+                            <th style="min-width: 100px;">Längengrad</th>
+                            {% if role.value != 'mitarbeiter' %}
+                            <th style="min-width: 80px;">Aktion</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in posts %}
+                        <tr>
+                            {% if role.value != 'mitarbeiter' %}
+                            <td><input type="checkbox" name="bahnhof_ids" value="{{ b.bahnhofId }}"></td>
+                            {% endif %}
+                            <td>{{ b.name }}</td>
+                            <td>{{ b.adresse }}</td>
+                            <td>{{ b.latitude or '-' }}</td>
+                            <td>{{ b.longitude or '-' }}</td>
+                            {% if role.value != 'mitarbeiter' %}
+                            <td>
+                                <a href="{{ url_for('edit_bahnhof', bahnhof_id=b.bahnhofId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div> <div style="margin-top: 10px;">
+                {% if role.value != 'mitarbeiter' %}
+                    <button type="submit" class="btn btn-danger"
+                            onclick="return confirm('Willst du wirklich alle ausgewählten Bahnhöfe löschen?');">
+                        Ausgewählte löschen
+                    </button>
+                {% endif %}
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div style="margin-top: 15px;">
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'success' %}
+                        <div class="alert alert-{{ category }}"
+                             style="padding: 10px; margin-bottom: 10px; border-radius: 4px;
+                                    background-color: {% if category == 'error' %}#f8d7da{% elif category == 'success' %}#d4edda{% else %}#fff3cd{% endif %};
+                                    color: {% if category == 'error' %}#721c24{% elif category == 'success' %}#155724{% else %}#856404{% endif %};
+                                    border: 1px solid {% if category == 'error' %}#f5c6cb{% elif category == 'success' %}#c3e6cb{% else %}#ffeeba{% endif %};">
+                            {{ message }}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                     </div>
-                    {% endif %}
-                {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+                {% endif %}
+                {% endwith %}
+            </div>
 
         </form>
-    </div>
-
-    <!--Rechts Karte-->
-    <div style="flex: 1; min-width: 400px; height: 80vh;">
+    </div> <div style="flex: 1; min-width: 400px; height: 80vh;">
         {% if map_html %}
             {{ map_html|safe }}
         {% else %}
