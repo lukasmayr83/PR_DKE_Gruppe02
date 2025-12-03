@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField, FloatField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField, FloatField,SelectField,DateField, TimeField
 from wtforms.validators import DataRequired, NumberRange, InputRequired, EqualTo, Optional
 
 class LoginForm(FlaskForm):
@@ -13,16 +13,16 @@ class PersonenwagenForm(FlaskForm):
                                                       NumberRange(min=1, message="Kapazität muss mindestens 1 sein!")])
     maxgewicht = FloatField('Maximales Gewicht', validators=[DataRequired(message="Maximales Gewicht ist erforderlich!"),
                             NumberRange(min=0.01, message="Gewicht muss positiv sein")])
-    spurweite = FloatField('Spurweite',validators=[DataRequired(message="Spurweite ist erforderlich!"),
-                                                   NumberRange(min=0.01, message="Spurweite muss positiv sein")])
+    spurweite = SelectField('Spurweite', choices=[('1435 - Normalspur'), ('760 - Schmalspur')],validators=[DataRequired(message="Spurweite ist erforderlich!")])
+
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
 
 class TriebwagenForm(FlaskForm):
     maxzugkraft = FloatField('Maximale Zugkraft', validators=[DataRequired(message="Maximale Zugkraft ist erforderlich!"),
                                                               NumberRange(min=0.01,message="Zugkraft muss positiv sein")])
-    spurweite = FloatField('Spurweite', validators=[DataRequired(message="Spurweite ist erforderlich!"),
-                                                    NumberRange(min=0.01, message="Spurweite muss positiv sein")])
+    spurweite = SelectField('Spurweite',choices=[('1435 - Normalspur'),('760 - Schmalspur')], validators=[DataRequired(message="Spurweite ist erforderlich!")])
+
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
 
@@ -51,3 +51,13 @@ class MitarbeiterAddForm(MitarbeiterBaseForm):
 class MitarbeiterEditForm(MitarbeiterBaseForm):
     password = PasswordField("Neues Passwort (leer lassen zum Behalten)", validators=[ Optional()])
     password2 = PasswordField("Passwort wiederholen", validators=[ Optional(),EqualTo('password', message="Passwörter stimmen nicht überein!")])
+
+class WartungszeitraumForm(FlaskForm):
+    zugid = IntegerField('Zugid', validators=[DataRequired(message="Zugid ist erforderlich!"),NumberRange(min=1, message="Zugid kann nicht kleiner wie 1 sein!")])
+    datum = DateField('Datum',validators=[DataRequired(message="Datum ist erforderlich!")])
+    von = TimeField('Startzeit',validators=[DataRequired(message="Startzeit ist erforderlich!")], format="%H:%M")
+    bis = TimeField('Endzeit',validators=[DataRequired(message="Endzeit ist erforderlich!")],format="%H:%M")
+
+    speichern = SubmitField('Speichern')
+    abbrechen = SubmitField('Abbrechen')
+    verfuegbarkeit = SubmitField('Verfuegbarkeit')

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Wartungen</h1>
+<h2>Übersicht</h2>
+
+<div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
+    <div style="display: flex; gap: 5px;">
+        <form action="{{ url_for('hinzufuegen_wartungszeitraum') }}" method="get">
+            <button type="submit">Hinzufügen</button>
+        </form>
+        <button type="submit" form="main-action-form" name="action" value="bearbeiten">
+            Bearbeiten
+        </button>
+        <button type="submit" form="main-action-form" name="action" value="loeschen"
+                onclick="return confirm('Willst du die ausgewählte Wartung wirklich löschen?');">
+            Löschen
+        </button>
+    </div>
+
+    <form method="GET" action="{{ url_for('uebers_wartungszeitraum') }}" style="display: flex; gap: 5px;">
+        <input type="text" name="q" placeholder="Suchen..." value="{{ request.args.get('q','') }}">
+        <button type="submit">Suchen</button>
+
+        <!-- Toggle-Button für Nur Aktuelle -->
+        <button type="submit" name="nur_aktuelle" value="{{ 'false' if nur_aktuelle else 'true' }}">
+            {{'Alle anzeigen' if nur_aktuelle else 'Vergangene Ausblenden'}}
+        </button>
+
+        <!-- Verstecktes Feld, um Suchbegriff beizubehalten -->
+        {% if request.args.get('q') %}
+        <input type="hidden" name="q" value="{{ request.args.get('q', '') }}">
+        {% endif %}
+    </form>
+</div>
+<form method="POST" action="{{ url_for('wartungszeitraum_action') }}" id="main-action-form">
+    <table border="1">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Wartungszeitid</th>
+                <th>Zugid</th>
+                <th>Datum</th>
+                <th>Von</th>
+                <th>Bis</th>
+                <th>Dauer in Minuten</th>
+                <th>Mitarbeiter</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if wartungszeitraum_liste|length == 0 %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 20px; color: #999;">
+                    {% if nur_aktuelle %}
+                        Keine aktuellen oder zukünftigen Wartungen gefunden
+                    {% else %}
+                        Keine Wartungen gefunden
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+
+            {% for wartungszeitraum in wartungszeitraum_liste %}
+            <tr>
+                <td><input type="radio" name="selected_wartungszeitraum" value="{{ wartungszeitraum.wartungszeitid }}"></td>
+                <td>{{ wartungszeitraum.wartungszeitid }}</td>
+                <td>{{ wartungszeitraum.wartungen[0].zug.zugid }}</td>
+                <td>{{ wartungszeitraum.datum }}</td>
+                <td>{{ wartungszeitraum.von.strftime('%H:%M') }}</td>
+                <td>{{ wartungszeitraum.bis.strftime('%H:%M') }}</td>
+                <td>{{ wartungszeitraum.dauer }}</td>
+                <td>
+                    {% if wartungszeitraum.wartungen %}
+                        {% for w in wartungszeitraum.wartungen %}
+                            {{ w.mitarbeiter.nachname }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Keine
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
+        {{ msg }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% endblock %}

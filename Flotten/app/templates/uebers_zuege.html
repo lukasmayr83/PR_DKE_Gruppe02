@@ -53,10 +53,10 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if zug.inwartung %}
-                        Ja
-                    {% else %}
+                    {% if zug.aktuelle_wartungs_anzeige == "FALSE" %}
                         Nein
+                    {% else %}
+                        Wartung {{zug.aktuelle_wartungs_anzeige }}
                     {% endif %}
                 </td>
             </tr>

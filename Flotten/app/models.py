@@ -6,6 +6,7 @@ from app import login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import enum
+from datetime import datetime, date
 
 class Role(enum.Enum):
     ADMIN = "Admin"
@@ -36,11 +37,12 @@ class Zuege(db.Model):
 
     zugid: so.Mapped[int] = so.mapped_column(primary_key=True)
     bezeichnung: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
-    inwartung: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=False, nullable=False)
 
     wagen: so.Mapped[list['Wagen']] = so.relationship(back_populates='zug', lazy = "selectin")
 
-##Gibt die ID des Triebwagens im Zug zurück
+    wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates='zug')
+
+# Gibt die ID des Triebwagens im Zug zurück
     @property
     def triebwagen_id(self):
         for w in self.wagen:
@@ -48,7 +50,7 @@ class Zuege(db.Model):
                 return w.wagenid
         return None
 
-##Gibt die ids aller Personenwagen in dem Zug zurück mit , getrennt
+# Gibt die ids aller Personenwagen in dem Zug zurück mit , getrennt
     @property
     def personenwagen_ids(self):
         ##Liste der Personenwagen im Zug
@@ -58,6 +60,24 @@ class Zuege(db.Model):
                 personenwagen.append(str(w.wagenid))
 
         return ", ".join(personenwagen)
+
+    @property
+    def aktuelle_wartungs_anzeige(self) -> str:
+       # Gibt die Wartungszeit-ID zurück, wenn der Zug aktuell in Wartung ist, andernfalls 'FALSE'.
+        now = datetime.now()
+
+        # Durchsuche alle Wartungen des Zuges
+        for wartung in self.wartungen:
+            wzr = wartung.wartungszeitraum
+
+            start_dt = datetime.combine(wzr.datum, wzr.von.time())
+            end_dt = datetime.combine(wzr.datum, wzr.bis.time())
+
+            # Überprüfen ob die aktuelle Zeit im Wartungszeitraum liegt
+            if start_dt <= now <= end_dt:
+                return str(wzr.wartungszeitid)
+
+        return "FALSE"
 
 class Wagen (db.Model):
     __tablename__ = 'wagen'
@@ -110,3 +130,34 @@ class Mitarbeiter(db.Model):
 
     user: so.Mapped["User"] = so.relationship(back_populates="mitarbeiter")
 
+    wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates="mitarbeiter")
+
+class Wartungszeitraum(db.Model):
+    __tablename__ = 'wartungszeitraum'
+
+    wartungszeitid: so.Mapped[int] = so.mapped_column(primary_key=True)
+    datum: so.Mapped[date] = so.mapped_column(sa.Date, index=True, nullable=False)
+    von: so.Mapped[datetime] = so.mapped_column(sa.DateTime, nullable=False)
+    bis: so.Mapped[datetime] = so.mapped_column(sa.DateTime, nullable=False)
+    dauer: so.Mapped[int] = so.mapped_column(sa.Integer,nullable=False)
+
+    wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates="wartungszeitraum")
+
+    # Composite Unique Constraint - Kombination der drei Spalten muss in der gesamten Tabelle eindeutig sein
+    __table_args__ = (
+        sa.UniqueConstraint('datum', 'von', 'bis', name='unique_datum_von_bis'),
+    )
+
+
+class Wartung(db.Model):
+    __tablename__ = 'wartung'
+
+    wartungid: so.Mapped[int] = so.mapped_column(primary_key=True)
+
+    svnr: so.Mapped[int] = so.mapped_column(sa.ForeignKey("mitarbeiter.svnr"))
+    zugid: so.Mapped[int] = so.mapped_column(sa.ForeignKey("zuege.zugid"))
+    wartungszeitid: so.Mapped[int] = so.mapped_column(sa.ForeignKey("wartungszeitraum.wartungszeitid"))
+
+    mitarbeiter: so.Mapped["Mitarbeiter"] = so.relationship(back_populates="wartungen")
+    zug: so.Mapped["Zuege"] = so.relationship(back_populates="wartungen")
+    wartungszeitraum: so.Mapped["Wartungszeitraum"] = so.relationship(back_populates="wartungen")

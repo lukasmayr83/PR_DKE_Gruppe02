@@ -22,7 +22,7 @@
 
     <p>
         {{ form.spurweite.label }}<br>
-        {{ form.spurweite(size=20) }}
+        {{ form.spurweite() }}
         {% for error in form.spurweite.errors %}
             <div style="color:red">{{ error }}</div>
         {% endfor %}

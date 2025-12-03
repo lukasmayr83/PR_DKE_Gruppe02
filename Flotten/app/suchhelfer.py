@@ -1,7 +1,8 @@
 from app import db
-from app.models import Mitarbeiter, Personenwagen, Triebwagen, Zuege
+from app.models import Mitarbeiter, Personenwagen, Triebwagen, Zuege, Wartungszeitraum, Wartung
 import sqlalchemy as sa
 from sqlalchemy import or_
+from datetime import datetime
 
 def search_mitarbeiter(request):
     # strip() entfernt Leerzeichen am Anfang/Ende.
@@ -124,4 +125,25 @@ def search_personenwagen_for_zug_bearbeiten(request, zug_id):
                 Personenwagen.spurweite.cast(sa.String).like(f"%{suchbegriff}%"),
             )
         )
+    return db.session.execute(query).scalars().all()
+
+def search_wartungen(request, nur_aktuelle=False):
+    suchbegriff = request.args.get("q", "").strip()
+    query = (db.select(Wartungszeitraum).join(Wartung, Wartung.wartungszeitid == Wartungszeitraum.wartungszeitid)
+             .join(Mitarbeiter, Mitarbeiter.svnr == Wartung.svnr)
+             .join(Zuege, Zuege.zugid == Wartung.zugid).distinct())
+
+    if suchbegriff:
+        query = query.where(
+            or_(
+                Wartungszeitraum.wartungszeitid.cast(sa.String).like(f"%{suchbegriff}%"),
+                Wartungszeitraum.datum.cast(sa.String).like(f"%{suchbegriff}%"),
+                Wartungszeitraum.dauer.cast(sa.String).like(f"%{suchbegriff}%"),
+                Zuege.zugid.cast(sa.String).like(f"%{suchbegriff}%"),
+                Mitarbeiter.nachname.cast(sa.String).like(f"%{suchbegriff}%"),
+            )
+        )
+    if nur_aktuelle:
+        jetzt = datetime.now()
+        query = query.where(Wartungszeitraum.bis>= jetzt)
     return db.session.execute(query).scalars().all()

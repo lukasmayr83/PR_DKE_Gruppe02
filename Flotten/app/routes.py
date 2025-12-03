@@ -1,14 +1,16 @@
-from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask import render_template, flash, redirect, url_for, request, jsonify, session
 from urllib.parse import urlsplit
 from app import app,db
-from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm, MitarbeiterAddForm, MitarbeiterEditForm
+from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm, MitarbeiterAddForm, MitarbeiterEditForm,WartungszeitraumForm
 from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa
-from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen, Mitarbeiter
-from sqlalchemy import or_
+from app.models import User, Role, Personenwagen, Triebwagen, Zuege, Wagen, Mitarbeiter, Wartungszeitraum,Wartung
+from sqlalchemy import or_, not_
 from app.zug_validation import validate_zug
 from app.mitarbeiter_validation import validate_unique_svnr, validate_unique_username
 import app.suchhelfer as suchhelfer
+from datetime import date, datetime
+import app.wartungszeitraum_validation as wartungszeitraum
 
 @app.route('/')
 def index():
@@ -254,11 +256,12 @@ def uebers_zuege():
 @login_required
 def hinzufuegen_zuege():
     form = ZuegeForm()
+
     if request.method == "POST" and "abbrechen" in request.form:
         return redirect(url_for('uebers_zuege'))
 
-    freie_triebwagen =suchhelfer.search_freie_triebwagen(request)
-    freie_personenwagen =suchhelfer.search_freie_personenwagen(request)
+    freie_triebwagen = suchhelfer.search_freie_triebwagen(request)
+    freie_personenwagen = suchhelfer.search_freie_personenwagen(request)
 
     # Prüfung ob Speicherbutton gedrückt wurde
     if form.validate_on_submit() and "speichern" in request.form:
@@ -267,7 +270,7 @@ def hinzufuegen_zuege():
             flash(msg)
         else:
                 # Zug erstellen
-                neuer_zug = Zuege(bezeichnung=form.bezeichnung.data, inwartung=False)
+                neuer_zug = Zuege(bezeichnung=form.bezeichnung.data)
                 db.session.add(neuer_zug)
                 db.session.flush()
                 # flush() generiert die ID für neuer_zug (ohne die Transaktoin zu beenden) - brauche ich damit diese direkt den ausgewählten Wagen zugewiesen wird
@@ -452,27 +455,169 @@ def bearbeite_mitarbeiter(svnr):
 
     return render_template("bearbeiten_mitarbeiter.html", title="Mitarbeiter Daten bearbeiten", form=form, mitarbeiter=mitarbeiter)
 
-@app.route('/uebers_wartungen')
+@app.route('/uebers_wartungszeitraum')
 @login_required
-def uebers_wartungen():
-    return render_template('uebers_wartungen.html', title='Wartungen-Übersicht')
+def uebers_wartungszeitraum():
+    nur_aktuelle = request.args.get("nur_aktuelle", 'false') == 'true'
+    wartungszeitraum_liste = suchhelfer.search_wartungen(request, nur_aktuelle)
+    return render_template('uebers_wartungszeitraum.html', title='Wartungen-Übersicht', wartungszeitraum_liste=wartungszeitraum_liste,nur_aktuelle=nur_aktuelle)
+
+@app.route('/hinzufuegen_wartungszeitraum', methods=['GET', 'POST'])
+@login_required
+def hinzufuegen_wartungszeitraum():
+    form = WartungszeitraumForm()
+    # Alle Mitarbeiter holen
+    mitarbeiter_liste = db.session.execute(db.select(Mitarbeiter).order_by(Mitarbeiter.vorname)).scalars().all()
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_wartungszeitraum'))
+
+    if request.method == "POST" and "verfuegbarkeit" in request.form:
+
+        if not wartungszeitraum.validate_zug_datum_von_bis(form):
+            return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=[],verfuegbarkeit_geprueft=False)
+
+        datum = form.datum.data
+        von_dt = datetime.combine(datum, form.von.data)
+        bis_dt = datetime.combine(datum, form.bis.data)
+
+        # Mitarbeiter finden, die zu der Zeit keine andere Wartung haben - Sub Query
+        sub = (db.select(Wartung.svnr).join(Wartungszeitraum).where(
+                Wartungszeitraum.von < bis_dt,
+                Wartungszeitraum.bis > von_dt )
+         )
+        # Mitarbeiter_liste jene die Mitarbeiter zuweisen die zu der Zeit keine andere Wartung haben
+        mitarbeiter_liste = (
+            db.session.execute(db.select(Mitarbeiter).where(not_(Mitarbeiter.svnr.in_(sub))).order_by(Mitarbeiter.vorname)).scalars().all())
+
+        flash("Verfügbarkeit geprüft - Bitte Mitarbeiter auswählen!", 'success')
+        return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=True)
+
+    if form.validate_on_submit():
+        if not wartungszeitraum.validate_all(form, request):
+            return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=False)
+
+        svnr_liste = request.form.getlist("mitarbeiter_svnr")
+
+        # von mit Datum versehen, da sonst der Datentyp probleme macht
+        von_datetime = datetime.combine(form.datum.data, form.von.data)
+        bis_datetime = datetime.combine(form.datum.data, form.bis.data)
+
+        # Wartungszeitraum anlegen
+        neuer_wartungszeitraum = Wartungszeitraum(
+            datum=form.datum.data,
+            von=von_datetime,
+            bis=bis_datetime,
+            dauer=int((bis_datetime - von_datetime).total_seconds() / 60)
+        )
+        db.session.add(neuer_wartungszeitraum)
+        db.session.flush()  # Wartungszeitid erstellen ohne Transaktion abzubrechen
+        # Wartung erstellen
+        for svnr in svnr_liste:
+            wartung = Wartung(
+                wartungszeitid=neuer_wartungszeitraum.wartungszeitid,
+                svnr=svnr,
+                zugid=form.zugid.data
+            )
+            db.session.add(wartung)
+
+        db.session.commit()
+        flash("Wartungszeitraum erfolgreich hinzugefügt.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste, verfuegbarkeit_geprueft=False)
+
+@app.route('/wartungen_action', methods=['POST'])
+@login_required
+def wartungszeitraum_action():
+    # Werte aus dem Formular
+    wartungszeitid = request.form.get("selected_wartungszeitraum")
+    action = request.form.get("action")
+
+    if not wartungszeitid:
+        flash("Bitte wählen Sie einen Wartungszeitraum aus!")
+        return redirect(url_for('uebers_wartungszeitraum'))
+
+    wartungszeitraum = db.session.get(Wartungszeitraum, wartungszeitid)
+    now = datetime.now()
+    laufend = wartungszeitraum.von <= now <= wartungszeitraum.bis
+    # Aktion: Löschen
+    if action == "loeschen":
+        if laufend:
+            flash("Dise Wartung läuft gerade und kann daher nicht gelöscht werden!")
+            return redirect(url_for('uebers_wartungszeitraum'))
+        # Alle zugehörigen Wartung-Einträge holen und löschen
+        wartungen = db.session.query(Wartung).filter_by(wartungszeitid=wartungszeitid).all()
+        for w in wartungen:
+            db.session.delete(w)
+
+        db.session.delete(wartungszeitraum)
+        db.session.commit()
+        flash("Wartungszeitraum und zugehörige Wartungen erfolgreich gelöscht.")
+        return redirect(url_for('uebers_wartungszeitraum'))
+
+    if action == "bearbeiten":
+        return redirect(url_for('bearbeite_wartungszeitraum', wartungszeitid=wartungszeitid))
+
+    return redirect(url_for('uebers_wartungszeitraum'))
+
+@app.route('/bearbeite_wartungszeitraum/<int:wartungszeitid>', methods=['GET', 'POST'])
+@login_required
+def bearbeite_wartungszeitraum(wartungszeitid):
+    return render_template("bearbeiten_wartungszeitraum.html", title='Wartung Bearbeiten')
 
 #############################################################
 #####################    API    #############################
 #############################################################
+
+def get_wartungszeit_details_for_zug(zug, wartungszeitid):
+
+    wartungszeitid_int = int(wartungszeitid)
+    wz = db.session.get(Wartungszeitraum, wartungszeitid_int)
+    if not wz:
+        return None
+
+    # Suche alle Wartung-Einträge für diesen Zug und diese Wartungszeit
+    wartungen_for_this = [w for w in zug.wartungen if w.wartungszeitid == wartungszeitid_int]
+
+    mitarbeiter_list = []
+    seen_svnr = set()
+    for w in wartungen_for_this:
+        m = w.mitarbeiter
+        if m and m.svnr not in seen_svnr:
+            seen_svnr.add(m.svnr)
+            mitarbeiter_list.append({
+                "svnr": m.svnr,
+                "vorname": m.vorname,
+                "nachname": m.nachname
+            })
+
+    # Format: datum als YYYY-MM-DD, von/bis nur als Uhrzeit
+    datum_str = wz.datum.isoformat() if wz.datum else None
+    von_str = wz.von.time().isoformat() if wz.von else None
+    bis_str = wz.bis.time().isoformat() if wz.bis else None
+
+    return {
+        "wartungszeitid": str(wz.wartungszeitid),
+        "datum": datum_str,
+        "von": von_str,
+        "bis": bis_str,
+        "dauer": wz.dauer,
+        "mitarbeiter": mitarbeiter_list
+    }
 
 # Alle Züge auflisten - nach spurweite oder in Wartung filtern
 @app.route('/zuege', methods=['GET'])
 def get_zuege_api():
 
     query_term = request.args.get('q', default='', type=str)
+    filter_wartung = request.args.get('in_wartung', default=None, type=str)
 
     stmt = sa.select(Zuege)
 
     if query_term:
         stmt = stmt.join(Zuege.wagen).where(
             sa.or_(
-                sa.cast(Zuege.inwartung, sa.String).ilike(f"%{query_term}%"),
                 sa.cast(Wagen.spurweite, sa.String).like(f"%{query_term}%")
             )
         )
@@ -487,10 +632,26 @@ def get_zuege_api():
             if tw:
                 spurweite = tw.spurweite
 
+        in_wartung_status = zug.aktuelle_wartungs_anzeige
+        is_in_wartung = in_wartung_status != "FALSE"
+
+    # Filter nach Wartungsstatus (optional)
+        if filter_wartung is not None:
+            if filter_wartung.lower() == 'true' and not is_in_wartung:
+                continue
+            if filter_wartung.lower() == 'false' and is_in_wartung:
+                continue
+
+        # Wenn in Wartung: lade Details
+        wartungszeit_details = None
+        if is_in_wartung:
+            wartungszeit_details = get_wartungszeit_details_for_zug(zug, in_wartung_status)
+
         items.append({
             "zugId": str(zug.zugid),
             "bezeichnung": zug.bezeichnung,
-            "inWartung": zug.inwartung,
+            "inWartung": is_in_wartung,
+            "wartungszeit": wartungszeit_details,
             "spurweite": spurweite
         })
     return jsonify(items)
@@ -508,10 +669,19 @@ def get_zug_api(zug_id):
     if tw:
         spurweite = tw.spurweite
 
+    in_wartung_status = zug.aktuelle_wartungs_anzeige
+    is_in_wartung = in_wartung_status != "FALSE"
+
+    # Wenn in Wartung: lade Details
+    wartungszeit_details = None
+    if is_in_wartung:
+        wartungszeit_details = get_wartungszeit_details_for_zug(zug, in_wartung_status)
+
     item = {
         "zugId": str(zug.zugid),
         "bezeichnung": zug.bezeichnung,
-        "inWartung": zug.inwartung,
+        "inWartung": is_in_wartung,
+        "wartungszeit": wartungszeit_details,
         "spurweite": spurweite
     }
     return jsonify(item)
