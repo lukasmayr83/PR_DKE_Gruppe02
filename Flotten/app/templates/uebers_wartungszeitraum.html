@@ -40,8 +40,8 @@
                 <th>Wartungszeitid</th>
                 <th>Zugid</th>
                 <th>Datum</th>
-                <th>Von</th>
-                <th>Bis</th>
+                <th>Start</th>
+                <th>Ende</th>
                 <th>Dauer in Minuten</th>
                 <th>Mitarbeiter</th>
             </tr>
@@ -70,9 +70,10 @@
                 <td>{{ wartungszeitraum.dauer }}</td>
                 <td>
                     {% if wartungszeitraum.wartungen %}
-                        {% for w in wartungszeitraum.wartungen %}
-                            {{ w.mitarbeiter.nachname }}{% if not loop.last %}, {% endif %}
-                        {% endfor %}
+                        {% set sortierte_mitarbeiter = wartungszeitraum.wartungen | sort(attribute='mitarbeiter.nachname') %}
+                            {% for w in sortierte_mitarbeiter %}
+                                {{ w.mitarbeiter.nachname }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
                     {% else %}
                         Keine
                     {% endif %}
@@ -82,13 +83,10 @@
         </tbody>
     </table>
 </form>
-
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    {% for msg in messages %}
-      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
-        {{ msg }}
-      </p>
+    {% for category, msg in messages %}
+      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
     {% endfor %}
   {% endif %}
 {% endwith %}

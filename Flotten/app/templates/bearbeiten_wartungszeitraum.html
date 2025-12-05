@@ -2,4 +2,87 @@
 
 {% block content %}
 <h1>Wartung bearbeiten</h1>
+<form id="wartungs-form" method="POST" novalidate>
+    {{ form.hidden_tag() }}
+</form>
+
+<div style="display: flex; gap: 50px; align-items: flex-start;">
+    <!-- LINKER BLOCK – FORMULARDATEN -->
+    <div style="min-width: 250px;">
+        <p>
+            {{ form.zugid.label }}<br>
+            {{ form.zugid(size=25, form="wartungs-form") }}
+            {% for error in form.zugid.errors %}
+                <div style="color:red">{{ error }}</div>
+            {% endfor %}
+        </p>
+
+        <p>
+            {{ form.datum.label }}<br>
+            {{ form.datum(class="form-control", form="wartungs-form") }}
+            {% for error in form.datum.errors %}
+                <div style="color:red">{{ error }}</div>
+            {% endfor %}
+        </p>
+
+        <p>
+            {{ form.von.label }}<br>
+            {{ form.von(size=25, form="wartungs-form") }}
+            {% for error in form.von.errors %}
+                <div style="color:red">{{ error }}</div>
+            {% endfor %}
+        </p>
+
+        <p>
+            {{ form.bis.label }}<br>
+            {{ form.bis(size=25, form="wartungs-form") }}
+            {% for error in form.bis.errors %}
+                <div style="color:red">{{ error }}</div>
+            {% endfor %}
+        </p>
+    </div>
+    <!-- RECHTER BLOCK – MITARBEITER -->
+    <div>
+        <h3 style="margin-bottom: 4px;">Mitarbeiter hinzufügen</h3>
+        <h4 style="margin-top: 0; margin-bottom: 4px; font-weight: normal;">Bitte zuerst die Verfügbarkeit Prüfen!</h4>
+            <button type="submit" name="verfuegbarkeit" value="1" form="wartungs-form" formnovalidate>
+                    Verfügbarkeit Prüfen
+            </button>
+        <table border="1" style="margin-top:10px; min-width:250px;">
+            <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for m in mitarbeiter_liste%}
+            <tr>
+                <td>
+                    <input type="checkbox" name="mitarbeiter_svnr" value="{{ m.svnr }}" form="wartungs-form"
+                           {% if not verfuegbarkeit_geprueft %}disabled{% endif %}
+                           {% if m.svnr in ausgewaehlte_ma_svnr %}checked{% endif %}>
+                </td>
+                <td>{{ m.vorname }} {{ m.nachname }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+<p>
+    <button type="submit" name="speichern" value="1" form="wartungs-form">
+        Speichern
+    </button>
+    <button type="submit" name="abbrechen" value="1" form="wartungs-form" formnovalidate>
+        Abbrechen
+    </button>
+</p>
 {% endblock %}

@@ -1,7 +1,7 @@
 from flask import flash, request
 from app.models import Zuege, Wartung, Wartungszeitraum, Mitarbeiter
 from app import db
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import or_, not_
 
     # Prüft ob der Zug existiert
@@ -13,13 +13,31 @@ def validate_zug_existiert(zugid):
     return True
 
  # Prüft ob das Datum nicht in der Vergangenheit liegt
-def validate_datum_nicht_vergangenheit(datum):
-    if datum is None:
-        flash("Bitte geben Sie ein Datum ein!")
+def validate_datetime_nicht_vergangenheit(datum, von, bis):
+
+    if datum is None or von is None or bis is None:
+        flash("Bitte Datum und Uhrzeiten eingeben!")
         return False
+
+    # Datum grob prüfen
     if datum < date.today():
         flash("Das Datum darf nicht in der Vergangenheit liegen!")
         return False
+
+    jetzt = datetime.now()
+    start_dt = datetime.combine(datum, von)
+    ende_dt = datetime.combine(datum, bis)
+
+    # Ende liegt in der Vergangenheit
+    if ende_dt <= jetzt:
+        flash("Der Wartungszeitraum darf nicht in der Vergangenheit liegen!")
+        return False
+
+    #  Startpunkt in der Vergangenheit - Ende aber nicht
+    if start_dt < jetzt < ende_dt:
+        flash("Der Startzeitpunkt liegt in der Vergangenheit!")
+        return False
+
     return True
 
  #  Prüft ob VON vor BIS liegt
@@ -49,7 +67,7 @@ def validate_all(form, req):
         return False
     if not validate_zug_existiert(form.zugid.data):
         return False
-    if not validate_datum_nicht_vergangenheit(form.datum.data):
+    if not validate_datetime_nicht_vergangenheit(form.datum.data,form.von.data,form.bis.data):
         return False
     if not validate_von_vor_bis(form.von.data, form.bis.data):
         return False
@@ -58,11 +76,37 @@ def validate_all(form, req):
 def validate_zug_datum_von_bis(form):
     if not validate_zug_existiert(form.zugid.data):
         return False
-    if not validate_datum_nicht_vergangenheit(form.datum.data):
+    if not validate_datetime_nicht_vergangenheit(form.datum.data,form.von.data,form.bis.data):
         return False
     if not validate_von_vor_bis(form.von.data, form.bis.data):
         return False
     return True
 
+ # Gibt eine Liste aller Mitarbeiter zurück die im angegebenen Zeitraum verfügbar sind
+def get_verfuegbare_mitarbeiter(datum, von, bis, ignore_wzid=None):
 
+    # Datetime bauen
+    von_dt = datetime.combine(datum, von)
+    bis_dt = datetime.combine(datum, bis)
 
+    # Subquery: Mitarbeiter, die in dieser Zeit belegt sind
+    sub = (
+        db.select(Wartung.svnr)
+        .join(Wartungszeitraum)
+        .where(
+            Wartungszeitraum.von < bis_dt,
+            Wartungszeitraum.bis > von_dt
+        )
+    )
+    # Eigene Wartung bei der Prüfung ignorieren - WICHTIG BEI BEARBEITEN
+    if ignore_wzid is not None:
+        sub = sub.where(Wartung.wartungszeitid != int(ignore_wzid))
+
+    # Verfügbare Mitarbeiter
+    verfuegbare = db.session.execute(
+        db.select(Mitarbeiter)
+        .where(not_(Mitarbeiter.svnr.in_(sub)))
+        .order_by(Mitarbeiter.vorname)
+    ).scalars().all()
+
+    return verfuegbare

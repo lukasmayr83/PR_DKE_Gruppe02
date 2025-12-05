@@ -127,11 +127,14 @@ def search_personenwagen_for_zug_bearbeiten(request, zug_id):
         )
     return db.session.execute(query).scalars().all()
 
-def search_wartungen(request, nur_aktuelle=False):
+def search_wartungen(request, nur_aktuelle=False, svnr=None):
     suchbegriff = request.args.get("q", "").strip()
     query = (db.select(Wartungszeitraum).join(Wartung, Wartung.wartungszeitid == Wartungszeitraum.wartungszeitid)
              .join(Mitarbeiter, Mitarbeiter.svnr == Wartung.svnr)
              .join(Zuege, Zuege.zugid == Wartung.zugid).distinct())
+
+    if svnr:
+        query = query.where(Wartung.svnr == svnr)
 
     if suchbegriff:
         query = query.where(
@@ -141,6 +144,8 @@ def search_wartungen(request, nur_aktuelle=False):
                 Wartungszeitraum.dauer.cast(sa.String).like(f"%{suchbegriff}%"),
                 Zuege.zugid.cast(sa.String).like(f"%{suchbegriff}%"),
                 Mitarbeiter.nachname.cast(sa.String).like(f"%{suchbegriff}%"),
+                Wartungszeitraum.von.cast(sa.String).like(f"%{suchbegriff}%"),
+                Wartungszeitraum.bis.cast(sa.String).like(f"%{suchbegriff}%"),
             )
         )
     if nur_aktuelle:

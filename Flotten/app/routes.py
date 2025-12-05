@@ -10,7 +10,7 @@ from app.zug_validation import validate_zug
 from app.mitarbeiter_validation import validate_unique_svnr, validate_unique_username
 import app.suchhelfer as suchhelfer
 from datetime import date, datetime
-import app.wartungszeitraum_validation as wartungszeitraum
+import app.wartungszeitraum_validation as wartungszeitraum_validation
 
 @app.route('/')
 def index():
@@ -74,7 +74,10 @@ def zuege_mitarbeiter():
 @app.route('/wartungen_mitarbeiter')
 @login_required
 def wartungen_mitarbeiter():
-    return render_template('wartungen_mitarbeiter.html', title='Wartungen Übersicht')
+    svnr = current_user.mitarbeiter.svnr
+    nur_aktuelle = request.args.get("nur_aktuelle", 'false') == 'true'
+    wartungszeitraum_liste = suchhelfer.search_wartungen(request, nur_aktuelle, svnr=svnr)
+    return render_template('wartungen_mitarbeiter.html', title='Wartungen-Übersicht',wartungszeitraum_liste=wartungszeitraum_liste, nur_aktuelle=nur_aktuelle)
 
 @app.route('/uebers_personenwagen')
 @login_required
@@ -474,32 +477,35 @@ def hinzufuegen_wartungszeitraum():
 
     if request.method == "POST" and "verfuegbarkeit" in request.form:
 
-        if not wartungszeitraum.validate_zug_datum_von_bis(form):
+        if not wartungszeitraum_validation.validate_zug_datum_von_bis(form):
             return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=[],verfuegbarkeit_geprueft=False)
 
-        datum = form.datum.data
-        von_dt = datetime.combine(datum, form.von.data)
-        bis_dt = datetime.combine(datum, form.bis.data)
-
-        # Mitarbeiter finden, die zu der Zeit keine andere Wartung haben - Sub Query
-        sub = (db.select(Wartung.svnr).join(Wartungszeitraum).where(
-                Wartungszeitraum.von < bis_dt,
-                Wartungszeitraum.bis > von_dt )
-         )
-        # Mitarbeiter_liste jene die Mitarbeiter zuweisen die zu der Zeit keine andere Wartung haben
-        mitarbeiter_liste = (
-            db.session.execute(db.select(Mitarbeiter).where(not_(Mitarbeiter.svnr.in_(sub))).order_by(Mitarbeiter.vorname)).scalars().all())
-
+        mitarbeiter_liste= wartungszeitraum_validation.get_verfuegbare_mitarbeiter(form.datum.data, form.von.data, form.bis.data)
         flash("Verfügbarkeit geprüft - Bitte Mitarbeiter auswählen!", 'success')
         return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=True)
 
     if form.validate_on_submit():
-        if not wartungszeitraum.validate_all(form, request):
+        if not wartungszeitraum_validation.validate_all(form, request):
             return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=False)
+
+        verfuegbare_mitarbeiter = wartungszeitraum_validation.get_verfuegbare_mitarbeiter(form.datum.data, form.von.data, form.bis.data)
+        # Holte alle Mitarbeiter aus verfuegbare_mitarbeiter und baut eine Set m.svnr
+        verfuegbare_svnr = {m.svnr for m in verfuegbare_mitarbeiter}
+
+        # Prüfen, ob ALLE ausgewählten Mitarbeiter verfügbar sind
+        svnr_liste = request.form.getlist("mitarbeiter_svnr")
+        # Erstellt Liste aller svnr aus svnr_liste die nicht in verfuegbare_svnr vorkommen
+        nicht_verfuegbar = [sv for sv in svnr_liste if int(sv) not in verfuegbare_svnr]
+
+        if nicht_verfuegbar:
+            flash("Manche ausgewählte Mitarbeiter sind zu dieser Zeit nicht verfügbar!")
+
+            # Mitarbeiterliste aktualisieren & Auswahl zurücksetzen
+            return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=verfuegbare_mitarbeiter,verfuegbarkeit_geprueft=True)
 
         svnr_liste = request.form.getlist("mitarbeiter_svnr")
 
-        # von mit Datum versehen, da sonst der Datentyp probleme macht
+        # von und bis mit Datum versehen, da sonst der Datentyp probleme macht
         von_datetime = datetime.combine(form.datum.data, form.von.data)
         bis_datetime = datetime.combine(form.datum.data, form.bis.data)
 
@@ -541,6 +547,7 @@ def wartungszeitraum_action():
     wartungszeitraum = db.session.get(Wartungszeitraum, wartungszeitid)
     now = datetime.now()
     laufend = wartungszeitraum.von <= now <= wartungszeitraum.bis
+    abgeschlossen = now >= wartungszeitraum.von
     # Aktion: Löschen
     if action == "loeschen":
         if laufend:
@@ -553,10 +560,16 @@ def wartungszeitraum_action():
 
         db.session.delete(wartungszeitraum)
         db.session.commit()
-        flash("Wartungszeitraum und zugehörige Wartungen erfolgreich gelöscht.")
+        flash("Wartungszeitraum und zugehörige Wartungen erfolgreich gelöscht.",'success')
         return redirect(url_for('uebers_wartungszeitraum'))
 
     if action == "bearbeiten":
+        if laufend:
+            flash("Diese Wartung läuft gerade und kann daher nicht bearbeitet werden!")
+            return redirect(url_for('uebers_wartungszeitraum'))
+        if abgeschlossen:
+            flash("Dieser Wartungszeitraum liegt in der Vergangenheit und kann daher nicht bearbeitet werden!")
+            return redirect(url_for('uebers_wartungszeitraum'))
         return redirect(url_for('bearbeite_wartungszeitraum', wartungszeitid=wartungszeitid))
 
     return redirect(url_for('uebers_wartungszeitraum'))
@@ -564,12 +577,100 @@ def wartungszeitraum_action():
 @app.route('/bearbeite_wartungszeitraum/<int:wartungszeitid>', methods=['GET', 'POST'])
 @login_required
 def bearbeite_wartungszeitraum(wartungszeitid):
-    return render_template("bearbeiten_wartungszeitraum.html", title='Wartung Bearbeiten')
+    wartungszeitraum = db.session.get(Wartungszeitraum, wartungszeitid )
+
+    form = WartungszeitraumForm(
+        zugid=wartungszeitraum.wartungen[0].zugid if wartungszeitraum.wartungen else None,
+        datum=wartungszeitraum.datum,
+        von=wartungszeitraum.von.time(),
+        bis=wartungszeitraum.bis.time()
+    )
+    # Aktuell zugewiesene Mitarbeiter
+    ausgewaehlte_ma_svnr = {w.svnr for w in wartungszeitraum.wartungen}
+
+    # Alle Mitarbeiter anzeigen (noch nicht geprüft)
+    mitarbeiter_liste = db.session.execute(
+        db.select(Mitarbeiter).order_by(Mitarbeiter.vorname)
+    ).scalars().all()
+
+    if request.method == "POST" and "abbrechen" in request.form:
+        return redirect(url_for('uebers_wartungszeitraum'))
+
+    if request.method == "POST" and "verfuegbarkeit" in request.form:
+
+        if not wartungszeitraum_validation.validate_zug_datum_von_bis(form):
+            return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=[],ausgewaehlte_ma_svnr=[],verfuegbarkeit_geprueft=False)
+
+        # Liste frisch generieren
+        verfuegbare_mitarbeiter = wartungszeitraum_validation.get_verfuegbare_mitarbeiter(
+            form.datum.data, form.von.data, form.bis.data, ignore_wzid=wartungszeitraum.wartungszeitid
+        )
+        # Holte alle Mitarbeiter aus verfuegbare_mitarbeiter und baut eine Set m.svnr
+        verfuegbare_svnr = {m.svnr for m in verfuegbare_mitarbeiter}
+
+        # Erstellt eine neue Mitarbeiterliste, die aus allen verfügbaren Mitarbeitern besteht + allen die bereits ausgewählt waren
+        mitarbeiter_liste = ([m for m in verfuegbare_mitarbeiter] +
+                             [m for m in mitarbeiter_liste if m.svnr in ausgewaehlte_ma_svnr and m.svnr not in verfuegbare_svnr])
+
+        #  Doppelte entfernen
+        seen = set() # erstellt leeres Set
+        mitarbeiter_liste = [m for m in mitarbeiter_liste if not (m.svnr in seen or seen.add(m.svnr))]
+
+        flash("Verfügbarkeit geprüft – bitte Mitarbeiter auswählen!", "success")
+        return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=mitarbeiter_liste,ausgewaehlte_ma_svnr=ausgewaehlte_ma_svnr,verfuegbarkeit_geprueft=True)
+
+    if form.validate_on_submit() and "speichern" in request.form:
+
+        if not wartungszeitraum_validation.validate_all(form, request):
+            return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=mitarbeiter_liste,ausgewaehlte_ma_svnr=ausgewaehlte_ma_svnr,verfuegbarkeit_geprueft=False)
+
+        verfuegbare_mitarbeiter = wartungszeitraum_validation.get_verfuegbare_mitarbeiter(
+            form.datum.data, form.von.data, form.bis.data,ignore_wzid=wartungszeitraum.wartungszeitid
+        )
+
+        verfuegbare_svnr = {m.svnr for m in verfuegbare_mitarbeiter}
+
+        svnr_liste = request.form.getlist("mitarbeiter_svnr")
+        # Erstellt Liste aller svnr aus svnr_liste die nicht in verfuegbare_svnr vorkommen
+        nicht_verfuegbar = [sv for sv in svnr_liste if int(sv) not in verfuegbare_svnr]
+
+        if nicht_verfuegbar:
+            flash("Einige ausgewählte Mitarbeiter sind nicht verfügbar!", "error")
+            return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=verfuegbare_mitarbeiter,ausgewaehlte_ma_svnr=set(),verfuegbarkeit_geprueft=True)
+
+        # von und bis mit Datum versehen, da sonst der Datentyp probleme macht
+        von_dt = datetime.combine(form.datum.data, form.von.data)
+        bis_dt = datetime.combine(form.datum.data, form.bis.data)
+
+        wartungszeitraum.datum = form.datum.data
+        wartungszeitraum.von = von_dt
+        wartungszeitraum.bis = bis_dt
+        wartungszeitraum.dauer = int((bis_dt - von_dt).total_seconds() / 60)
+
+        # WARTUNGEN AKTUALISIEREN
+        # Alle bestehenden Wartungs-Einträge zu diesem Wartungszeitraum löschen / alte Mitarbeiter zuweisungen entfernen
+        for w in wartungszeitraum.wartungen:
+            db.session.delete(w)
+
+        # Mitarbeiter - Zugid - Wartungszeitid aktualliserien / anlegen
+        for sv in svnr_liste:
+            db.session.add(Wartung(
+                wartungszeitid=wartungszeitraum.wartungszeitid,
+                svnr=sv,
+                zugid=form.zugid.data
+            ))
+
+        db.session.commit()
+        flash("Wartungszeitraum erfolgreich aktualisiert.")
+        return redirect(url_for('dashboard_admin'))
+
+    return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=mitarbeiter_liste,ausgewaehlte_ma_svnr=ausgewaehlte_ma_svnr,verfuegbarkeit_geprueft=False )
 
 #############################################################
 #####################    API    #############################
 #############################################################
 
+# Hilfsfunktion für die API um die Wartungen darzustellen
 def get_wartungszeit_details_for_zug(zug, wartungszeitid):
 
     wartungszeitid_int = int(wartungszeitid)
