@@ -2,6 +2,15 @@
 {% block content %}
 <h1>Mitarbeiter</h1>
 <h2>Übersicht</h2>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
+        {{ msg }}
+      </p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
     <div style="display: flex; gap: 5px;">
@@ -49,15 +58,4 @@
         </tbody>
     </table>
 </form>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    {% for msg in messages %}
-      <p style="color: red; font-weight: bold; margin-bottom: 15px;">
-        {{ msg }}
-      </p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
 {% endblock %}

@@ -1,26 +1,93 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         {% if title %}
         <title>{{ title }} - Flotten</title>
         {% else %}
         <title>Flotten</title>
         {% endif %}
+        <style>
+            body { font-family: sans-serif; margin: 0; padding: 0; }
+
+            .header {
+                background-color: #00688B;
+                padding: 15px 20px;
+                border-bottom: 2px solid #004f69;
+                display: flex;
+                justify-content: flex-start;
+                align-items: center;
+                gap: 30px;
+                /* Textfarbe Header */
+                color: white;
+            }
+
+            .nav-group {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            /* Button-Styling für Navigationslinks */
+            .nav-button {
+                padding: 8px 15px;
+                border: 1px solid #ccc;
+                background-color: #ffffff;
+                color: #333; /* Text in Buttons */
+                text-decoration: none;
+                border-radius: 4px;
+                font-size: 0.9em;
+                font-weight: bold;
+                transition: background-color 0.2s, border-color 0.2s;
+                cursor: pointer;
+                display: inline-block;
+            }
+
+            .nav-button:hover {
+                background-color: #f0f0f0;
+                border-color: #999;
+                color: #00688B;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+
+            /* Generelles Tabellen-Styling */
+        table {
+                border-collapse: collapse;
+                margin-top: 15px;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+        </style>
     </head>
     <body>
-        <div>Flotten:
-            <a href="{{ url_for('uebers_personenwagen') }}">Personenwagen</a>
-            <a href="{{ url_for('uebers_triebwagen') }}">Triebwagen</a>
-            <a href="{{ url_for('uebers_zuege') }}">Züge</a>
-            <a href="{{ url_for('uebers_wartungszeitraum') }}">Wartungen</a>
-            <a href="{{ url_for('uebers_mitarbeiter') }}">Mitarbeiterverwalten</a>
-            {% if current_user.is_anonymous %}
-            <a href="{{ url_for('login') }}">Login</a>
-            {% else %}
-            <a href="{{ url_for('logout') }}">Logout</a>
-            {% endif %}
+        <div class="header">
+            <span style="font-size: 1.5em; font-weight: bold; white-space: nowrap;">Flotten</span>
+
+            <div class="nav-group">
+                <a href="{{ url_for('uebers_personenwagen') }}" class="nav-button">Personenwagen</a>
+                <a href="{{ url_for('uebers_triebwagen') }}" class="nav-button">Triebwagen</a>
+                <a href="{{ url_for('uebers_zuege') }}" class="nav-button">Züge</a>
+                <a href="{{ url_for('uebers_wartungszeitraum') }}" class="nav-button">Wartungen</a>
+                <a href="{{ url_for('uebers_mitarbeiter') }}" class="nav-button">Mitarbeiter verwalten</a>
+
+                {% if current_user.is_anonymous %}
+                    <a href="{{ url_for('login') }}" class="nav-button logout">Login</a>
+                {% else %}
+                    <a href="{{ url_for('logout') }}" class="nav-button">Logout</a>
+                {% endif %}
+            </div>
         </div>
-        <hr>
-        {% block content %}{% endblock %}
+        <div class="content-area">
+            {% block content %}{% endblock %}
+        </div>
     </body>
 </html>

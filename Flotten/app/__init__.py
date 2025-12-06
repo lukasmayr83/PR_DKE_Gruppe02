@@ -6,13 +6,13 @@ from flask_login import LoginManager
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
-app = Flask(__name__)
-app.config.from_object(Config)
-db = SQLAlchemy(app)
+db = SQLAlchemy()
+migrate = Migrate()
+login = LoginManager()
+login.login_view = 'login'
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-
     ac = dbapi_connection.autocommit
     dbapi_connection.autocommit = True
 
@@ -22,8 +22,20 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
     dbapi_connection.autocommit = ac
 
-migrate = Migrate(app, db)
-login = LoginManager(app)
-login.login_view = 'login'
+ # Application factory - erzeugt und konfiguriert die Flask App
+def create_app(config_object=Config):
 
-from app import routes, models
+    app = Flask(__name__)
+    app.config.from_object(config_object)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login.init_app(app)
+
+    with app.app_context():
+        from app import routes, models
+
+    return app
+
+# Kompatibilität - erzeuge weiterhin eine Standard-App beim normalen Start
+app = create_app()

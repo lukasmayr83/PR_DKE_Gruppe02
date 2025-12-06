@@ -13,7 +13,7 @@ class PersonenwagenForm(FlaskForm):
                                                       NumberRange(min=1, message="Kapazität muss mindestens 1 sein!")])
     maxgewicht = FloatField('Maximales Gewicht', validators=[DataRequired(message="Maximales Gewicht ist erforderlich!"),
                             NumberRange(min=0.01, message="Gewicht muss positiv sein")])
-    spurweite = SelectField('Spurweite', choices=[('1435 - Normalspur'), ('760 - Schmalspur')],validators=[DataRequired(message="Spurweite ist erforderlich!")])
+    spurweite = SelectField("Spurweite", choices=[(1435, "1435 - Normalspur"), (760, "760 - Schmalspur")], coerce=float,validators=[DataRequired(message="Spurweite ist erforderlich!")])
 
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')
@@ -21,7 +21,7 @@ class PersonenwagenForm(FlaskForm):
 class TriebwagenForm(FlaskForm):
     maxzugkraft = FloatField('Maximale Zugkraft', validators=[DataRequired(message="Maximale Zugkraft ist erforderlich!"),
                                                               NumberRange(min=0.01,message="Zugkraft muss positiv sein")])
-    spurweite = SelectField('Spurweite',choices=[('1435 - Normalspur'),('760 - Schmalspur')], validators=[DataRequired(message="Spurweite ist erforderlich!")])
+    spurweite = SelectField('Spurweite',choices=[(1435, "1435 - Normalspur"),(760, "760 - Schmalspur")],coerce=float, validators=[DataRequired(message="Spurweite ist erforderlich!")])
 
     speichern = SubmitField('Speichern')
     abbrechen = SubmitField('Abbrechen')

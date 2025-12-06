@@ -2,7 +2,13 @@
 {% block content %}
 <h1>Wartungen</h1>
 <h2>Übersicht</h2>
-
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
     <div style="display: flex; gap: 5px;">
         <form action="{{ url_for('hinzufuegen_wartungszeitraum') }}" method="get">
@@ -83,12 +89,4 @@
         </tbody>
     </table>
 </form>
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, msg in messages %}
-      <p style="color: {{ 'green' if category == 'success' else 'red' }}; font-weight: bold;">{{ msg }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
 {% endblock %}

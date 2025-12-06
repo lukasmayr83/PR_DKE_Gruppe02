@@ -1,6 +1,7 @@
 from flask import render_template, flash, redirect, url_for, request, jsonify, session
 from urllib.parse import urlsplit
-from app import app,db
+from app import db
+from flask import current_app as app
 from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm, MitarbeiterAddForm, MitarbeiterEditForm,WartungszeitraumForm
 from flask_login import current_user, login_user, logout_user, login_required
 import sqlalchemy as sa

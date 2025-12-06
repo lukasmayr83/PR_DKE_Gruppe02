@@ -1,5 +1,5 @@
 from app import db
-from app.models import Mitarbeiter, Personenwagen, Triebwagen, Zuege, Wartungszeitraum, Wartung
+from app.models import Mitarbeiter, User, Personenwagen, Triebwagen, Zuege, Wartungszeitraum, Wartung
 import sqlalchemy as sa
 from sqlalchemy import or_
 from datetime import datetime
@@ -7,13 +7,14 @@ from datetime import datetime
 def search_mitarbeiter(request):
     # strip() entfernt Leerzeichen am Anfang/Ende.
     suchbegriff = request.args.get('q', '').strip()
-    query = db.select(Mitarbeiter).order_by(Mitarbeiter.svnr)
+    query = db.select(Mitarbeiter).join(User).order_by(Mitarbeiter.svnr)
     if suchbegriff:
         query = query.where(
             or_(
                 Mitarbeiter.vorname.like(f"%{suchbegriff}%"),
                 Mitarbeiter.nachname.like(f"%{suchbegriff}%"),
-                Mitarbeiter.svnr.cast(sa.String).like(f"%{suchbegriff}%")
+                Mitarbeiter.svnr.cast(sa.String).like(f"%{suchbegriff}%"),
+                User.username.cast(sa.String).like(f"%{suchbegriff}%")
             )
         )
     return db.session.execute(query).scalars().all()
@@ -52,10 +53,11 @@ def search_zuege(request):
     query = db.select(Zuege).order_by(Zuege.zugid)
     if suchbegriff:
         query = query.where(
+            or_(
             Zuege.bezeichnung.like(f"%{suchbegriff}%"),
-            Zuege.inwartung.cast(sa.String).like(f"%{suchbegriff}%"),
             Zuege.zugid.cast(sa.String).like(f"%{suchbegriff}%")
         )
+    )
     return db.session.execute(query).scalars().all()
 
 def search_freie_triebwagen(request):
