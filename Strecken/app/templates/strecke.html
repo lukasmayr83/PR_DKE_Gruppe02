@@ -1,16 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .table thead tr {
-        background-color: #f1f1f1;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
 
-<h2>Alle Strecken</h2>
+<h1>Alle Strecken</h1>
 
 <div style="display: flex; gap: 20px;">
 
@@ -21,17 +14,31 @@
             <div style="overflow-y: auto; max-height: 80vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
 
                 <table class="table table-striped table-hover" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+
+                    <colgroup>
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 30px;">
+                        {% endif %}
+                        <col style="width: 25%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: auto;">
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 100px;">
+                        {% endif %}
+                    </colgroup>
+
                     <thead>
                         <tr>
                             {% if role.value != 'mitarbeiter' %}
-                            <th style="min-width: 21px;"></th>
+                            <th></th>
                             {% endif %}
-                            <th style="min-width: 150px;">Streckenname</th>
-                            <th style="min-width: 150px;">Startbahnhof</th>
-                            <th style="min-width: 150px;">Endbahnhof</th>
-                            <th style="min-width: 100px;">Abschnitte</th>
+                            <th>Streckenname</th>
+                            <th>Startbahnhof</th>
+                            <th>Endbahnhof</th>
+                            <th>Abschnitte</th>
                             {% if role.value != 'mitarbeiter' %}
-                            <th style="min-width: 80px;">Aktion</th>
+                            <th>Aktion</th>
                             {% endif %}
                         </tr>
                     </thead>

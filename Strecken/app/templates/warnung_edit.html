@@ -1,10 +1,170 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Warnung bearbeiten
-</h2>
-<div style="display: flex; gap: 20px;">
-    
-    
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+
+<h1>Warnung bearbeiten</h1>
+
+<div class="flex-container">
+
+    <div class="form-wrapper">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <p>
+                {{ form.bezeichnung.label }}<br>
+                {{ form.bezeichnung() }}
+                {% for error in form.bezeichnung.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p>
+                {{ form.beschreibung.label }}<br>
+                {{ form.beschreibung() }}
+                {% for error in form.beschreibung.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p>
+                {{ form.startZeit.label }}<br>
+                {{ form.startZeit(class="form-control", type="datetime-local") }}
+                {% for error in form.startZeit.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p>
+                {{ form.endZeit.label }}<br>
+                {{ form.endZeit(class="form-control", type="datetime-local") }}
+                {% for error in form.endZeit.errors %}
+                    <span class="text-danger">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p>
+                {{ form.abschnitt.label }}<br>
+                {{ form.abschnitt(id="abschnitte_select", multiple="multiple", style="width: 100%;") }}
+                {% for error in form.abschnitt.errors %}
+                <span class="text-danger">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+
+            <p style="margin-top: 40px;">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('warnung') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
+            </p>
+        </form>
+    </div>
+    <div class="map-wrapper">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
 </div>
+
+<script>
+    $(document).ready(function() {
+        var $select = $('#abschnitte_select');
+
+        // Initialisierung
+        $select.select2({
+
+        });
+
+        // Sortierlogik: Zuletzt gewähltes ans Ende
+        $select.on("select2:select", function (evt) {
+            var element = evt.params.data.element;
+            var $element = $(element);
+
+            $element.detach();
+            $(this).append($element);
+            $(this).trigger("change");
+        });
+    });
+</script>
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+
+    let segmentsLayer = L.layerGroup().addTo(map);
+
+    function drawSelectedSegments() {
+        let selectedIds = $('#abschnitte_select').val();
+
+        segmentsLayer.clearLayers();
+
+        if (!selectedIds || selectedIds.length === 0) {
+            return;
+        }
+
+        let fetchPromises = selectedIds.map(id => {
+            return fetch(`/api/abschnitt/${id}`).then(response => response.json());
+        });
+
+        Promise.all(fetchPromises)
+            .then(results => {
+                let bounds = L.latLngBounds();
+
+                results.forEach(data => {
+                    if (data.start && data.end) {
+                        let startLatLng = [data.start.lat, data.start.lon];
+                        let endLatLng = [data.end.lat, data.end.lon];
+
+                        let polyline = L.polyline([startLatLng, endLatLng], {
+                            color: 'blue',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(segmentsLayer);
+
+
+                        polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
+
+
+                        L.marker(startLatLng)
+                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                            .addTo(segmentsLayer);
+
+
+                        L.marker(endLatLng)
+                            .bindPopup(`<b>Endbahnhof:</b> ${data.end.name}`)
+                            .addTo(segmentsLayer);
+
+                        bounds.extend(startLatLng);
+                        bounds.extend(endLatLng);
+                    }
+                });
+
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, {padding: [50, 50]});
+                }
+            })
+            .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+    }
+
+    $(document).ready(function() {
+        var $select = $('#abschnitte_select');
+
+        $select.on("change", function() {
+            drawSelectedSegments();
+        });
+
+        drawSelectedSegments();
+
+        setTimeout(() => { map.invalidateSize(); }, 200);
+    });
+</script>
+
 {% endblock %}

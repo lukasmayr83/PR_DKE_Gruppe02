@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
     <h1>Login</h1>
+
+<div class="flex-container">
+    <div class="form-wrapper">
     <form action="" method="post" novalidate>
         {{ form.hidden_tag() }}
         <p>
@@ -19,6 +23,8 @@
             {% endfor %}
         </p>
         <p>{{ form.remember_me() }} {{ form.remember_me.label }}</p>
-        <p>{{ form.submit() }}</p>
+        {{ form.submit(class="btn btn-primary") }}
     </form>
+    </div>
+</div>
 {% endblock %}

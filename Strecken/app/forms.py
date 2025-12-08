@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, IntegerField, FloatField, \
-    DateField, SelectMultipleField
+    DateField, SelectMultipleField, DateTimeField, DateTimeLocalField
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Optional
 import sqlalchemy as sa
 from app import db
@@ -45,11 +45,11 @@ class BahnhofForm(FlaskForm):
         self.original_adresse = original_adresse
 
     def validate_name(self, field):
-        if self.original_name is None or field.data != self.original_name:
+        if self.original_name is None or field.data != self.original_name: #erste neuen Bahnhof ete Bahnhof wurde schon bearbeitet
             bahnhof = db.session.scalar(
                 sa.select(Bahnhof).where(Bahnhof.name == field.data)
             )
-            if bahnhof is not None:
+            if bahnhof is not None: #gibt bereits einenBahnhof mit dem Namen in der Datenbank?
                 raise ValidationError('Dieser Bahnhofsname ist bereits vergeben.')
 
     def validate_adresse(self, field):
@@ -102,8 +102,8 @@ class WarnungForm(FlaskForm):
     bezeichnung = StringField('Bezeichnung der Warnung', validators=[DataRequired()])
     beschreibung = StringField('Beschreibung der Warnung', validators=[DataRequired()])
     abschnitt =  SelectMultipleField("Abschnitt", coerce=int, validators=[DataRequired()])
-    startZeit = DateField("gültig ab", validators=[DataRequired()])
-    endZeit = DateField("gültig bis (optional)", validators=[Optional()])
+    startZeit = DateTimeLocalField("gültig ab", validators=[DataRequired()])
+    endZeit = DateTimeLocalField("gültig bis (optional)", validators=[Optional()])
     submit = SubmitField('Warnung speichern')
 
     def validate(self, extra_validators=None):
@@ -131,7 +131,15 @@ class WarnungForm(FlaskForm):
 
 class StreckenForm(FlaskForm):
     name = StringField('Name der Strecke', validators=[DataRequired()])
-    abschnitt = SelectMultipleField("Abschnitte", coerce=int, validators=[DataRequired()])
+    abschnitt = SelectMultipleField("Abschnitte", coerce=int)
     submit = SubmitField('Strecke speichern')
+
+    def validate_name(self, field):
+        # Suchen, ob es eine Strecke mit diesem Namen bereits gibt
+        strecke = Strecke.query.filter_by(name=field.data).first()
+
+        if strecke:
+            # Wenn gefunden -> Validierungsfehler werfen
+            raise ValidationError('Dieser Name ist bereits vergeben. Bitte wählen Sie einen anderen.')
 
 

@@ -2,11 +2,11 @@
 
 {% block content %}
 <h2>Bahnhof bearbeiten</h2>
-
-<div style="display: flex; gap: 20px;">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+<div class="flex-container">
 
     <!--Links Formular-->
-    <div style="flex: 1; max-width: 500px;">
+    <div class="form-wrapper">
         <form method="POST">
             {{ form.hidden_tag() }}
             <p>
@@ -39,7 +39,7 @@
     </div>
 
     <!--Rechts Karte-->
-    <div style="flex: 1; min-width: 400px; height: 75vh;">
+    <div class="map-wrapper">
         <div id="map" style="width:100%; height:100%;"></div>
     </div>
 

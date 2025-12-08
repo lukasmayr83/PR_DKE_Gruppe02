@@ -23,8 +23,7 @@ def abschnitt():
     # nur für DEBUGGING
     #print("--- START: Kartengenerierung für Abschnitte ---")
 
-
-    posts = Abschnitt.query.all()
+    posts = db.session.query(Abschnitt).join(Abschnitt.startBahnhof).order_by(Bahnhof.name).all()
 
     all_coords = []
     section_groups = {}
@@ -46,9 +45,9 @@ def abschnitt():
 
         bahnhoefe_zu_markieren = []
         if startbahnhof:
-            bahnhoefe_zu_markieren.append(('Startbahnhof', startbahnhof, 'green'))
+            bahnhoefe_zu_markieren.append(('Startbahnhof', startbahnhof)) #'blue'))
         if endbahnhof:
-            bahnhoefe_zu_markieren.append(('Endbahnhof', endbahnhof, 'red'))
+            bahnhoefe_zu_markieren.append(('Endbahnhof', endbahnhof)) # 'blue'))
 
 
         if not bahnhoefe_zu_markieren:
@@ -62,7 +61,7 @@ def abschnitt():
 
         route_coords = []
 
-        for typ, b, farbe in bahnhoefe_zu_markieren:
+        for typ, b in bahnhoefe_zu_markieren:
 
             if not b.latitude or not b.longitude:
                 # nur für DEBUGGING
@@ -80,7 +79,7 @@ def abschnitt():
                     lat_lon,
                     tooltip=f"{typ}: {b.name}",
                     popup=f"Abschnitt: {abschnitt_name}<br>{typ}: {b.name}<br>Adresse: {b.adresse}",
-                    icon=folium.Icon(color=farbe)
+                    #icon=folium.Icon(color=farbe)
                 )
 
                 marker.add_to(group)
@@ -91,7 +90,7 @@ def abschnitt():
             folium.PolyLine(
                 route_coords,
                 color='blue',
-                weight=5,
+                weight=4,
                 opacity=0.7,
                 tooltip=f"Route: {abschnitt_name}"
             ).add_to(group)
@@ -164,30 +163,30 @@ def abschnitt_add():
 @login_required
 def edit_abschnitt(abschnitt_id):
     abschnitt = db.session.get(Abschnitt, abschnitt_id)
-    if not abschnitt:
-        flash("Abschnitt nicht gefunden.", "error")
-        return redirect(url_for("abschnitt"))
+    form = AbschnittForm(obj=abschnitt)
+    bahnhoefe = Bahnhof.query.order_by(Bahnhof.name).all()
+    bahnhof_choices = [(b.bahnhofId, b.name) for b in bahnhoefe]
+    form.startBahnhof.choices = bahnhof_choices
+    form.endBahnhof.choices = bahnhof_choices
 
+    #Dropdowns werden beim aufrufen der Seite mit den dazugehörigen Bahnhöfen gefüllt
+    if request.method == 'GET':
+        form.startBahnhof.data = abschnitt.startBahnhofId
+        form.endBahnhof.data = abschnitt.endBahnhofId
 
-    form = AbschnittForm(
-        obj=abschnitt,
-        original_spurweite=abschnitt.spurweite,
-        original_nutzungentgelt=abschnitt.nutzungsentgelt,
-        original_max_geschwindigkeit=abschnitt.max_geschwindigkeit,
-        original_startBahnhof=abschnitt.startBahnhof,
-        original_endBahnhof=abschnitt.endBahnhof,
-    )
 
     if form.validate_on_submit():
         form.populate_obj(abschnitt)
-        abschnitt.spurweite=request.form.get("spurweite")
-        abschnitt.nutzungsentgelt = request.form.get("nutzungsentgelt")
-        abschnitt.max_geschwindigkeit = request.form.get("max_geschwindigkeit")
-        abschnitt.startBahnhof = request.form.get("startBahnhof")
-        abschnitt.endBahnhof = request.form.get("endBahnhof")
-        db.session.commit()
-        flash(f"Abschnitt '{abschnitt.name}' wurde aktualisiert.", "success")
-        return redirect(url_for("abschnitt"))
+        abschnitt.startBahnhofId = form.startBahnhof.data
+        abschnitt.endBahnhofId = form.endBahnhof.data
+
+        try:
+            db.session.commit()
+            flash(f"Abschnitt aktualisiert", "success")
+            return redirect(url_for("abschnitt"))
+        except Exception:
+            db.session.rollback()
+            flash("Fehler beim Speichern", "danger")
 
     return render_template("abschnitt_edit.html", form=form, abschnitt=abschnitt)
 
@@ -201,10 +200,10 @@ def delete_multiple_abschnitt():
         flash ("Keine Abschnitte ausgewählt.", "error")
         return redirect(url_for("abschnitt"))
 
-    for aid in ids:
+    for id in ids:
         try:
 
-            abschnitt = db.session.get(Abschnitt, int(aid))
+            abschnitt = db.session.get(Abschnitt, int(id))
         except ValueError:
 
             continue
@@ -233,7 +232,7 @@ def delete_multiple_abschnitt():
 @app.route('/strecke', methods=['GET', 'POST'])
 @login_required
 def strecke():
-    alle_strecken = Strecke.query.all()
+    alle_strecken = Strecke.query.order_by(Strecke.name).all()
 
     # Bereite die Daten für das Template vor
     strecken_daten = []
@@ -262,43 +261,6 @@ def strecke():
     )
 
 
-@app.route("/api/abschnitte_daten", methods=["GET"])
-def api_abschnitte_daten():
-    """Stellt Abschnitte und Bahnhofsnamen als JSON für das Frontend bereit."""
-
-
-    from sqlalchemy.orm import joinedload
-    from flask import jsonify
-
-    abschnitte = Abschnitt.query.options(
-        joinedload(Abschnitt.startBahnhof),
-        joinedload(Abschnitt.endBahnhof)
-    ).all()
-
-    abschnitt_data = []
-    bahnhoefe_map = {}
-
-    for a in abschnitte:
-
-        start_name = a.startBahnhof.name if a.startBahnhof else "Unbekannt"
-        end_name = a.endBahnhof.name if a.endBahnhof else "Unbekannt"
-
-        abschnitt_data.append({
-            "abschnittId": a.abschnittId,
-            "name": f"{start_name} → {end_name}",
-            "startBahnhofId": a.startBahnhofId,
-            "endBahnhofId": a.endBahnhofId
-        })
-
-        if a.startBahnhof:
-            bahnhoefe_map[a.startBahnhof.bahnhofId] = start_name
-        if a.endBahnhof:
-            bahnhoefe_map[a.endBahnhof.bahnhofId] = end_name
-
-    return jsonify({
-        'abschnitte': abschnitt_data,
-        'bahnhoefe': bahnhoefe_map
-    })
 
 
 @app.route("/strecke/add", methods=["GET", "POST"])
@@ -432,7 +394,7 @@ def delete_multiple_strecke():
 @login_required
 def warnung():
     #Alle Warnungen aus der DB laden
-    posts = Warnung.query.all()
+    posts = Warnung.query.order_by(Warnung.bezeichnung).all()
 
     return render_template(
         'warnung.html',
@@ -516,10 +478,55 @@ def delete_multiple_warnung():
 
     return redirect(url_for('warnung'))
 
+
+
 @app.route("/warnung/edit/<int:warnung_id>", methods=["GET", "POST"])
 @login_required
 def edit_warnung(warnung_id):
-    return render_template("abschnitt_edit.html")
+    warnung = db.session.get(Warnung, warnung_id) #lädt Warnung aus DB
+    if not warnung:
+        flash("Warnung nicht gefunden", "danger")
+        return redirect(url_for("warnung"))
+
+
+    form = WarnungForm(obj=warnung) #befüllt das Formular
+
+    abschnitte_alle = Abschnitt.query.join(Abschnitt.startBahnhof).order_by(Bahnhof.name).all() #lädt alle Abschnitte
+    abschnitt_choices = [(a.abschnittId, a.name) for a in abschnitte_alle]
+    form.abschnitt.choices = abschnitt_choices #an Formular übergeben
+
+    #wird aufgerufen wenn der User die Seite zum ersten Mal aufruft
+    if request.method == 'GET':
+        aktuelle_abschnitte_ids = [a.abschnittId for a in warnung.abschnitte] #erstellt Liste der verknüpften Abschnitte
+        form.abschnitt.data = aktuelle_abschnitte_ids
+
+    if form.validate_on_submit():
+
+        form.populate_obj(warnung)
+
+        warnung.abschnitte.clear() #löscht alle vorhandenen Verbindungen
+
+        #speichert die neuen Abschnitte
+        neue_abschnitt_ids = form.abschnitt.data
+
+        for abschnitt_id in neue_abschnitt_ids:
+            abschnitt_obj = db.session.get(Abschnitt, abschnitt_id)
+            if abschnitt_obj:
+                warnung.abschnitte.append(abschnitt_obj)
+
+        try:
+            db.session.commit()
+            flash(f"Warnung {warnung.bezeichnung} aktualisiert", "success")
+            return redirect(url_for("warnung"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Fehler beim Speichern der Warnung: {e}", "danger")
+
+
+    return render_template("warnung_edit.html", form=form, warnung=warnung)
+
+
+
 #############################################################
 #################    Bahnhof     ############################
 #############################################################
@@ -548,13 +555,13 @@ def bahnhof_add():
 @login_required
 def bahnhof():
     #Alle Bahnhöfe aus der DB laden
-    posts = Bahnhof.query.all()
+    posts = Bahnhof.query.order_by(Bahnhof.name).all()
 
     #Wenn es Bahnhöfe gibt, wird eine Karte erstellt
     if posts:
         for b in posts:
-            if not b.latitude or not b.longitude:
-                b.geocode_address()
+            if not b.latitude or not b.longitude: #falls es fehlt wird der Breiten -oder Längengrad noch bestimmt
+                b.geocode_address() #ruft Methode im models auf
         db.session.commit()
 
         #Mittelpunkt berechnen
@@ -589,7 +596,7 @@ def bahnhof():
 @app.route("/bahnhof/edit/<int:bahnhof_id>", methods=["GET", "POST"])
 @login_required
 def edit_bahnhof(bahnhof_id):
-    bahnhof = db.session.get(Bahnhof, bahnhof_id)
+    bahnhof = db.session.get(Bahnhof, bahnhof_id) #Bahnhofsdaten aus der DB laden
     if not bahnhof:
         flash("Bahnhof nicht gefunden.", "error")
         return redirect(url_for("bahnhof"))
@@ -797,16 +804,10 @@ def get_strecken_api():
 
 @app.route('/strecken/<int:streckeId>/abschnitte', methods=['GET'])
 def get_strecke_abschnitte_api(streckeId):
-    """
-    API-Endpunkt zum Abrufen aller Abschnitte einer bestimmten Strecke
-    inklusive technischer Daten und sequenzieller Reihenfolge.
-    """
-    # Lade die Strecke, lade die verknüpften Abschnitte und Bahnhöfe effizient
     strecke = db.session.scalar(
         sa.select(Strecke)
         .filter_by(streckenId=streckeId)
         .options(
-            # Eagerly load the sorted Reihenfolge objects
             so.joinedload(Strecke.reihenfolge)
             .joinedload(Reihenfolge.abschnitt)
             .joinedload(Abschnitt.startBahnhof),
@@ -817,7 +818,6 @@ def get_strecke_abschnitte_api(streckeId):
     )
 
     if strecke is None:
-        # 404 Not Found, wenn die Strecke nicht existiert
         abort(404)
 
     items = []
@@ -833,7 +833,7 @@ def get_strecke_abschnitte_api(streckeId):
 
         items.append({
             "abschnittId": abschnitt.abschnittId,
-            "reihenfolgeId": reihenfolge_obj.reihenfolge,  # Die Position in der Kette
+            "reihenfolgeId": reihenfolge_obj.reihenfolge,
             "startBahnhof": start_bhf_name,
             "endBahnhof": end_bhf_name,
             "spurweite": abschnitt.spurweite,
@@ -842,7 +842,6 @@ def get_strecke_abschnitte_api(streckeId):
         })
 
     total_count = len(items)
-    # Rückgabe der Daten im JSON-Format (HTTP 200)
     return jsonify({"total": total_count, "items": items}), 200
 
 
@@ -874,13 +873,76 @@ def get_warnung_api():
 
     return jsonify({"total": total_count, "items": items})
 
-#damit Javascript auf die Koordinaten der Bahnhöfe zugreifen kann; für das anzeigen der Abschnitte beim hinzufügen
+#damit Javascript auf die Koordinaten der Bahnhöfe zugreifen kann; für das Anzeigen der Abschnitte beim Hinzufügen
 @app.route('/api/bahnhof/<int:bahnhof_id>')
 def get_bahnhof_coords(bahnhof_id):
-    bahnhof = Bahnhof.query.get(bahnhof_id)
+    bahnhof = Bahnhof.query.get(bahnhof_id) #ruft die Daten für den bestimmten Bahnhof ab
 
+    #gibt Daten zurück
     return jsonify({
         'id': bahnhof.bahnhofId,
         'latitude': bahnhof.latitude,
         'longitude': bahnhof.longitude
+    })
+
+#damit Javascript auf die Koordinaten der Bahnhöfe eines bestimmten Abschnitts zugreifen kann;
+# für das Anzeigen der Abschnitte beim Hinzufügen (Warnung erstellen)
+@app.route('/api/abschnitt/<int:abschnitt_id>')
+def api_get_abschnitt_coords(abschnitt_id):
+    abschnitt = db.session.get(Abschnitt, abschnitt_id)
+
+
+    startbahnhof = abschnitt.startBahnhof
+    endbahnhof = abschnitt.endBahnhof
+
+    return jsonify({
+        'id': abschnitt.abschnittId,
+        'start': {
+            'lat': startbahnhof.latitude,
+            'lon': startbahnhof.longitude,
+            'name': startbahnhof.name
+        },
+        'end': {
+            'lat': endbahnhof.latitude,
+            'lon': endbahnhof.longitude,
+            'name': endbahnhof.name
+        }
+    })
+
+#liefert die benötigten Daten für Strecken_add
+#Alle Bahnhöfe und Abschnitte werden geliefert
+@app.route("/api/abschnitte_daten", methods=["GET"])
+def api_abschnitte_daten():
+
+    from sqlalchemy.orm import joinedload
+    from flask import jsonify
+
+    abschnitte = Abschnitt.query.options(
+        joinedload(Abschnitt.startBahnhof),
+        joinedload(Abschnitt.endBahnhof)
+    ).all()
+
+    abschnitt_data = []
+    bahnhoefe_map = {}
+
+    for a in abschnitte:
+
+        start_name = a.startBahnhof.name if a.startBahnhof else "Unbekannt"
+        end_name = a.endBahnhof.name if a.endBahnhof else "Unbekannt"
+
+        abschnitt_data.append({
+            "abschnittId": a.abschnittId,
+            "name": f"{start_name} → {end_name}",
+            "startBahnhofId": a.startBahnhofId,
+            "endBahnhofId": a.endBahnhofId
+        })
+
+        if a.startBahnhof:
+            bahnhoefe_map[a.startBahnhof.bahnhofId] = start_name
+        if a.endBahnhof:
+            bahnhoefe_map[a.endBahnhof.bahnhofId] = end_name
+
+    return jsonify({
+        'abschnitte': abschnitt_data,
+        'bahnhoefe': bahnhoefe_map
     })

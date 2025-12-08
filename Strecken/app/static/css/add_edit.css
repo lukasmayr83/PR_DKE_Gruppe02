@@ -1,0 +1,165 @@
+
+    body {
+        background-color: #f8f9fa;
+    }
+
+/* Container für die gesamte Seite (Formular + Karte) */
+.flex-container {
+    display: flex;
+    gap: 30px; /* Abstand zwischen Eingabe und Karte*/
+    max-width: 100%;
+    margin: 20px; /*Abstand zum Rand*/
+    align-items: stretch;
+    height: 75vh;
+}
+
+/* Formular-Bereich (Links) */
+.form-wrapper {
+    flex: 1;
+    max-width: 400px;
+    min-width: 300px; /* Formular ist min 300px groß und max 400px groß */
+    padding: 25px; /*Abstand Formular-Inhalt und Formularfeld*/
+    background-color: #ffffff; /*Hintergrundfarbe*/
+    border-radius: 10px; /*Ecken abrunden*/
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /*Schatten*/
+    overflow-y: auto;
+}
+
+/* Karten-Bereich (Rechts) */
+.map-wrapper {
+    flex: 2; /* Karte doppelt so groß wie Eingabefeld */
+    position: relative;
+    min-width: 400px; /*Mindestbreite*/
+    height: 75vh; /*Höhe der Karte*/
+    border-radius: 10px; /*Ecken abrunden*/
+    overflow: hidden; /*saubere Kanten*/
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /*Schatten*/
+}
+
+/* Inputfelder und Labels */
+
+/* Abstände der Formulargruppen <p>-Elemente */
+.form-wrapper p {
+    margin-bottom: 18px;
+}
+
+/* Beschriftung der Felder */
+.form-wrapper label {
+    display: block;
+    margin-bottom: 10px; /*Abstand zwischen Label und Eingabefeld*/
+    font-weight: 600; /*Schriftdicke*/
+    color: #343a40; /*Schriftfarbe*/
+    font-size: 20px; /*Schriftgröße*/
+}
+
+/* Alle Input-Textfelder */
+.form-wrapper input[type="password"],
+.form-wrapper input[type="text"],
+.form-wrapper input[type="number"],
+.form-wrapper select{
+    width: 100%; /*ganze Breite ausnutzen*/
+    padding: 10px 12px;
+    border: 1px solid #ced4da; /*Rahmen*/
+    border-radius: 6px; /*Ecken abrunden*/
+    box-sizing: border-box;
+    transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+    font-size: 16px; /*Schriftgröße*/
+}
+
+/* Readonly Felder mit anderer Farbe*/
+.form-wrapper input[readonly] {
+    background-color: #f8f9fa;
+    color: #6c757d; /*Textfarbe*/
+}
+
+/* Fokus-Effekt für Inputs wenn user klickt*/
+.form-wrapper input[type="password"]:focus:not([readonly]),
+.form-wrapper input[type="text"]:focus:not([readonly]),
+.form-wrapper input[type="number"]:focus:not([readonly]),
+.form-wrapper select:focus {
+    border-color: #007bff; /*Rahmenfarbe*/
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    outline: none;
+    background-color: #fff;
+}
+
+/* Fehlertexte */
+.form-wrapper span[style*="color:red"] {
+    font-size: 16px; /*Schriftgröße*/
+    margin-top: 15px;
+    display: block;
+}
+
+.form-wrapper br {
+    display: none;
+}
+
+/* Buttons */
+
+.btn {
+    padding: 10px 20px; /*Abstand noch oben/unten und links/rechts*/
+    font-size: 16px;  /*Schriftgröße*/
+    border-radius: 6px; /*Ecken abrunden*/
+    cursor: pointer; /*Hand-symbol*/
+}
+
+/* Abbrechen-Button anpassen */
+.btn-secondary {
+    background-color: #6c757d; /*Hintergrundfarbe*/
+    border-color: #6c757d; /*Rahmenfarbe*/
+    color: white !important; /*Schriftfarbe*/
+    transition: background-color 0.2s; /*Farbübergang*/
+}
+
+/*Abbrechen ändert farbe beim drüber fahren*/
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+
+/* Abstand der Überschrift von links definieren */
+h1 {
+    margin-left: 25px;
+}
+
+ /* Select2  */
+
+    /* äußerer Rahmen */
+    .select2-container .select2-selection--multiple {
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+        min-height: 45px !important;
+        padding: 5px !important;
+        background-color: #fff;
+    }
+
+    /* Elemente  */
+    .select2-container .select2-selection--multiple .select2-selection__rendered {
+        display: flex !important;
+        flex-wrap: wrap !important; /*ausgewählten Elemente in nächste Zeile*/
+        align-items: center !important;
+        align-content: flex-start !important; /*Tags alle oben bündig*/
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Fokus-Effekt für den Rahmen */
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25) !important;
+    }
+
+    /* Auswahloptionen */
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #e9ecef !important;
+        border: 1px solid #ced4da !important;
+        color: #333 !important;
+        border-radius: 4px !important;
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+        margin-right: 6px !important;
+        padding: 4px 8px !important;
+    }

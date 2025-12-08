@@ -161,7 +161,7 @@ class Abschnitt(db.Model):
     warnungen: so.Mapped[list["Warnung"]] = so.relationship(
         "Warnung",
         secondary=abschnitt_warnung_m2m,
-        back_populates="abschnitte"  # MUSS exakt so heißen wie die property in Warnung
+        back_populates="abschnitte"
     )
 
 
@@ -172,7 +172,7 @@ class Abschnitt(db.Model):
         ),
     )
 
-
+    #erstellt einen Namen aus Start- und Endbahnhof
     @property
     def name(self):
         return f"{self.startBahnhof.name} → {self.endBahnhof.name}"

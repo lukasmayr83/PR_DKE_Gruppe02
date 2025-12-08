@@ -1,35 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .table thead tr {
-        background-color: #f1f1f1;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
 
-<h2>Alle Warnungen</h2>
+<h1>Alle Warnungen</h1>
 
-<div style="display: flex; gap: 20px;">
+<div class="main-content-flex">
 
-    <div style="flex: 1; display: flex; flex-direction: column;">
+    <div class="table-container">
 
         <form method="POST" action="{{ url_for('delete_multiple_warnung') }}" id="warnung-form">
 
-            <div style="overflow-y: auto; max-height: 80vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
+            <div class="table-scroll-wrapper">
 
                 <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                    <colgroup>
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 30px;">
+                        {% endif %}
+                        <col style="width: 15%;">
+                        <col style="width: 30%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: auto;">
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 100px;">
+                        {% endif %}
+                    </colgroup>
                     <thead>
                         <tr>
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 21px;"></th>
                             {% endif %}
-                            <th style="min-width: 150px;">Bezeichnung</th>
-                            <th style="min-width: 250px;">Beschreibung</th>
-                            <th style="min-width: 120px;">Startzeit</th>
-                            <th style="min-width: 120px;">Endzeit</th>
+                            <th>Bezeichnung</th>
+                            <th>Beschreibung</th>
+                            <th>Startzeit</th>
+                            <th>Endzeit</th>
+                            <th>Abschnitte</th>
 
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 80px;">Aktion</th>
@@ -45,7 +52,14 @@
                             <td>{{ w.bezeichnung }}</td>
                             <td>{{ w.beschreibung }}</td>
                             <td>{{ w.startZeit }}</td>
-                            <td>{{ w.endZeit }}</td>
+                            <td>{{ '-' if w.endZeit is none else w.endZeit }}</td>
+                            <td>
+                                {% for abschnitt in w.abschnitte %}
+                                    {{ abschnitt.name }}
+
+                                    <br>
+                                {% endfor %}
+                            </td>
 
                             {% if role.value != 'mitarbeiter' %}
                             <td>

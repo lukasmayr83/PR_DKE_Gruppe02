@@ -1,0 +1,147 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.table {
+    /* Wichtig: Erzwingt, dass die Breiten der <colgroup> oder <th>-Selektoren angewendet werden */
+    table-layout: fixed;
+
+    /* Stellt sicher, dass die Tabelle die volle Breite des Scroll-Wrappers einnimmt */
+    width: 100%;
+
+    margin-bottom: 0 !important;
+}
+
+/* Farbe für Tabellen-Header */
+.table thead th {
+    background-color: #b8b4b4;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 0.9rem; /* Kleinere Schrift im Header */
+    padding: 8px 5px; /* Weniger Padding */
+}
+
+
+/* Farbe für ungerade Zeilen */
+.table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+/* Farbe für gerade Zeilen */
+.table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+/* Tabellenzellen - kompaktere Darstellung */
+.table tbody td {
+    font-size: 0.9rem; /* Kleinere Schrift */
+    padding: 6px 5px; /* Weniger Padding */
+
+}
+
+/* Haupt-Container: Tabelle links, Karte rechts */
+.main-content-flex {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 15px;
+    padding: 15px;
+    height: calc(100vh - 180px); /* Angepasst */
+    align-items: stretch;
+}
+
+/* Linke Spalte: Tabelle + Buttons */
+.table-container {
+    flex: 1.5;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Wichtig für Flex-Shrink */
+    height: 100%;
+}
+
+/* Tabellen-Scroll-Wrapper - SCROLLBAR */
+.table-scroll-wrapper {
+    flex: 1 1 auto; /* Kann wachsen und schrumpfen */
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    max-height: calc(100vh - 250px); /* Maximale Höhe */
+}
+
+/* Tabelle selbst */
+.table {
+    margin-bottom: 0 !important;
+    width: 100%;
+}
+
+
+
+/* Rechte Spalte: Karte */
+.map-container {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+    height: 62%;
+}
+
+/* Karte nimmt vollen Platz ein */
+.map-container iframe,
+.map-container > div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Alerts sichtbar machen */
+.alert {
+    display: block !important;
+    margin-bottom: 10px !important;
+    font-size: 0.9rem;
+}
+
+/* Buttons sichtbar machen */
+.btn {
+    display: inline-block !important;
+    visibility: visible !important;
+    font-size: 0.9rem;
+}
+
+/* Checkbox-Spalte schmaler */
+.table tbody td:first-child,
+.table thead th:first-child {
+    width: 30px;
+    text-align: center;
+    padding: 6px 2px;
+}
+
+/* Aktion-Spalte kompakter */
+.table tbody td:last-child,
+.table thead th:last-child {
+    text-align: center;
+    padding: 6px 5px;
+}
+
+.btn-sm {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+}
+
+
+.table-scroll-wrapper {
+    border-radius: 6px;
+}
+
+.btn-danger{
+    padding: 5px 10px; /*Abstand noch oben/unten und links/rechts*/
+    font-size: 12px;  /*Schriftgröße*/
+    border-radius: 6px; /*Ecken abrunden*/
+    cursor: pointer; /*Hand-symbol*/
+}
+
+/* Abstand der Überschrift von links definieren */
+h1 {
+    margin-left: 25px;
+    margin-bottom: 0px;
+}

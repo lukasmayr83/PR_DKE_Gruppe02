@@ -1,120 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    body {
-        background-color: #f8f9fa;
-    }
-    /*Layout*/
-
-/* Container für die gesamte Seite (Formular + Karte) */
-.flex-container {
-    display: flex;
-    gap: 30px; /* Abstand zwischen Eingabe und Karte*/
-    max-width: 100%;
-    margin: 20px; /*Abstand zum Rand*/
-    align-items: flex-start;
-}
-
-/* Formular-Bereich (Links) */
-.form-wrapper {
-    flex: 1;
-    max-width: 400px;
-    min-width: 300px; /* Formular ist min 300px groß und max 400px groß */
-    padding: 25px; /*Abstand Formular-Inhalt und Formularfeld*/
-    background-color: #ffffff; /*Hintergrundfarbe*/
-    border-radius: 10px; /*Ecken abrunden*/
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /*Schatten*/
-}
-
-/* Karten-Bereich (Rechts) */
-.map-wrapper {
-    flex: 2; /* Karte doppelt so groß wie Eingabefeld */
-    min-width: 400px; /*Mindestbreite*/
-    height: 75vh; /*Höhe der Karte*/
-    border-radius: 10px; /*Ecken abrunden*/
-    overflow: hidden; /*saubere Kanten*/
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /*Schatten*/
-}
-
-/* Inputfelder und Labels */
-
-/* Abstände der Formulargruppen <p>-Elemente */
-.form-wrapper p {
-    margin-bottom: 51.5px;
-}
-
-/* Beschriftung der Felder */
-.form-wrapper label {
-    display: block;
-    margin-bottom: 5px; /*Abstand zwischen Label und Eingabefeld*/
-    font-weight: 600; /*Schriftdicke*/
-    color: #343a40; /*Schriftfarbe*/
-    font-size: 20px; /*Schriftgröße*/
-}
-
-/* Alle Input-Textfelder */
-.form-wrapper input[type="text"] {
-    width: 100%; /*ganze Breite ausnutzen*/
-    padding: 10px 12px;
-    border: 1px solid #ced4da; /*Rahmen*/
-    border-radius: 6px; /*Ecken abrunden*/
-    box-sizing: border-box;
-    transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
-    font-size: 16px; /*Schriftgröße*/
-}
-
-/* Readonly Felder mit anderer Farbe*/
-.form-wrapper input[readonly] {
-    background-color: #f8f9fa;
-    color: #6c757d; /*Textfarbe*/
-}
-
-/* Fokus-Effekt für Inputs wenn user klickt*/
-.form-wrapper input[type="text"]:focus:not([readonly]) {
-    border-color: #007bff; /*Rahmenfarbe*/
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-    outline: none;
-    background-color: #fff;
-}
-
-/* Fehlertexte */
-.form-wrapper span[style*="color:red"] {
-    font-size: 16px; /*Schriftgröße*/
-    margin-top: 15px;
-    display: block;
-}
-
-
-/* Buttons */
-
-.btn {
-    padding: 10px 20px; /*Abstand noch oben/unten und links/rechts*/
-    font-size: 16px;  /*Schriftgröße*/
-    border-radius: 6px; /*Ecken abrunden*/
-    cursor: pointer; /*Hand-symbol*/
-}
-
-/* Abbrechen-Button anpassen */
-.btn-secondary {
-    background-color: #6c757d; /*Hintergrundfarbe*/
-    border-color: #6c757d; /*Rahmenfarbe*/
-    color: white !important; /*Schriftfarbe*/
-    transition: background-color 0.2s; /*Farbübergang*/
-}
-
-/*Abbrechen ändert farbe beim drüber fahren*/
-.btn-secondary:hover {
-    background-color: #5a6268;
-    border-color: #545b62;
-}
-
-
-/* Abstand der Überschrift von links definieren */
-h1 {
-    margin-left: 25px;
-}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 
 <h1>Bahnhof hinzufügen</h1>
 
@@ -175,7 +62,7 @@ h1 {
 
     //Wenn User Adresse eingibt/aktualisiert wird der Code ausgeführt
     document.getElementById("adresse").addEventListener("change", function () {
-        const adresse = this.value.trim();
+        const adresse = this.value.trim(); //trim entfernt Leerzeichen vorne und hinten
         const errorSpan = document.getElementById("adresse-error");
         errorSpan.style.display = "none";
         errorSpan.textContent = "";
@@ -183,11 +70,11 @@ h1 {
 
         //Sendet Anfrage an Nominatim von OpenStreetMap; übergibt Adresse
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
-            .then(response => response.json())
+            .then(response => response.json()) //wandelt es in Json um
             .then(data => {
                 //Wenn Adresse gefunden wurde
                 if (data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
+                    const lat = parseFloat(data[0].lat); //data[0] ist relevanteste Ergebnis
                     const lon = parseFloat(data[0].lon);
 
                     document.getElementById("latitude").value = lat;
@@ -201,7 +88,7 @@ h1 {
                         marker = L.marker([lat, lon], {draggable: true}).addTo(map);
                         marker.on('dragend', function() {
                             const pos = marker.getLatLng();
-                            document.getElementById("latitude").value = pos.lat;
+                            document.getElementById("latitude").value = pos.lat; //falls Maker verschoben wurde
                             document.getElementById("longitude").value = pos.lng;
                         });
                     }
@@ -209,7 +96,7 @@ h1 {
                 } else {
                     document.getElementById("latitude").value = "";
                     document.getElementById("longitude").value = "";
-                    //Nominatim konnte Adresse nicht finden
+                    //konnte Adresse nicht finden
                     errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
                     errorSpan.style.display = "inline";
                 }

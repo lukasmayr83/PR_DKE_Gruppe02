@@ -1,135 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+
+<!--Select2 is a jQuery based replacement for select boxes. It supports searching, remote data sets, and infinite scrolling of results.-->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Select2 Installieren -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-<style>
-
-    body { background-color: #f8f9fa; }
-
-    .flex-container {
-    display: flex;
-    /* "flex-start" ist der Standard-Befehl für Linksbündig in Flexbox */
-    justify-content: flex-start;
-
-    margin: 20px;
-
-    /* Optional: Damit das Padding nicht die Breite vergrößert */
-    box-sizing: border-box;
-    width: 100%;
-}
-
-    /* Formular-Bereich */
-    .form-wrapper {
-        width: 100%; max-width: 600px; min-width: 300px;
-        padding: 25px; background-color: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    /*Abstand links von der Überschrift*/
-    h1 {
-        margin-left: 25px;
-    }
-
-    /* Abstände der Formulargruppen */
-    .form-wrapper p {
-        margin-bottom: 25px;
-    }
-
-    /* Beschriftung der Felder*/
-    .form-wrapper label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 600;
-        color: #343a40;
-        font-size: 20px;
-    }
-    /*Textfelder, Datumsfelder und Textbereiche:   */
-    .form-wrapper input[type="text"],
-    .form-wrapper input[type="datetime-local"],
-    .form-wrapper textarea {
-        width: 100%; /*breite 100 Prozent */
-        padding: 10px 12px;
-        border: 1px solid #ced4da; border-radius: 6px; /*Ecken der Felder abrunden*/
-        box-sizing: border-box; /*damit Padding mit einberechnet wird bei der Breite*/
-        font-size: 16px;
-        font-family: inherit;
-    }
-
-    /*wird blau, wenn der user das Feld anklickt*/
-    .form-wrapper input:focus, .form-wrapper textarea:focus {
-        border-color: #007bff;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-    }
-
-    .form-wrapper textarea { min-height: 100px; resize: vertical; } /*Mindesthöhe für Textfeld*/
-
-    .text-danger { color: red; display: block; margin-top: 5px; }
-
-    /* BUTTONS */
-    .btn {
-        padding: 10px 20px; /*Abstand noch oben/unten und links/rechts*/
-        font-size: 16px;  /*Schriftgröße*/
-        border-radius: 6px; /*Ecken abrunden*/
-        cursor: pointer; /*Hand-symbol*/
-    }
-
-    /* Abbrechen-Button anpassen */
-    .btn-secondary {
-        background-color: #6c757d; /*Hintergrundfarbe*/
-        border-color: #6c757d; /*Rahmenfarbe*/
-        color: white !important; /*Schriftfarbe*/
-        transition: background-color 0.2s; /*Farbübergang*/
-    }
-
- /* Select2  */
-
-    /* äußerer Rahmen */
-    .select2-container .select2-selection--multiple {
-        border: 1px solid #ced4da !important;
-        border-radius: 6px !important;
-        min-height: 45px !important;
-        padding: 5px !important;
-        background-color: #fff;
-    }
-
-    /* Elemente  */
-    .select2-container .select2-selection--multiple .select2-selection__rendered {
-        display: flex !important;
-        flex-wrap: wrap !important; /*ausgewählten Elemente in nächste Zeile*/
-        align-items: center !important;
-        align-content: flex-start !important; /*Tags alle oben bündig*/
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-
-    /* Fokus-Effekt für den Rahmen */
-    .select2-container--default.select2-container--focus .select2-selection--multiple {
-        border-color: #007bff !important;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25) !important;
-    }
-
-    /* Auswahloptionen */
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: #e9ecef !important;
-        border: 1px solid #ced4da !important;
-        color: #333 !important;
-        border-radius: 4px !important;
-        margin-top: 2px !important;
-        margin-bottom: 2px !important;
-        margin-right: 6px !important;
-        padding: 4px 8px !important;
-    }
-
-
-
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 
 <h1>Warnung hinzufügen</h1>
 
@@ -157,7 +37,7 @@
 
             <p>
                 {{ form.startZeit.label }}<br>
-                {{ form.startZeit() }}
+                {{ form.startZeit(class="form-control", type="datetime-local") }}
                 {% for error in form.startZeit.errors %}
                 <span class="text-danger">[{{ error }}]</span>
                 {% endfor %}
@@ -165,9 +45,9 @@
 
             <p>
                 {{ form.endZeit.label }}<br>
-                {{ form.endZeit() }}
+                {{ form.endZeit(class="form-control", type="datetime-local") }}
                 {% for error in form.endZeit.errors %}
-                <span class="text-danger">[{{ error }}]</span>
+                    <span class="text-danger">[{{ error }}]</span>
                 {% endfor %}
             </p>
 
@@ -185,29 +65,122 @@
             </p>
         </form>
     </div>
-
+    <div class="map-wrapper">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
 </div>
 
 <script>
+    //wird erts nach laden des HTML ausgeführt
     $(document).ready(function() {
         var $select = $('#abschnitte_select');
 
         // Initialisierung
         $select.select2({
             placeholder: "Bitte Abschnitte wählen...",
-            allowClear: true,
+            allowClear: true, //erlaubt das Löschen
             width: '100%'
         });
 
-        // Sortierlogik: Zuletzt gewähltes ans Ende
-        $select.on("select2:select", function (evt) {
+        // Sortierlogik: Zuletzt gewähltes ans Ende des Dropdowns
+        $select.on("select2:select", function (evt) { //wird ausgelöst, wenn ein neues Element ausgewählt wird
             var element = evt.params.data.element;
-            var $element = $(element);
-
-            $element.detach();
-            $(this).append($element);
-            $(this).trigger("change");
+            var $element = $(element); //wandelt es in ein jQuery-Element um
+            $(this).append($element); //fügt das Element am Ende an
+            $(this).trigger("change"); //um Karte zu aktualisieren
         });
+    });
+</script>
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    //Karte erstellen
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    //LayerGroup für Linien und Marker
+    let segmentsLayer = L.layerGroup().addTo(map);
+
+    //wird aufgerufen wenn sich die Abschnitte ändern
+    function drawSelectedSegments() {
+        let selectedIds = $('#abschnitte_select').val(); //holt Werte aus Dropdown
+
+        //löscht alle alten Dinge
+        segmentsLayer.clearLayers();
+
+        if (!selectedIds || selectedIds.length === 0) { //keine IDs -> beenden
+            return;
+        }
+
+        //holt Koordinaten fürs Zeichnen aus der Datenbank
+        let fetchPromises = selectedIds.map(id => {
+            return fetch(`/api/abschnitt/${id}`).then(response => response.json());
+        });
+
+        //wartet bis alle Daten geladen wurden
+        Promise.all(fetchPromises)
+            .then(results => {
+                let bounds = L.latLngBounds(); //Repräsentiert ein Rechteck auf der Karte
+
+                //Iterieren über alle Abschnitte
+                results.forEach(data => {
+                    if (data.start && data.end) {
+
+                        //extrahiert die Koordinaten
+                        let startLatLng = [data.start.lat, data.start.lon];
+                        let endLatLng = [data.end.lat, data.end.lon];
+
+                        //Linie zeichnen
+                        let polyline = L.polyline([startLatLng, endLatLng], {
+                            color: 'blue',
+                            weight: 4, //Dicke der Linie
+                            opacity: 0.7 //Transparenz 0.0 ganz transparent
+                        }).addTo(segmentsLayer);
+
+                        //Popup für Abschnitt
+                        polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
+
+                        //Marker für Startbahnhof
+                        L.marker(startLatLng)
+                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                            .addTo(segmentsLayer);
+
+                        //Marker für Endbahnhof
+                        L.marker(endLatLng)
+                            .bindPopup(`<b>Ende:</b> ${data.end.name}`)
+                            .addTo(segmentsLayer);
+
+                        //Bounds erweitern -> alles anzeigt
+                        bounds.extend(startLatLng);
+                        bounds.extend(endLatLng);
+                    }
+                });
+
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, {padding: [50, 50]});
+                }
+            })
+            .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+    }
+
+
+    //stellt sicher, dass der Code erst nach Laden des HTMLs aufgerufen wird
+    $(document).ready(function() {
+        var $select = $('#abschnitte_select');
+
+        //änderen sich die ausgewählten Abschnitte
+        $select.on("change", function() {
+            drawSelectedSegments(); //ruft Methode zum Zeichnen auf
+        });
+
+        //einmal so ausgeführt
+        drawSelectedSegments();
+
     });
 </script>
 

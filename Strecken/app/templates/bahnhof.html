@@ -1,27 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    /* Styling für die sticky Kopfzeile, falls nicht durch Bootstrap abgedeckt */
-    .table thead tr {
-        background-color: #f1f1f1; /* Hintergrund für die Kopfzeile */
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
 
-<h2>Alle Bahnhöfe</h2>
+<h1>Alle Bahnhöfe</h1>
 
-<div style="display: flex; gap: 20px;">
+<div class="main-content-flex">
 
-    <div style="min-width: 0; display: flex; flex-direction: column;">
+    <div class="table-container">
 
         <form method="POST" action="{{ url_for('delete_multiple_bahnhof') }}" id="bahnhof-form">
 
-            <div style="overflow-y: auto; max-height: 60vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
+            <div class="table-scroll-wrapper">
 
                 <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                    <colgroup>
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 30px;">
+                        {% endif %}
+                        <col style="width: 30%;">
+                        <col style="width: auto;">
+                        {% if role.value != 'mitarbeiter' %}
+                        <col style="width: 100px;">
+                        {% endif %}
+                    </colgroup>
+
+
                     <thead>
                         <tr>
                             {% if role.value != 'mitarbeiter' %}
@@ -29,8 +33,8 @@
                             {% endif %}
                             <th style="min-width: 150px;">Name</th>
                             <th style="min-width: 200px;">Adresse</th>
-                            <th style="min-width: 100px;">Breitengrad</th>
-                            <th style="min-width: 100px;">Längengrad</th>
+                            <!--<th style="min-width: 100px;">Breitengrad</th>
+                            <th style="min-width: 100px;">Längengrad</th> -->
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 80px;">Aktion</th>
                             {% endif %}
@@ -44,8 +48,8 @@
                             {% endif %}
                             <td>{{ b.name }}</td>
                             <td>{{ b.adresse }}</td>
-                            <td>{{ b.latitude or '-' }}</td>
-                            <td>{{ b.longitude or '-' }}</td>
+                            <!--<td>{{ b.latitude or '-' }}</td>
+                            <td>{{ b.longitude or '-' }}</td> -->
                             {% if role.value != 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('edit_bahnhof', bahnhof_id=b.bahnhofId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
@@ -83,7 +87,7 @@
             </div>
 
         </form>
-    </div> <div style="flex: 1; min-width: 400px; height: 80vh;">
+    </div> <div class="map-container">
         {% if map_html %}
             {{ map_html|safe }}
         {% else %}

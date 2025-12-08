@@ -5,33 +5,41 @@
     .segment-chain { max-width: 600px; }
     .segment-field { margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; }
     select { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db; }
-    .btn-danger { background-color: #dc3545; color: white; border-radius: 0.25rem; padding: 0.25rem 0.5rem; }
-    .btn-danger:hover { background-color: #c82333; }
+
 </style>
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 <h2>Strecke hinzufügen</h2>
-<div style="display: flex; gap: 20px;">
+<div class="flex-container">
 
-    <div style="flex: 1; max-width: 500px;">
+    <div class="form-wrapper">
         <form id="strecken-form" method="POST" action="{{ url_for('strecke_add') }}">
 
             {{ form.hidden_tag() }}
 
-            <p>{{ form.name.label }}<br>{{ form.name(class="form-control", id="name_input") }}</p>
+            <p>
+                {{ form.name.label }}<br>
+                {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), id="name_input") }}
+
+                {% for error in form.name.errors %}
+                    <div class="invalid-feedback" style="display: block;">
+                        {{ error }}
+                    </div>
+                {% endfor %}
+            </p>
 
             <p>
-                <label for="startBahnhof">Startbahnhof der Strecke:</label><br>
+                <label for="startBahnhof">Startbahnhof der Strecke</label><br>
 
                 <input type="text" id="startBahnhof" name="startBahnhof_display" class="form-control bg-light" readonly>
             </p>
 
             <p>
-                <label for="endBahnhof">Endbahnhof der Strecke:</label><br>
+                <label for="endBahnhof">Endbahnhof der Strecke</label><br>
 
                 <input type="text" id="endBahnhof" name="endBahnhof_display" class="form-control bg-light" readonly>
             </p>
 
-            <h3 class="mt-4 mb-2">Abschnitts-Kette definieren:</h3>
+            <h3 class="mt-4 mb-2">Abschnitts-Kette definieren</h3>
 
 
             <div id="segment-chain" class="segment-chain">
@@ -41,37 +49,35 @@
 
             <input type="hidden" id="abschnitt_ids_hidden" name="abschnitt_ids" value="">
 
-
-            <p id="error-message" class="text-danger mt-2 hidden">Bitte wählen Sie mindestens einen Abschnitt aus.</p>
-
             <p>
-                <button type="submit" id="submit-button" class="btn btn-primary" disabled>
-                    {{ form.submit.label.text }}
-                </button>
+               {{ form.submit(class="btn btn-primary", id="submit-button") }}
                 <a href="{{ url_for('warnung') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
         </form>
+    </div>
+    <div class="map-wrapper">
+        <div id="map" style="width:100%; height:100%;"></div>
     </div>
 </div>
 
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-
 <script>
-    let allAbschnitte = [];
-    let allBahnhoefe = {};
-    let selectedChain = [];
+    let allAbschnitte = []; //speichert alle Abschnitte
+    let allBahnhoefe = {}; //ordnet BahnhofIds die Namen zu
+    let selectedChain = []; //speichert vom Benutzer ausgewählte Abschnitte
 
-
+    //lädt Daten vom Server per AJAX und initialisiert erste Auswahlfeld
     function loadInitialData() {
-        const apiUrl = "{{ api_url }}";
+        const apiUrl = "{{ api_url }}"; //ruft API api_abschnitte_daten auf
 
+        //sendet Anfrage im Hintergrund ohne die Seite neu zu laden
         $.ajax({
             url: apiUrl,
             method: 'GET',
             dataType: 'json',
-            success: function(data) {
+            success: function(data) { //falls alles geklappt hat
                 $('#loading-message').remove();
 
                 if (data.abschnitte && data.bahnhoefe) {
@@ -87,7 +93,7 @@
                     $('#segment-chain').html('<p class="text-danger">Fehler: Unerwartetes Datenformat vom Server.</p>');
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
+            error: function(jqXHR, textStatus, errorThrown) { //falls Fehler auftritt
                 $('#loading-message').remove();
                 $('#segment-chain').html('<p class="text-danger">Fehler beim Laden der Abschnitte: ' + textStatus + '</p>');
                 console.error("AJAX Error:", errorThrown);
@@ -95,7 +101,7 @@
         });
     }
 
-
+    //fügt ein neues Dropdown-Menü hinzu und zeigt nur verfügbare Abschnitte
     function addNextSegmentField(currentIndex) {
 
         const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
@@ -112,16 +118,16 @@
         });
 
 
+        // GEÄNDERT: Einfach return, keine Button-Manipulation
         if (filteredAbschnitte.length === 0 && currentIndex > 0) {
-             $('#submit-button').prop('disabled', selectedChain.length === 0 || $('#name_input').val().trim().length === 0);
-             return;
+            return;
         }
 
 
         const fieldHtml = `
             <div class="segment-field flex items-center space-x-2 bg-gray-50" data-index="${currentIndex}">
-                <span style="min-width: 90px;" class="font-medium text-gray-600">${currentIndex === 0 ? 'Start' : 'Weiterer'} Segment:</span>
-                <select class="segment-select" data-index="${currentIndex}" required>
+                <span style="min-width: 90px;" class="font-medium text-gray-600">${currentIndex === 0 ? 'Start' : 'Weiterer'} Abschnitt:</span>
+                <select class="segment-select" data-index="${currentIndex}">
                     <option value="">-- Abschnitt auswählen --</option>
                     ${filteredAbschnitte.map(a => `<option value="${a.abschnittId}">${a.name}</option>`).join('')}
                 </select>
@@ -130,10 +136,10 @@
         `;
 
         $('#segment-chain').append(fieldHtml);
-        $('#submit-button').prop('disabled', true);
-    }
 
+}
 
+    //ändern eines Feldes -> entfernt alle nachfolgenden und erstellt das nächste Auswahlfeld
     $('#segment-chain').on('change', '.segment-select', function() {
         const index = parseInt($(this).data('index'));
         const selectedId = parseInt($(this).val());
@@ -155,7 +161,7 @@
         updateDisplayAndButton();
     });
 
-
+    //löscht den Abschnitt und alle nachfolgenden Abschnitte
     $('#segment-chain').on('click', '.remove-segment', function() {
         const fieldToRemove = $(this).closest('.segment-field');
         const indexToRemove = parseInt(fieldToRemove.data('index'));
@@ -173,40 +179,179 @@
     });
 
     function updateDisplayAndButton() {
-        const ids = selectedChain.map(a => a.abschnittId);
+    const ids = selectedChain.map(a => a.abschnittId);
 
-        $('#abschnitt_ids_hidden').val(ids.join(','));
+    // Hidden Field füllen
+    $('#abschnitt_ids_hidden').val(ids.join(','));
 
+    // Start- und Endbahnhof Texte aktualisieren
+    if (selectedChain.length > 0) {
+        const startBhfId = selectedChain[0].startBahnhofId;
+        const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
 
-        if (selectedChain.length > 0) {
-            const startBhfId = selectedChain[0].startBahnhofId;
-            const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
-
-            $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
-            $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
-        } else {
-            $('#startBahnhof').val('');
-            $('#endBahnhof').val('');
-        }
-
-
-        const isNameValid = $('#name_input').val().trim().length > 0;
-        const isChainValid = ids.length > 0;
-        const enableSubmit = isChainValid && isNameValid;
-
-        $('#submit-button').prop('disabled', !enableSubmit);
-
-        if (enableSubmit) {
-            $('#error-message').hide();
-        } else if (!isChainValid) {
-             $('#error-message').show();
-        }
+        $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+        $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
+    } else {
+        $('#startBahnhof').val('');
+        $('#endBahnhof').val('');
     }
+
+
+    // Karte aktualisieren
+    drawSelectedSegments();
+}
 
 
     $('#name_input').on('input', updateDisplayAndButton);
 
 
-    $(document).ready(loadInitialData);
+    $(document).ready(function() {
+    loadInitialData();
+
+
+    $('#strecken-form').on('submit', function(event) {
+        let isValid = true;
+
+
+        $('.validation-error').remove();
+        $('.form-control').removeClass('is-invalid');
+
+
+        const nameInput = $('#name_input');
+        if (nameInput.val().trim() === '') {
+            isValid = false;
+            nameInput.addClass('is-invalid');
+            nameInput.after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte geben Sie einen Namen für die Strecke ein.</div>');
+        }
+
+
+        if (selectedChain.length === 0) {
+            isValid = false;
+
+            $('#segment-chain').after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte wählen Sie mindestens einen Streckenabschnitt aus.</div>');
+        }
+
+
+        if (!isValid) {
+            event.preventDefault();
+            $('html, body').animate({
+                scrollTop: $(".validation-error").first().offset().top - 100
+            }, 500);
+        }
+    });
+});
+</script>
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    //Karte erstellen
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    //LayerGroup für Linien und Marker
+    let segmentsLayer = L.layerGroup().addTo(map);
+
+    //wird aufgerufen wenn sich die Abschnitte ändern
+function drawSelectedSegments() {
+    // Verwende selectedChain statt Dropdown-Werte
+    let selectedIds = selectedChain.map(s => s.abschnittId);
+
+    //löscht alle alten Dinge
+    segmentsLayer.clearLayers();
+
+    if (!selectedIds || selectedIds.length === 0) { //keine IDs -> beenden
+        return;
+    }
+
+    //holt Koordinaten fürs Zeichnen aus der Datenbank
+    let fetchPromises = selectedIds.map(id => {
+        return fetch(`/api/abschnitt/${id}`).then(response => response.json());
+    });
+
+    //wartet bis alle Daten geladen wurden
+    Promise.all(fetchPromises)
+        .then(results => {
+            let bounds = L.latLngBounds(); //Repräsentiert ein Rechteck auf der Karte
+
+            //Iterieren über alle Abschnitte
+            results.forEach(data => {
+                if (data.start && data.end) {
+
+                    //extrahiert die Koordinaten
+                    let startLatLng = [data.start.lat, data.start.lon];
+                    let endLatLng = [data.end.lat, data.end.lon];
+
+                    //Linie zeichnen
+                    let polyline = L.polyline([startLatLng, endLatLng], {
+                        color: 'blue',
+                        weight: 4, //Dicke der Linie
+                        opacity: 0.7 //Transparenz 0.0 ganz transparent
+                    }).addTo(segmentsLayer);
+
+                    //Popup für Abschnitt
+                    polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
+
+                    //Marker für Startbahnhof
+                    L.marker(startLatLng)
+                        .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                        .addTo(segmentsLayer);
+
+                    //Marker für Endbahnhof
+                    L.marker(endLatLng)
+                        .bindPopup(`<b>Ende:</b> ${data.end.name}`)
+                        .addTo(segmentsLayer);
+
+                    //Bounds erweitern -> alles anzeigt
+                    bounds.extend(startLatLng);
+                    bounds.extend(endLatLng);
+                }
+            });
+
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, {padding: [50, 50]});
+            }
+        })
+        .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+}
+
+
+function updateDisplayAndButton() {
+    const ids = selectedChain.map(a => a.abschnittId);
+
+    $('#abschnitt_ids_hidden').val(ids.join(','));
+
+    if (selectedChain.length > 0) {
+        const startBhfId = selectedChain[0].startBahnhofId;
+        const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
+
+        $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+        $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
+    } else {
+        $('#startBahnhof').val('');
+        $('#endBahnhof').val('');
+    }
+
+    const isNameValid = $('#name_input').val().trim().length > 0;
+    const isChainValid = ids.length > 0;
+    const enableSubmit = isChainValid && isNameValid;
+
+    $('#submit-button').prop('disabled', !enableSubmit);
+
+    if (enableSubmit) {
+        $('#error-message').hide();
+    } else if (!isChainValid) {
+         $('#error-message').show();
+    }
+    drawSelectedSegments();
+}
+
+
+
+
 </script>
 {% endblock %}
