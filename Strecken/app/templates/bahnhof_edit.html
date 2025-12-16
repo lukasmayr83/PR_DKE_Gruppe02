@@ -50,64 +50,70 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-let map = L.map('map').setView([47.5162, 14.5501], 7); // Österreich zentriert
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+    //Map zeichnen
+    let map = L.map('map').setView([47.5162, 14.5501], 7); // Österreich zentriert
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-let marker = null;
+    //deklariert Variablen
+    let marker = null;
+    let latField = document.getElementById("latitude");
+    let lonField = document.getElementById("longitude");
 
 
-let latField = document.getElementById("latitude");
-let lonField = document.getElementById("longitude");
-if (latField.value && lonField.value) {
-    marker = L.marker([parseFloat(latField.value), parseFloat(lonField.value)], {draggable: true}).addTo(map);
-    marker.on('dragend', function() {
-        const pos = marker.getLatLng();
-        latField.value = pos.lat;
-        lonField.value = pos.lng;
-    });
-    map.setView([parseFloat(latField.value), parseFloat(lonField.value)], 15);
-}
+    if (latField.value && lonField.value) {
+        //marker erstellen
+        marker = L.marker([parseFloat(latField.value), parseFloat(lonField.value)], {draggable: true}).addTo(map);
+        //Listener für das verscheiben des Markers
+        marker.on('dragend', function() {
+            const pos = marker.getLatLng();
+            latField.value = pos.lat;
+            lonField.value = pos.lng;
+        });
+        //Karte zentrieren auf Marker und zoomen
+        map.setView([parseFloat(latField.value), parseFloat(lonField.value)], 15);
+    }
 
-document.getElementById("adresse").addEventListener("change", function () {
-    const adresse = this.value.trim();
-    const errorSpan = document.getElementById("adresse-error");
-    errorSpan.style.display = "none";
-    errorSpan.textContent = "";
+    document.getElementById("adresse").addEventListener("change", function () {
+        const adresse = this.value.trim(); //Leerzeichen entfernen
+        const errorSpan = document.getElementById("adresse-error");
+        errorSpan.style.display = "none";
+        errorSpan.textContent = "";
 
-    if (adresse.length < 3) return;
+        if (adresse.length < 3) return;
 
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
+        //Adresse umwandeln in Koordinaten (gleich wie bei add)
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
 
-                latField.value = lat;
-                lonField.value = lon;
+                    latField.value = lat;
+                    lonField.value = lon;
 
-                if (marker) {
-                    marker.setLatLng([lat, lon]);
+                    if (marker) {
+                        marker.setLatLng([lat, lon]);
+                    } else {
+                        marker = L.marker([lat, lon], {draggable: true}).addTo(map);
+                        marker.on('dragend', function() {
+                            const pos = marker.getLatLng();
+                            latField.value = pos.lat;
+                            lonField.value = pos.lng;
+                        });
+                    }
+
+                    map.setView([lat, lon], 15);
                 } else {
-                    marker = L.marker([lat, lon], {draggable: true}).addTo(map);
-                    marker.on('dragend', function() {
-                        const pos = marker.getLatLng();
-                        latField.value = pos.lat;
-                        lonField.value = pos.lng;
-                    });
+                    latField.value = "";
+                    lonField.value = "";
+                    errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
+                    errorSpan.style.display = "inline";
                 }
-
-                map.setView([lat, lon], 15);
-            } else {
-                latField.value = "";
-                lonField.value = "";
-                errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
-                errorSpan.style.display = "inline";
-            }
-        })
-        .catch(err => console.error("Geocoding Fehler:", err));
-});
+            })
+            .catch(err => console.error("Geocoding Fehler:", err));
+    });
 </script>
 {% endblock %}

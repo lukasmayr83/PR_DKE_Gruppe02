@@ -6,7 +6,7 @@
 
 <div class="flex-container">
 
-    <!-- Links Tabelle-->
+    <!-- Links Formular-->
     <div class="form-wrapper">
         <form method="POST">
             {{ form.hidden_tag() }}
@@ -26,7 +26,16 @@
             </p>
             <p>{{ form.max_geschwindigkeit.label }}<br>{{form.max_geschwindigkeit() }}</p>
             <p>{{ form.spurweite.label }}<br>{{ form.spurweite() }}</p>
-            <p>{{ form.nutzungsentgelt.label }}<br>{{ form.nutzungsentgelt() }}</p>
+            <p>{{ form.laenge.label }}<br>{{ form.laenge() }}
+                {% for error in form.laenge.errors %}
+                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
+            </p>
+            <p>{{ form.nutzungsentgelt.label }}<br>{{ form.nutzungsentgelt() }}
+                {% for error in form.nutzungsentgelt.errors %}
+                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% endfor %}
+            </p>
 
             <p>{{ form.submit(class="btn btn-primary") }}
                 <a href="{{ url_for('abschnitt') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
@@ -85,8 +94,8 @@ function fetchStationCoords(id, type) {
                 const lon = data.longitude;
 
                 if (type === 'start') {
-                    if (startMarker) startMarker.setLatLng([lat, lon]);
-                    else startMarker = L.marker([lat, lon], {title: "Startbahnhof"}).addTo(map);
+                    if (startMarker) startMarker.setLatLng([lat, lon]); //Marker gbt es bereits verschieben!
+                    else startMarker = L.marker([lat, lon], {title: "Startbahnhof"}).addTo(map); //Marker erstellen
                 } else {
                     if (endMarker) endMarker.setLatLng([lat, lon]);
                     else endMarker = L.marker([lat, lon], {title: "EndBahnhof"}).addTo(map);
@@ -94,6 +103,7 @@ function fetchStationCoords(id, type) {
 
                 updateRoute(); //ruft Methode von oben auf
 
+                //falls es nur einen Marker gibt wird auf diesen hereingezoomt (13)
                 if (!startMarker || !endMarker) {
                     map.setView([lat, lon], 13);
                 }

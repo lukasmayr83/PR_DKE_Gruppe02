@@ -92,7 +92,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-
+    //Karte zeichnen
     let map = L.map('map').setView([47.5162, 14.5501], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -101,47 +101,59 @@
 
     let segmentsLayer = L.layerGroup().addTo(map);
 
+    //wird aufgerufen wenn sich die Abschnitte ändern
     function drawSelectedSegments() {
-        let selectedIds = $('#abschnitte_select').val();
+        let selectedIds = $('#abschnitte_select').val(); //holt Werte aus Dropdown
 
+        //löscht alle alten Dinge
         segmentsLayer.clearLayers();
 
-        if (!selectedIds || selectedIds.length === 0) {
+        if (!selectedIds || selectedIds.length === 0) { //keine IDs -> beenden
             return;
         }
 
+        //holt Koordinaten fürs Zeichnen aus der Datenbank
         let fetchPromises = selectedIds.map(id => {
             return fetch(`/api/abschnitt/${id}`).then(response => response.json());
         });
 
+        //wartet bis alle Daten geladen wurden
         Promise.all(fetchPromises)
             .then(results => {
-                let bounds = L.latLngBounds();
+                let bounds = L.latLngBounds(); //Repräsentiert ein Rechteck auf der Karte
 
+                //Iterieren über alle Abschnitte
                 results.forEach(data => {
                     if (data.start && data.end) {
+
+                        //extrahiert die Koordinaten
                         let startLatLng = [data.start.lat, data.start.lon];
                         let endLatLng = [data.end.lat, data.end.lon];
 
+                        //Linie zeichnen
                         let polyline = L.polyline([startLatLng, endLatLng], {
                             color: 'blue',
-                            weight: 4,
-                            opacity: 0.7
-                        }).addTo(segmentsLayer);
+                            weight: 4, //Dicke der Linie
+                            opacity: 0.7 //Transparenz 0.0 ganz transparent
+                        }).bindTooltip(`<b>Abschnitt:</b> ${data.start.name} -> ${data.end.name}`)
+                            .addTo(segmentsLayer);
 
-
+                        //Popup für Abschnitt
                         polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
 
-
-                        L.marker(startLatLng)
+                        //Marker für Startbahnhof
+                        L.marker(startLatLng, {
+                            title: `Startbahnhof: ${data.start.name}`})
                             .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
                             .addTo(segmentsLayer);
 
-
-                        L.marker(endLatLng)
-                            .bindPopup(`<b>Endbahnhof:</b> ${data.end.name}`)
+                        //Marker für Endbahnhof
+                        L.marker(endLatLng, {
+                            title: `Endbahnhof: ${data.end.name}` })
+                            .bindPopup(`<b>Ende:</b> ${data.end.name}`)
                             .addTo(segmentsLayer);
 
+                        //Bounds erweitern -> alles anzeigt
                         bounds.extend(startLatLng);
                         bounds.extend(endLatLng);
                     }
@@ -154,16 +166,15 @@
             .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
     }
 
+
     $(document).ready(function() {
         var $select = $('#abschnitte_select');
 
         $select.on("change", function() {
             drawSelectedSegments();
         });
-
         drawSelectedSegments();
 
-        setTimeout(() => { map.invalidateSize(); }, 200);
     });
 </script>
 

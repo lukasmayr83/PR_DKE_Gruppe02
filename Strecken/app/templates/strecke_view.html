@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .segment-chain { max-width: 600px; }
+    .segment-field { margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; }
+    input[readonly], select[disabled] { background-color: #e9ecef; cursor: not-allowed; }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+<h2>Strecke Details</h2>
+<div class="flex-container">
+
+    <div class="form-wrapper">
+        <form id="strecken-form">
+
+            <p>
+                <label>Streckenname</label><br>
+                <input type="text" class="form-control" value="{{ strecke.name }}" readonly>
+            </p>
+
+            <p>
+                <label for="startBahnhof">Startbahnhof der Strecke</label><br>
+                <input type="text" id="startBahnhof" class="form-control bg-light" readonly>
+            </p>
+
+            <p>
+                <label for="endBahnhof">Endbahnhof der Strecke</label><br>
+                <input type="text" id="endBahnhof" class="form-control bg-light" readonly>
+            </p>
+
+            <h3 class="mt-4 mb-2">Abschnitte der Strecke</h3>
+
+            <div id="segment-chain" class="segment-chain">
+                <p class="text-gray-500" id="loading-message">Lade Abschnittsdaten...</p>
+            </div>
+
+            <p>
+                <a href="{{ url_for('strecke') }}" class="btn btn-secondary">Zurück</a>
+            </p>
+        </form>
+    </div>
+    <div class="map-wrapper">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    let allAbschnitte = [];
+    let allBahnhoefe = {};
+    let selectedChain = [];
+
+    // Vorhandene Abschnitte der Strecke aus dem Backend laden
+    let existingAbschnitte = {%if existing_abschnitte %}{{ existing_abschnitte | tojson | safe }}{% else %}[]{% endif %};
+    console.log("Existing Abschnitte:", existingAbschnitte);
+    
+    function loadInitialData() {
+        const apiUrl = "{{ api_url }}";
+
+        $.ajax({
+            url: apiUrl,
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                $('#loading-message').remove();
+
+                if (data.abschnitte && data.bahnhoefe) {
+                    allAbschnitte = data.abschnitte;
+                    allBahnhoefe = data.bahnhoefe;
+
+                    if (allAbschnitte.length > 0) {
+                        if (existingAbschnitte && existingAbschnitte.length > 0) {
+                            loadExistingChain();
+                        } else {
+                            $('#segment-chain').html('<p class="text-muted">Keine Abschnitte zugeordnet.</p>');
+                        }
+                    } else {
+                        $('#segment-chain').html('<p class="text-warning">Keine Abschnitte in der Datenbank gefunden.</p>');
+                    }
+                } else {
+                    $('#segment-chain').html('<p class="text-danger">Fehler: Unerwartetes Datenformat vom Server.</p>');
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                $('#loading-message').remove();
+                $('#segment-chain').html('<p class="text-danger">Fehler beim Laden der Abschnitte: ' + textStatus + '</p>');
+                console.error("AJAX Error:", errorThrown);
+            }
+        });
+    }
+
+    // Lädt vorhandene Abschnitte (read-only)
+    function loadExistingChain() {
+        existingAbschnitte.forEach((abschnittId, index) => {
+            const abschnitt = allAbschnitte.find(a => a.abschnittId === abschnittId);
+            if (abschnitt) {
+                selectedChain.push(abschnitt);
+                addReadOnlySegmentField(index, abschnitt);
+            }
+        });
+
+        updateDisplay();
+    }
+
+    // Read-Only Anzeige der Abschnitte
+    function addReadOnlySegmentField(index, abschnitt) {
+        const fieldHtml = `
+            <div class="segment-field" data-index="${index}">
+                <span style="min-width: 90px; font-weight: 500;">Abschnitt ${index + 1}:</span>
+                <input type="text" class="form-control" value="${abschnitt.name}" readonly style="display: inline-block; width: calc(100% - 100px);">
+            </div>
+        `;
+        $('#segment-chain').append(fieldHtml);
+    }
+
+    function updateDisplay() {
+        if (selectedChain.length > 0) {
+            const startBhfId = selectedChain[0].startBahnhofId;
+            const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
+
+            $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+            $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
+        }
+
+        drawSelectedSegments();
+    }
+
+    $(document).ready(function() {
+        loadInitialData();
+    });
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let segmentsLayer = L.layerGroup().addTo(map);
+
+    function drawSelectedSegments() {
+        let selectedIds = selectedChain.map(s => s.abschnittId);
+        segmentsLayer.clearLayers();
+
+        if (!selectedIds || selectedIds.length === 0) {
+            return;
+        }
+
+        let fetchPromises = selectedIds.map(id => {
+            return fetch(`/api/abschnitt/${id}`).then(response => response.json());
+        });
+
+        Promise.all(fetchPromises)
+            .then(results => {
+                let bounds = L.latLngBounds();
+
+                results.forEach(data => {
+                    if (data.start && data.end) {
+                        let startLatLng = [data.start.lat, data.start.lon];
+                        let endLatLng = [data.end.lat, data.end.lon];
+
+                        let polyline = L.polyline([startLatLng, endLatLng], {
+                            color: 'blue',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(segmentsLayer);
+
+                        polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
+
+                        L.marker(startLatLng)
+                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                            .addTo(segmentsLayer);
+
+                        L.marker(endLatLng)
+                            .bindPopup(`<b>Ende:</b> ${data.end.name}`)
+                            .addTo(segmentsLayer);
+
+                        bounds.extend(startLatLng);
+                        bounds.extend(endLatLng);
+                    }
+                });
+
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, {padding: [50, 50]});
+                }
+            })
+            .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+    }
+</script>
+{% endblock %}

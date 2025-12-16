@@ -135,6 +135,7 @@ class Abschnitt(db.Model):
     spurweite: so.Mapped[float] = so.mapped_column()
     nutzungsentgelt: so.Mapped[float] = so.mapped_column()
     max_geschwindigkeit: so.Mapped[int] = so.mapped_column()
+    laenge: so.Mapped[float] = so.mapped_column()
 
     startBahnhofId: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey('bahnhof.bahnhofId'),
@@ -163,7 +164,6 @@ class Abschnitt(db.Model):
         secondary=abschnitt_warnung_m2m,
         back_populates="abschnitte"
     )
-
 
     __table_args__ = (
         db.CheckConstraint(

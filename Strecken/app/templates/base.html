@@ -2,11 +2,13 @@
 <html>
 <head>
     {% if title %}
-        <title>{{ title }} - Strecken</title>
+        <title>{{ title }}</title>
     {% else %}
-        <title>Welcome to Strecken</title>
+        <title>Streckensystem</title>
     {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/rail.png') }}">
+
 </head>
 <body>
     <div class="header">

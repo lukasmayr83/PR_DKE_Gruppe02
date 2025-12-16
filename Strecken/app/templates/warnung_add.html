@@ -71,7 +71,7 @@
 </div>
 
 <script>
-    //wird erts nach laden des HTML ausgeführt
+    //wird erst nach laden des HTML ausgeführt
     $(document).ready(function() {
         var $select = $('#abschnitte_select');
 
@@ -140,18 +140,21 @@
                             color: 'blue',
                             weight: 4, //Dicke der Linie
                             opacity: 0.7 //Transparenz 0.0 ganz transparent
-                        }).addTo(segmentsLayer);
+                        }).bindTooltip(`<b>Abschnitt:</b> ${data.start.name} -> ${data.end.name}`)
+                            .addTo(segmentsLayer);
 
                         //Popup für Abschnitt
                         polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
 
                         //Marker für Startbahnhof
-                        L.marker(startLatLng)
+                        L.marker(startLatLng, {
+                            title: `Startbahnhof: ${data.start.name}`})
                             .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
                             .addTo(segmentsLayer);
 
                         //Marker für Endbahnhof
-                        L.marker(endLatLng)
+                        L.marker(endLatLng, {
+                            title: `Endbahnhof: ${data.end.name}` })
                             .bindPopup(`<b>Ende:</b> ${data.end.name}`)
                             .addTo(segmentsLayer);
 

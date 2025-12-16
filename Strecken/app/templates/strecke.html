@@ -1,32 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview2.css') }}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 <h1>Alle Strecken</h1>
 
-<div style="display: flex; gap: 20px;">
+<div class="main-content-flex">
 
-    <div style="flex: 1; display: flex; flex-direction: column;">
+    <div class="table-container">
 
         <form method="POST" action="{{ url_for('delete_multiple_strecke') }}" id="strecken-form">
 
-            <div style="overflow-y: auto; max-height: 80vh; border: 1px solid #ccc; border-radius: 5px; flex-shrink: 0;">
+            <div class="table-scroll-wrapper">
 
-                <table class="table table-striped table-hover" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                <table id="streckeTable" class="table table-striped table-hover" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
 
-                    <colgroup>
+                    <!--<colgroup>
                         {% if role.value != 'mitarbeiter' %}
                         <col style="width: 30px;">
                         {% endif %}
-                        <col style="width: 25%;">
-                        <col style="width: 10%;">
-                        <col style="width: 10%;">
+                        <col style="width: 30%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
                         <col style="width: auto;">
-                        {% if role.value != 'mitarbeiter' %}
                         <col style="width: 100px;">
-                        {% endif %}
-                    </colgroup>
+
+                    </colgroup>-->
 
                     <thead>
                         <tr>
@@ -37,9 +36,8 @@
                             <th>Startbahnhof</th>
                             <th>Endbahnhof</th>
                             <th>Abschnitte</th>
-                            {% if role.value != 'mitarbeiter' %}
                             <th>Aktion</th>
-                            {% endif %}
+
                         </tr>
                     </thead>
                     <tbody>
@@ -57,7 +55,13 @@
 
                             {% if role.value != 'mitarbeiter' %}
                             <td>
-                                <a href="{{ url_for('strecke_add', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Details</a>
+                                <a href="{{ url_for('strecke_edit', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
+                            </td>
+                            {% endif %}
+
+                            {% if role.value == 'mitarbeiter' %}
+                            <td>
+                                <a href="{{ url_for('strecke_view', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Details</a>
                             </td>
                             {% endif %}
                         </tr>
@@ -71,8 +75,9 @@
 
                     </tbody>
                 </table>
-            </div> <div style="margin-top: 10px;">
+            </div>
 
+            <div style="margin-top: 10px;">
                 {% if role.value != 'mitarbeiter' %}
                     <button type="submit" class="btn btn-danger"
                             onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
@@ -97,12 +102,68 @@
                     </div>
                 {% endif %}
                 {% endwith %}
-
             </div>
 
         </form>
     </div>
 
+    <div class="map-container">
+        {% if map_html %}
+        {{ map_html | safe }}
+        {% else %}
+        <p>Keine Strecken vorhanden.</p>
+        {% endif %}
+    </div>
 </div>
 
+<!-- JQuery ist Voraussetzung für dataTables-->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- JS für dataTable -->
+<script src="//cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+
+<script>
+    //spezifische Spaltenbreite muss einmal für Admin und Mitarbeiter definiert werden
+    {% if role.value != 'mitarbeiter' %}
+    new DataTable('#streckeTable', {
+        //Sprache selbst definieren damit es auf Deutsch ist
+        language: {
+            info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+            infoEmpty: 'Keine Einträge vorhanden',
+            infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+            lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+            zeroRecords: 'Nichts gefunden - Entschuldigung',
+            search: 'Suchen:'
+        },
+        order: [[1, 'asc']],
+        columnDefs: [
+                { width: "30px", targets: 0, orderable: false },       // Checkbox
+                { width: "30%", targets: 1 },                          // Streckenname
+                { width: "20%", targets: 2 },                          // Startbahnhof
+                { width: "20%", targets: 3 },                          // Endbahnhof
+                { width: "auto", targets: 4 },                         // Abschnitte
+                { width: "100px", targets: 5, orderable: false }       // Aktion
+            ]
+    });
+
+    {%else%}
+
+        new DataTable('#streckeTable', {
+        language: {
+            info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+            infoEmpty: 'Keine Einträge vorhanden',
+            infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+            lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+            zeroRecords: 'Nichts gefunden - Entschuldigung',
+            search: 'Suchen:'
+        },
+        columnDefs: [
+                { width: "33%", targets: 0 },                          // Streckenname
+                { width: "20%", targets: 1 },                          // Startbahnhof
+                { width: "20%", targets: 2 },                          // Endbahnhof
+                { width: "auto", targets: 3 },                         // Abschnitte
+                { width: "100px", targets: 4, orderable: false }       // Aktion
+            ]
+    });
+    {%endif%}
+</script>
 {% endblock %}

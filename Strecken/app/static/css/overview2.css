@@ -52,7 +52,7 @@ body {
 
 /* Linke Spalte: Tabelle + Buttons */
 .table-container {
-    flex: 1.5;
+    flex: 1.0;
     display: flex;
     flex-direction: column;
     min-width: 0; /* Wichtig für Flex-Shrink */
@@ -84,7 +84,7 @@ body {
     border: 1px solid #dee2e6;
     border-radius: 6px;
     overflow: hidden;
-    height: 55%;
+    height: 80%;
 }
 
 /* Karte nimmt vollen Platz ein */

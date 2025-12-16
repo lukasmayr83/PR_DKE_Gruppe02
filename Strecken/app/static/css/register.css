@@ -1,0 +1,12 @@
+.image-wrapper {
+    flex: 2;
+    position: relative;
+    min-width: 400px;
+    height: 75vh;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-image: url('../img/MA.png');
+    background-size: cover;
+    background-position: center center;
+}

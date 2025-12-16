@@ -2,6 +2,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 <h1>Alle Abschnitte</h1>
 
 <div class="main-content-flex">
@@ -12,8 +13,8 @@
         <div class="table-scroll-wrapper">
 
             <form id="abschnitt-form" method="POST" action="{{ url_for('delete_multiple_abschnitt') }}">
-                <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; min-width: 200px; margin-bottom: 0;">
-                    <colgroup>
+                <table id="abschnittTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; min-width: 200px; margin-bottom: 0;">
+                    <!--<colgroup>
                         {% if role.value != 'mitarbeiter' %}
                         <col style="width: 30px;">
                         {% endif %}
@@ -26,7 +27,7 @@
                         {% if role.value != 'mitarbeiter' %}
                         <col style="width: 100px;">
                         {% endif %}
-                    </colgroup>
+                    </colgroup>-->
 
                     <thead>
                         <tr style="background-color: #f1f1f1; position: sticky; top: 0; z-index: 10;">
@@ -36,6 +37,7 @@
                             <th >Startbahnhof</th>
                             <th >Endbahnhof</th>
                             <th >Spurweite</th>
+                            <th > Länge</th>
                             <th >Nutzungsentgelt</th>
                             <th >max. km/h</th>
                             <th >Warnungen</th>
@@ -56,6 +58,7 @@
                             <td>{{ a.endBahnhof.name if a.endBahnhof else '-' }}</td>
 
                             <td>{{ a.spurweite }}</td>
+                            <td>{{ a.laenge }}</td>
                             <td>{{ a.nutzungsentgelt }}</td>
                             <td>{{ a.max_geschwindigkeit }}</td>
 
@@ -127,4 +130,59 @@
         {% endif %}
     </div>
 </div>
+
+
+<!-- JQuery ist Voraussetzung für dataTables-->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- JS für dataTable -->
+<script src="//cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+
+<script>
+    //spezifische Spaltenbreite muss einmal für Admin und Mitarbeiter definiert werden
+    {% if role.value != 'mitarbeiter' %}
+        new DataTable('#abschnittTable', {
+            //Sprache selbst definieren damit es auf Deutsch ist
+            language: {
+                info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+                infoEmpty: 'Keine Einträge vorhanden',
+                infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+                lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+                zeroRecords: 'Nichts gefunden - Entschuldigung',
+                search: 'Suchen:'
+            },
+            order: [[1, 'asc']],
+            columnDefs: [
+                    { width: "30px", targets: 0, orderable: false },       // Checkbox
+                    { width: "17%", targets: 1 },                          // Startbahnhof
+                    { width: "17%", targets: 2 },                          // Endbahnhof
+                    { width: "80px", targets: 3 },                         // Spurweite
+                    { width: "60px", targets: 4 },                         // Länge
+                    { width: "120px", targets: 5 },                        // Nutzungsentgelt
+                    { width: "50px", targets: 6 },                         // max. km/h
+                    { width: "auto", targets: 7 },                         // Warnungen
+                    { width: "100px", targets: 8, orderable: false }       // Aktion
+                ]
+        });
+    {%else%}
+        new DataTable('#abschnittTable', {
+            language: {
+                info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+                infoEmpty: 'Keine Einträge vorhanden',
+                infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+                lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+                zeroRecords: 'Nichts gefunden - Entschuldigung',
+                search: 'Suchen:'
+            },
+            columnDefs: [
+                    { width: "22%", targets: 0 },                          // Startbahnhof
+                    { width: "22%", targets: 1 },                          // Endbahnhof
+                    { width: "80px", targets: 2 },                         // Spurweite
+                    { width: "80px", targets: 3 },                         // Spurweite
+                    { width: "120px", targets: 4 },                        // Nutzungsentgelt
+                    { width: "50px", targets: 5 },                         // max. km/h
+                    { width: "auto", targets: 6 },                         // Warnungen
+                ]
+        });
+    {%endif%}
+</script>
 {% endblock %}

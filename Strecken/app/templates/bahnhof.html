@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview2.css') }}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 
 <h1>Alle Bahnhöfe</h1>
 
@@ -13,8 +14,8 @@
 
             <div class="table-scroll-wrapper">
 
-                <table class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
-                    <colgroup>
+                <table id="bahnhofTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+                    <!--<colgroup>
                         {% if role.value != 'mitarbeiter' %}
                         <col style="width: 30px;">
                         {% endif %}
@@ -23,7 +24,7 @@
                         {% if role.value != 'mitarbeiter' %}
                         <col style="width: 100px;">
                         {% endif %}
-                    </colgroup>
+                    </colgroup>-->
 
 
                     <thead>
@@ -96,4 +97,51 @@
     </div>
 
 </div>
+
+
+<!-- JQuery ist Voraussetzung für dataTables-->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- JS für dataTable -->
+<script src="//cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+
+<script>
+    //spezifische Spaltenbreite muss einmal für Admin und Mitarbeiter definiert werden
+    {% if role.value != 'mitarbeiter' %}
+        new DataTable('#bahnhofTable', {
+            //Sprache selbst definieren damit es auf Deutsch ist
+            language: {
+                info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+                infoEmpty: 'Keine Einträge vorhanden',
+                infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+                lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+                zeroRecords: 'Nichts gefunden - Entschuldigung',
+                search: 'Suchen:'
+            },
+            order: [[1, 'asc']],
+            columnDefs: [
+                    { width: "30px", targets: 0, orderable: false },       // Checkbox
+                    { width: "30%", targets: 1 },                          // Bahnhofname
+                    { width: "auto", targets: 2 },                          // Adresse
+                    { width: "100px", targets: 3, orderable: false }       // Aktion
+                ]
+        });
+    {%else%}
+        new DataTable('#bahnhofTable', {
+            language: {
+                info: 'Seite _PAGE_ von _PAGES_ angezeigt',
+                infoEmpty: 'Keine Einträge vorhanden',
+                infoFiltered: '(aus insgesamt _MAX_ Einträgen gefiltert)',
+                lengthMenu: '_MENU_ Einträge pro Seite anzeigen',
+                zeroRecords: 'Nichts gefunden - Entschuldigung',
+                search: 'Suchen:'
+            },
+
+            columnDefs: [
+                    { width: "40%", targets: 0 },                          // Bahnhofname
+                    { width: "auto", targets: 1 },                          // Adresse
+                ]
+        });
+    {%endif%}
+</script>
+
 {% endblock %}

@@ -20,8 +20,6 @@ import sqlalchemy.orm as so
 @app.route('/abschnitt')
 @login_required
 def abschnitt():
-    # nur für DEBUGGING
-    #print("--- START: Kartengenerierung für Abschnitte ---")
 
     posts = db.session.query(Abschnitt).join(Abschnitt.startBahnhof).order_by(Bahnhof.name).all()
 
@@ -36,8 +34,6 @@ def abschnitt():
     for abschnitt in posts:
         abschnitt_name = getattr(abschnitt, 'name')
 
-        #nur für DEBUGGING
-        #print("\nVerarbeite Abschnitt: {abschnitt_name}")
 
         startbahnhof = getattr(abschnitt, 'startBahnhof', None)
         endbahnhof = getattr(abschnitt, 'endBahnhof', None)
@@ -51,8 +47,6 @@ def abschnitt():
 
 
         if not bahnhoefe_zu_markieren:
-            # nur für DEBUGGING
-            #print(f"WARNUNG: Abschnitt '{abschnitt_name}' hat keine gültigen Start/End-Bahnhöfe und wird übersprungen.")
             continue
 
         group = folium.FeatureGroup(name=abschnitt_name)
@@ -64,8 +58,7 @@ def abschnitt():
         for typ, b in bahnhoefe_zu_markieren:
 
             if not b.latitude or not b.longitude:
-                # nur für DEBUGGING
-                #print(f"  --> Koordinate fehlt für {b.name}. Führe Geocoding aus...")
+
                 b.geocode_address()
 
             if b.latitude and b.longitude:
@@ -73,18 +66,15 @@ def abschnitt():
                 route_coords.append(lat_lon)
                 all_coords.append(lat_lon)
 
-                #print(f"  --> ERFOLG: {b.name} ({typ}) bei {b.latitude}, {b.longitude}")
 
                 marker = folium.Marker(
                     lat_lon,
                     tooltip=f"{typ}: {b.name}",
                     popup=f"Abschnitt: {abschnitt_name}<br>{typ}: {b.name}<br>Adresse: {b.adresse}",
-                    #icon=folium.Icon(color=farbe)
+
                 )
 
                 marker.add_to(group)
-            #else:
-                #print(f"  --> FEHLER: Konnte keine Koordinaten für {b.name} finden/speichern.")
 
         if len(route_coords) == 2:
             folium.PolyLine(
@@ -92,12 +82,9 @@ def abschnitt():
                 color='blue',
                 weight=4,
                 opacity=0.7,
-                tooltip=f"Route: {abschnitt_name}"
+                tooltip=f"Abschnitt: {abschnitt_name}"
             ).add_to(group)
-        #else:
 
-            #print(
-                #f"WARNUNG: PolyLine kann für '{abschnitt_name}' nicht gezeichnet werden (Nur {len(route_coords)} von 2 Endpunkten gefunden).")
 
     db.session.commit()
 
@@ -109,7 +96,6 @@ def abschnitt():
 
     folium.LayerControl().add_to(m)
 
-    #print("--- ENDE: Kartengenerierung erfolgreich ---")
 
     map_html = m._repr_html_()
 
@@ -126,12 +112,21 @@ def abschnitt():
 @login_required
 def abschnitt_add():
     form = AbschnittForm()
-
+    standard_option_start = [(0, 'Bitte wählen Sie einen Startbahnhof aus')]
+    standard_option_end = [(0, 'Bitte wählen Sie einen Endbahnhof aus')]
     #Lädt alle Bahnhöfe aus der DB
     bahnhoefe = Bahnhof.query.order_by(Bahnhof.name).all()
     #Füllt die Dropdowns StartBahnhof und Endbahnhof mit Bahnhöfen
-    form.startBahnhof.choices = [(b.bahnhofId, b.name) for b in bahnhoefe]
-    form.endBahnhof.choices   = [(b.bahnhofId, b.name) for b in bahnhoefe]
+    bahnhof_choices = [(b.bahnhofId, b.name) for b in bahnhoefe]
+    form.startBahnhof.choices = standard_option_start + bahnhof_choices
+    form.endBahnhof.choices = standard_option_end + bahnhof_choices
+
+    spurweiten_optionen = [
+        (0, 'Bitte wählen Sie eine Spurweite'),
+        (1435, 'Normalspur (1435 mm)'),
+        (1000, 'Schmalspur (1000 mm)')
+    ]
+    form.spurweite.choices = spurweiten_optionen
 
     #Wird ausgeführt, wenn Button Speichern gedruckt wurde
     if form.validate_on_submit():
@@ -141,6 +136,7 @@ def abschnitt_add():
             endBahnhofId=form.endBahnhof.data,
             max_geschwindigkeit=form.max_geschwindigkeit.data,
             spurweite=form.spurweite.data,
+            laenge=form.laenge.data,
             nutzungsentgelt=form.nutzungsentgelt.data
         )
 
@@ -156,27 +152,60 @@ def abschnitt_add():
 
 
 
-    return render_template("abschnitt_add.html", form=form,bahnhoefe=bahnhoefe)
+    return render_template(
+        "abschnitt_add.html",
+        form=form,
+        bahnhoefe=bahnhoefe,
+        title='Abschnitt hinzufügen',)
 
 
 @app.route("/abschnitt/edit/<int:abschnitt_id>", methods=["GET", "POST"])
 @login_required
 def edit_abschnitt(abschnitt_id):
     abschnitt = db.session.get(Abschnitt, abschnitt_id)
-    form = AbschnittForm(obj=abschnitt)
+
+    form = AbschnittForm(
+        obj=abschnitt,
+        original_start_id=abschnitt.startBahnhofId,
+        original_end_id=abschnitt.endBahnhofId
+    )
+
+
+    standard_option_bahnhof = [(0, 'Bitte wählen Sie einen Bahnhof')]
     bahnhoefe = Bahnhof.query.order_by(Bahnhof.name).all()
     bahnhof_choices = [(b.bahnhofId, b.name) for b in bahnhoefe]
-    form.startBahnhof.choices = bahnhof_choices
-    form.endBahnhof.choices = bahnhof_choices
 
-    #Dropdowns werden beim aufrufen der Seite mit den dazugehörigen Bahnhöfen gefüllt
+    form.startBahnhof.choices = standard_option_bahnhof + bahnhof_choices
+    form.endBahnhof.choices = standard_option_bahnhof + bahnhof_choices
+
+
+    spurweiten_optionen = [
+        (0, 'Bitte wählen Sie eine Spurweite'),
+        (1435, 'Normalspur (1435 mm)'),
+        (1000, 'Schmalspur (1000 mm)')
+    ]
+    form.spurweite.choices = spurweiten_optionen
+
+    form.startBahnhof.data = abschnitt.startBahnhofId
+
+    form.endBahnhof.data = abschnitt.endBahnhofId
+
+
     if request.method == 'GET':
-        form.startBahnhof.data = abschnitt.startBahnhofId
-        form.endBahnhof.data = abschnitt.endBahnhofId
+        if form.startBahnhof.data is None:
+            form.startBahnhof.data = 0
 
+        if form.endBahnhof.data is None:
+            form.endBahnhof.data = 0
+
+        if form.spurweite.data is None:
+            form.spurweite.data = 0
 
     if form.validate_on_submit():
-        form.populate_obj(abschnitt)
+        abschnitt.spurweite = form.spurweite.data
+        abschnitt.max_geschwindigkeit = form.max_geschwindigkeit.data
+        abschnitt.laenge = form.laenge.data
+        abschnitt.nutzungsentgelt = form.nutzungsentgelt.data
         abschnitt.startBahnhofId = form.startBahnhof.data
         abschnitt.endBahnhofId = form.endBahnhof.data
 
@@ -184,41 +213,68 @@ def edit_abschnitt(abschnitt_id):
             db.session.commit()
             flash(f"Abschnitt aktualisiert", "success")
             return redirect(url_for("abschnitt"))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            print(f"Fehler beim Editieren: {e}")  # Hilfreich für Debugging in der Konsole
             flash("Fehler beim Speichern", "danger")
 
-    return render_template("abschnitt_edit.html", form=form, abschnitt=abschnitt)
+    return render_template(
+        "abschnitt_edit.html",
+        form=form,
+        abschnitt=abschnitt,
+        title='Abschnitt bearbeiten',)
 
 @app.route("/abschnitt/delete_multiple", methods=["POST"])
 @login_required
 def delete_multiple_abschnitt():
     ids = request.form.getlist("abschnitt_ids")
+
     deleted_count = 0
+    blocked_names = []
 
     if not ids:
-        flash ("Keine Abschnitte ausgewählt.", "error")
-        return redirect(url_for("abschnitt"))
+        flash("Keine Abschnitte ausgewählt.", "error")
+        return redirect(url_for('abschnitt'))
 
-    for id in ids:
+    for aid in ids:
         try:
+            # Abschnitt laden
+            abschnitt_query = (
+                sa.select(Abschnitt)
+                .where(Abschnitt.abschnittId == int(aid))
+            )
+            abschnitt = db.session.execute(abschnitt_query).scalar_one_or_none()
 
-            abschnitt = db.session.get(Abschnitt, int(id))
-        except ValueError:
+            if abschnitt:
+                # Prüfen ob der Abschnitt in einer Strecke verwendet wird
+                verknuepfung_query = (
+                    sa.select(sa.func.count())
+                    .select_from(Reihenfolge)
+                    .where(Reihenfolge.abschnittId == int(aid))
+                )
+                count = db.session.execute(verknuepfung_query).scalar()
 
+                if count > 0:
+                    blocked_names.append(abschnitt.name)
+                else:
+                    # Löschen, falls keine Verknüpfung gefunden wurde
+                    db.session.delete(abschnitt)
+                    deleted_count += 1
+
+        except Exception as e:
+            print(f"Fehler beim Laden von Abschnitt {aid}: {e}")
             continue
-
-        if abschnitt:
-            db.session.delete(abschnitt)
-            deleted_count += 1
-
 
     if deleted_count > 0:
         db.session.commit()
         flash(f"{deleted_count} Abschnitt/Abschnitte erfolgreich gelöscht.", "success")
-    else:
 
-        flash("Kein Abschnitt konnte gelöscht werden.", "error")
+    if blocked_names:
+        names_str = ", ".join(blocked_names)
+        flash(
+            f"Folgende Abschnitte: [{names_str}] konnten nicht gelöscht werden, da sie in Strecken verwendet werden.",
+            "error"
+        )
 
     return redirect(url_for('abschnitt'))
 
@@ -234,32 +290,103 @@ def delete_multiple_abschnitt():
 def strecke():
     alle_strecken = Strecke.query.order_by(Strecke.name).all()
 
-    # Bereite die Daten für das Template vor
     strecken_daten = []
+    all_coords = []
+    section_groups = {}
+
+    fallback_lat, fallback_lon = 47.5162, 14.5501
+    m = folium.Map(location=[fallback_lat, fallback_lon], zoom_start=7, height='100%')
+
     for strecke in alle_strecken:
-        # 1. Start- und Endbahnhof über die Property abrufen
         start_bhf, end_bhf = strecke.start_end_bahnhoefe
 
         strecken_daten.append({
             'id': strecke.streckenId,
             'name': strecke.name,
-
-            # 2. Daten für die Anzeige berechnen
             'start_bahnhof': start_bhf.name if start_bhf else 'N/A',
             'end_bahnhof': end_bhf.name if end_bhf else 'N/A',
-
-            # 3. Anzahl der Abschnitte zählen
             'anzahl_abschnitte': len(strecke.reihenfolge)
         })
 
+        # Karten-Visualisierung für diese Strecke
+        if start_bhf or end_bhf:
+            group = folium.FeatureGroup(name=strecke.name)
+            section_groups[strecke.name] = group
+            group.add_to(m)
+
+            route_coords = []
+
+            # Alle Abschnitte dieser Strecke durchgehen (über Reihenfolge-Objekte)
+            for reihenfolge in strecke.reihenfolge:
+                abschnitt = reihenfolge.abschnitt  # Hier ist der wichtige Zugriff!
+
+                if not abschnitt:
+                    continue
+
+                # Startbahnhof des Abschnitts
+                if abschnitt.startBahnhof:
+                    if not abschnitt.startBahnhof.latitude or not abschnitt.startBahnhof.longitude:
+                        abschnitt.startBahnhof.geocode_address()
+
+                    if abschnitt.startBahnhof.latitude and abschnitt.startBahnhof.longitude:
+                        lat_lon = (abschnitt.startBahnhof.latitude, abschnitt.startBahnhof.longitude)
+                        if lat_lon not in route_coords:
+                            route_coords.append(lat_lon)
+                            all_coords.append(lat_lon)
+
+                            folium.Marker(
+                                lat_lon,
+                                tooltip=abschnitt.startBahnhof.name,
+                                popup=f"Strecke: {strecke.name}<br>Bahnhof: {abschnitt.startBahnhof.name}<br>Adresse: {abschnitt.startBahnhof.adresse}",
+                                icon=folium.Icon(color='green' if abschnitt.startBahnhof == start_bhf else 'blue')
+                            ).add_to(group)
+
+                # Endbahnhof des Abschnitts
+                if abschnitt.endBahnhof:
+                    if not abschnitt.endBahnhof.latitude or not abschnitt.endBahnhof.longitude:
+                        abschnitt.endBahnhof.geocode_address()
+
+                    if abschnitt.endBahnhof.latitude and abschnitt.endBahnhof.longitude:
+                        lat_lon = (abschnitt.endBahnhof.latitude, abschnitt.endBahnhof.longitude)
+                        if lat_lon not in route_coords:
+                            route_coords.append(lat_lon)
+                            all_coords.append(lat_lon)
+
+                            folium.Marker(
+                                lat_lon,
+                                tooltip=abschnitt.endBahnhof.name,
+                                popup=f"Strecke: {strecke.name}<br>Bahnhof: {abschnitt.endBahnhof.name}<br>Adresse: {abschnitt.endBahnhof.adresse}",
+                                icon=folium.Icon(color='red' if abschnitt.endBahnhof == end_bhf else 'blue')
+                            ).add_to(group)
+
+            # Polylinie für die gesamte Strecke zeichnen
+            if len(route_coords) >= 2:
+                folium.PolyLine(
+                    route_coords,
+                    color='blue',
+                    weight=4,
+                    opacity=0.7,
+                    tooltip=f"Strecke: {strecke.name}"
+                ).add_to(group)
+
+    db.session.commit()
+
+    # Karte zentrieren
+    if all_coords:
+        center_lat = sum(lat for lat, lon in all_coords) / len(all_coords)
+        center_lon = sum(lon for lat, lon in all_coords) / len(all_coords)
+        m.location = [center_lat, center_lon]
+
+    folium.LayerControl().add_to(m)
+    map_html = m._repr_html_()
+
     return render_template(
         'strecke.html',
-        title='Alle definierten Strecken',
+        title='Strecken',
         strecken=strecken_daten,
-        # Stellen Sie sicher, dass 'role' ebenfalls übergeben wird, falls es benötigt wird
+        map_html=map_html,
         role=current_user.role
     )
-
 
 
 
@@ -346,7 +473,8 @@ def strecke_add():
     return render_template(
         "strecke_add.html",
         form=form,
-        api_url=url_for('api_abschnitte_daten')
+        api_url=url_for('api_abschnitte_daten'),
+        title='Strecke hinzufügen',
     )
 
 @app.route("/strecke/delete_multiple", methods=["POST"])
@@ -385,6 +513,79 @@ def delete_multiple_strecke():
 
     return redirect(url_for('strecke'))
 
+
+@app.route('/strecke/edit/<int:strecke_id>', methods=['GET', 'POST'])
+@login_required
+def strecke_edit(strecke_id):
+    strecke = Strecke.query.get_or_404(strecke_id)
+
+    # Form mit dem originalen Namen initialisieren
+    form = StreckenForm(original_name=strecke.name)
+
+    if form.validate_on_submit():
+        strecke.name = form.name.data
+
+        abschnitt_ids = request.form.get('abschnitt_ids', '')
+        if abschnitt_ids:
+            ids = [int(x) for x in abschnitt_ids.split(',') if x]
+
+            Reihenfolge.query.filter_by(streckeId=strecke.streckenId).delete()
+
+            for position, abschnitt_id in enumerate(ids, start=1):
+                neue_reihenfolge = Reihenfolge(
+                    streckeId=strecke.streckenId,
+                    abschnittId=abschnitt_id,
+                    reihenfolge=position
+                )
+                db.session.add(neue_reihenfolge)
+
+        db.session.commit()
+        flash('Strecke erfolgreich aktualisiert!', 'success')
+        return redirect(url_for('strecke'))
+
+    if request.method == 'GET':
+        form.name.data = strecke.name
+
+    try:
+        existing_abschnitte = [
+            r.abschnitt.abschnittId
+            for r in sorted(strecke.reihenfolge, key=lambda x: x.reihenfolge)
+            if r.abschnitt
+        ]
+    except Exception as e:
+        print(f"Fehler: {e}")
+        existing_abschnitte = []
+
+    return render_template(
+        'strecke_edit.html',
+        form=form,
+        strecke=strecke,
+        existing_abschnitte=existing_abschnitte,
+        api_url=url_for('api_abschnitte_daten'),
+        title='Strecke bearbeiten',
+        role=current_user.role
+    )
+
+@app.route('/strecke/view/<int:strecke_id>', methods=['GET'])
+@login_required
+def strecke_view(strecke_id):
+    strecke = Strecke.query.get_or_404(strecke_id)
+
+    # Abschnitt-IDs der Strecke extrahieren
+    existing_abschnitte = [
+        r.abschnitt.abschnittId
+        for r in sorted(strecke.reihenfolge, key=lambda x: x.reihenfolge)
+        if r.abschnitt
+    ]
+
+    return render_template(
+        'strecke_view.html',  # Neue Template-Datei
+        strecke=strecke,
+        existing_abschnitte=existing_abschnitte,
+        api_url=url_for('api_abschnitte_daten'),
+        title='Strecke Details',
+        role=current_user.role
+    )
 #############################################################
 #################    Warnung     ############################
 #############################################################
@@ -393,13 +594,86 @@ def delete_multiple_strecke():
 @app.route('/warnung', methods=['GET', 'POST'])
 @login_required
 def warnung():
-    #Alle Warnungen aus der DB laden
+    # Alle Warnungen aus der DB laden
     posts = Warnung.query.order_by(Warnung.bezeichnung).all()
+
+    all_coords = []
+    warning_groups = {}
+
+    fallback_lat, fallback_lon = 47.5162, 14.5501
+    m = folium.Map(location=[fallback_lat, fallback_lon], zoom_start=7, height='100%')
+
+    for warnung in posts:
+        # Feature Group für jede Warnung
+        group = folium.FeatureGroup(name=warnung.bezeichnung)
+        warning_groups[warnung.bezeichnung] = group
+        group.add_to(m)
+
+        # Alle Abschnitte dieser Warnung durchgehen (M2M-Beziehung)
+        for abschnitt in warnung.abschnitte:  # Plural - alle zugeordneten Abschnitte
+            route_coords = []
+
+            # Startbahnhof des Abschnitts
+            if abschnitt.startBahnhof:
+                if not abschnitt.startBahnhof.latitude or not abschnitt.startBahnhof.longitude:
+                    abschnitt.startBahnhof.geocode_address()
+
+                if abschnitt.startBahnhof.latitude and abschnitt.startBahnhof.longitude:
+                    lat_lon = (abschnitt.startBahnhof.latitude, abschnitt.startBahnhof.longitude)
+                    route_coords.append(lat_lon)
+                    all_coords.append(lat_lon)
+
+                    folium.Marker(
+                        lat_lon,
+                        tooltip=abschnitt.startBahnhof.name,
+                        popup=f"Bahnhof: {abschnitt.startBahnhof.name}",
+                        icon=folium.Icon(color='orange', icon='exclamation-triangle', prefix='fa')
+                    ).add_to(group)
+
+            # Endbahnhof des Abschnitts
+            if abschnitt.endBahnhof:
+                if not abschnitt.endBahnhof.latitude or not abschnitt.endBahnhof.longitude:
+                    abschnitt.endBahnhof.geocode_address()
+
+                if abschnitt.endBahnhof.latitude and abschnitt.endBahnhof.longitude:
+                    lat_lon = (abschnitt.endBahnhof.latitude, abschnitt.endBahnhof.longitude)
+                    route_coords.append(lat_lon)
+                    all_coords.append(lat_lon)
+
+                    folium.Marker(
+                        lat_lon,
+                        tooltip=abschnitt.endBahnhof.name,
+                        popup=f"Bahnhof: {abschnitt.endBahnhof.name}",
+                        icon=folium.Icon(color='orange', icon='exclamation-triangle', prefix='fa')
+                    ).add_to(group)
+
+            # Polylinie für jeden betroffenen Abschnitt (orange für Warnung)
+            if len(route_coords) == 2:
+                folium.PolyLine(
+                    route_coords,
+                    color='orange',
+                    weight=5,
+                    opacity=0.8,
+                    tooltip=f"<b>Warnung:</b> {warnung.bezeichnung}<br><b>Abschnitt:</b> {abschnitt.name}"
+                ).add_to(group)
+
+    db.session.commit()
+
+    # Karte zentrieren
+    if all_coords:
+        center_lat = sum(lat for lat, lon in all_coords) / len(all_coords)
+        center_lon = sum(lon for lat, lon in all_coords) / len(all_coords)
+        m.location = [center_lat, center_lon]
+
+    folium.LayerControl().add_to(m)
+    map_html = m._repr_html_()
 
     return render_template(
         'warnung.html',
         posts=posts,
-        role=current_user.role
+        map_html=map_html,
+        role=current_user.role,
+        title='Warnungen',
     )
 
 @app.route("/warnung/add", methods=["GET", "POST"])
@@ -440,7 +714,7 @@ def warnung_add():
         flash(f'Warnung "{warnung.bezeichnung}" wurde gespeichert!', 'success')
         return redirect(url_for("warnung"))
 
-    return render_template("warnung_add.html", form=form)
+    return render_template("warnung_add.html", form=form, title='Warnung hinzufügen',)
 
 @app.route("/warnung/delete_multiple", methods=["POST"])
 @login_required
@@ -523,7 +797,7 @@ def edit_warnung(warnung_id):
             flash(f"Fehler beim Speichern der Warnung: {e}", "danger")
 
 
-    return render_template("warnung_edit.html", form=form, warnung=warnung)
+    return render_template("warnung_edit.html", form=form, warnung=warnung, title='Warnung bearbeiten',)
 
 
 
@@ -548,7 +822,7 @@ def bahnhof_add():
 
         flash(f'Bahnhof {bahnhof.name} wurde gespeichert!', 'success')
         return redirect(url_for("bahnhof"))
-    return render_template("bahnhof_add.html", form=form)
+    return render_template("bahnhof_add.html", form=form, title='Bahnhof hinzufügen',)
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/bahnhof', methods=['GET', 'POST'])
@@ -569,7 +843,7 @@ def bahnhof():
         center_lon = sum(b.longitude for b in posts) / len(posts)
 
         #Folium-Karte erstellen
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=7)
+        m = folium.Map(location=[center_lat, center_lon], width='100%', height='100%', zoom_start=7)
 
         #Marker für jeden Bahnhof setzen
         for b in posts:
@@ -586,7 +860,7 @@ def bahnhof():
 
     return render_template(
         'bahnhof.html',
-        title='Home',
+        title='Bahnhöfe',
         posts=posts,
         map_html=map_html,
         role=current_user.role
@@ -616,7 +890,7 @@ def edit_bahnhof(bahnhof_id):
         flash(f"Bahnhof '{bahnhof.name}' wurde aktualisiert.", "success")
         return redirect(url_for("bahnhof"))
 
-    return render_template("bahnhof_edit.html", form=form, bahnhof=bahnhof)
+    return render_template("bahnhof_edit.html", form=form, bahnhof=bahnhof, title='Bahnhof bearbeiten',)
 
 
 @app.route("/bahnhof/delete_multiple", methods=["POST"])
@@ -734,6 +1008,9 @@ def register():
 #####################   API   ###############################
 #############################################################
 
+
+###################   externe   #############################
+
 ##Bahnhof
 @app.route('/bahnhoefe', methods=['GET'])
 
@@ -834,15 +1111,18 @@ def get_strecke_abschnitte_api(streckeId):
         items.append({
             "abschnittId": abschnitt.abschnittId,
             "reihenfolgeId": reihenfolge_obj.reihenfolge,
-            "startBahnhof": start_bhf_name,
-            "endBahnhof": end_bhf_name,
+            "startBahnhofName": start_bhf_name,
+            "endBahnhofName": end_bhf_name,
+            "startBahnhofId": abschnitt.startBahnhofId,
+            "endBahnhofId": abschnitt.endBahnhofId,
             "spurweite": abschnitt.spurweite,
+            "laenge": abschnitt.laenge,
             "nutzungsentgelt": abschnitt.nutzungsentgelt,
             "maxGeschwindigkeit": abschnitt.max_geschwindigkeit
         })
 
     total_count = len(items)
-    return jsonify({"total": total_count, "items": items}), 200
+    return jsonify({"total": total_count, "streckenname": strecke.name, "items": items}), 200
 
 
 @app.route('/warnungen', methods=['GET'])
@@ -873,11 +1153,21 @@ def get_warnung_api():
 
     return jsonify({"total": total_count, "items": items})
 
+
+
+###################   interne   #############################
+
+
 #damit Javascript auf die Koordinaten der Bahnhöfe zugreifen kann; für das Anzeigen der Abschnitte beim Hinzufügen
 @app.route('/api/bahnhof/<int:bahnhof_id>')
 def get_bahnhof_coords(bahnhof_id):
+    if bahnhof_id == 0:
+        return jsonify({}), 200
+
     bahnhof = Bahnhof.query.get(bahnhof_id) #ruft die Daten für den bestimmten Bahnhof ab
 
+    if bahnhof is None:
+        return jsonify({'error': 'Bahnhof nicht gefunden'}), 404
     #gibt Daten zurück
     return jsonify({
         'id': bahnhof.bahnhofId,
@@ -920,6 +1210,11 @@ def api_abschnitte_daten():
     abschnitte = Abschnitt.query.options(
         joinedload(Abschnitt.startBahnhof),
         joinedload(Abschnitt.endBahnhof)
+    ).join(
+        Abschnitt.startBahnhof
+    ).order_by(
+        Abschnitt.spurweite,
+        Bahnhof.name
     ).all()
 
     abschnitt_data = []
@@ -932,15 +1227,18 @@ def api_abschnitte_daten():
 
         abschnitt_data.append({
             "abschnittId": a.abschnittId,
-            "name": f"{start_name} → {end_name}",
+            "name": f"{start_name} → {end_name} ({a.spurweite})",
             "startBahnhofId": a.startBahnhofId,
-            "endBahnhofId": a.endBahnhofId
+            "endBahnhofId": a.endBahnhofId,
+            "spurweite": a.spurweite
         })
 
         if a.startBahnhof:
             bahnhoefe_map[a.startBahnhof.bahnhofId] = start_name
         if a.endBahnhof:
             bahnhoefe_map[a.endBahnhof.bahnhofId] = end_name
+
+
 
     return jsonify({
         'abschnitte': abschnitt_data,

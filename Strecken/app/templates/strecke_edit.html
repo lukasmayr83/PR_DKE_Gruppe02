@@ -1,9 +1,307 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Strecke bearbeiten</h2>
-<div style="display: flex; gap: 20px;">
+<style>
+    .segment-chain { max-width: 600px; }
+    .segment-field { margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; }
+    select { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db; }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+<h1>Strecke bearbeiten</h1>
+<div class="flex-container">
 
+    <div class="form-wrapper">
+        <form id="strecken-form" method="POST" action="{% if strecke %}{{ url_for('strecke_edit', strecke_id=strecke.streckenId) }}{% else %}{{ url_for('strecke_add') }}{% endif %}">
 
+            {{ form.hidden_tag() }}
+
+            <p>
+                {{ form.name.label }}<br>
+                {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), id="name_input") }}
+
+                {% for error in form.name.errors %}
+                    <div class="invalid-feedback" style="display: block;">
+                        {{ error }}
+                    </div>
+                {% endfor %}
+            </p>
+
+            <p>
+                <label for="startBahnhof">Startbahnhof der Strecke</label><br>
+                <input type="text" id="startBahnhof" name="startBahnhof_display" class="form-control bg-light" readonly>
+            </p>
+
+            <p>
+                <label for="endBahnhof">Endbahnhof der Strecke</label><br>
+                <input type="text" id="endBahnhof" name="endBahnhof_display" class="form-control bg-light" readonly>
+            </p>
+
+            <h3 class="mt-4 mb-2">Abschnitts-Kette definieren</h3>
+
+            <div id="segment-chain" class="segment-chain">
+                <p class="text-gray-500" id="loading-message">Lade Abschnittsdaten...</p>
+            </div>
+
+            <input type="hidden" id="abschnitt_ids_hidden" name="abschnitt_ids" value="">
+
+            <p>
+               {{ form.submit(class="btn btn-primary", id="submit-button") }}
+                <a href="{{ url_for('strecke') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
+            </p>
+        </form>
+    </div>
+    <div class="map-wrapper">
+        <div id="map" style="width:100%; height:100%;"></div>
+    </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    let allAbschnitte = [];
+    let allBahnhoefe = {};
+    let selectedChain = [];
+
+    //lädt die IDs der Abschnitte ins Frontend
+    let existingAbschnitte = {{ existing_abschnitte | tojson | safe }};
+
+    //lädt alle notwendigen Initialdaten vom Backend
+    function loadInitialData() {
+        const apiUrl = "{{ api_url }}";
+
+        $.ajax({
+            url: apiUrl,
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                $('#loading-message').remove();
+
+                if (data.abschnitte && data.bahnhoefe) {
+                    allAbschnitte = data.abschnitte;
+                    allBahnhoefe = data.bahnhoefe;
+
+                    if (allAbschnitte.length > 0) {
+                        if (existingAbschnitte && existingAbschnitte.length > 0) {
+                            loadExistingChain();
+                        } else {
+                            addNextSegmentField(0);
+                        }
+                    } else {
+                        $('#segment-chain').html('<p class="text-warning">Keine Abschnitte in der Datenbank gefunden.</p>');
+                    }
+                } else {
+                    $('#segment-chain').html('<p class="text-danger">Fehler: Unerwartetes Datenformat vom Server.</p>');
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                $('#loading-message').remove();
+                $('#segment-chain').html('<p class="text-danger">Fehler beim Laden der Abschnitte: ' + textStatus + '</p>');
+                console.error("AJAX Error:", errorThrown);
+            }
+        });
+    }
+
+    //lädt die Daten der Strecke
+    function loadExistingChain() {
+        existingAbschnitte.forEach((abschnittId, index) => {
+            const abschnitt = allAbschnitte.find(a => a.abschnittId === abschnittId); //sucht nach dem Abschnittsobjekt ausgehend von der Id
+            if (abschnitt) {
+                selectedChain.push(abschnitt); //zu ausgewählten Abschnitten hinzufügen
+                addNextSegmentField(index, abschnittId); //Dropdowns für die bereits vorhandenen Abschnitte erzeugen
+            }
+        });
+
+        addNextSegmentField(selectedChain.length); //neues Dropdown erzeugen
+        updateDisplayAndButton();
+    }
+
+    //generiert neue Dropdownmenüs
+    //lädt die Dropdowns nur mit möglichen Abschnitten
+    function addNextSegmentField(currentIndex, preselectedId = null) {
+        const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
+
+        const filteredAbschnitte = allAbschnitte.filter(abschnitt => {
+            const isAlreadySelected = selectedChain.some(s => s.abschnittId === abschnitt.abschnittId);
+
+            if (currentIndex === 0) {
+                return !isAlreadySelected || abschnitt.abschnittId === preselectedId;
+            } else {
+                return abschnitt.startBahnhofId === lastEndStationId &&
+                       (!isAlreadySelected || abschnitt.abschnittId === preselectedId);
+            }
+        });
+
+        if (filteredAbschnitte.length === 0 && currentIndex > 0 && !preselectedId) {
+            return;
+        }
+
+        const fieldHtml = `
+            <div class="segment-field flex items-center space-x-2 bg-gray-50" data-index="${currentIndex}">
+                <span style="min-width: 90px;" class="font-medium text-gray-600">Abschnitt ${currentIndex + 1}:</span>
+                <select class="segment-select" data-index="${currentIndex}">
+                    <option value="">-- Abschnitt auswählen --</option>
+                    ${filteredAbschnitte.map(a => `<option value="${a.abschnittId}" ${preselectedId === a.abschnittId ? 'selected' : ''}>${a.name}</option>`).join('')}
+                </select>
+                ${currentIndex > 0 ? `<button type="button" class="remove-segment btn-danger text-lg">&times;</button>` : ''}
+            </div>
+        `;
+        $('#segment-chain').append(fieldHtml);
+    }
+
+    //ausgelöst wenn sich Dropdown ändert
+    //löscht nachfolgende Abschnitte
+    //UI-Elemente aktualisieren
+    $('#segment-chain').on('change', '.segment-select', function() {
+        const index = parseInt($(this).data('index'));
+        const selectedId = parseInt($(this).val());
+
+        $(`.segment-field[data-index]`).filter(function() {
+            return parseInt($(this).data('index')) > index;
+        }).remove();
+        selectedChain.splice(index);
+
+        if (selectedId) {
+            const selectedAbschnitt = allAbschnitte.find(a => a.abschnittId === selectedId);
+            if (selectedAbschnitt) {
+                selectedChain.push(selectedAbschnitt);
+                addNextSegmentField(index + 1);
+            }
+        }
+
+        updateDisplayAndButton();
+    });
+
+    //ausgelöst wenn x-Button gedrückt wird
+    //nachfolgende Abschnitte auch löschen
+    //UI-Elemente aktualisieren
+    $('#segment-chain').on('click', '.remove-segment', function() {
+        const fieldToRemove = $(this).closest('.segment-field');
+        const indexToRemove = parseInt(fieldToRemove.data('index'));
+
+        $(`.segment-field[data-index]`).filter(function() {
+            return parseInt($(this).data('index')) >= indexToRemove;
+        }).remove();
+
+        selectedChain.splice(indexToRemove);
+        addNextSegmentField(selectedChain.length);
+
+        updateDisplayAndButton();
+    });
+
+    //Benutzeroberfläche und Start-und Endbahnhof werden aktualisiert
+    //ruft Methode zum Karten aktualisieren auf
+    function updateDisplayAndButton() {
+        const ids = selectedChain.map(a => a.abschnittId);
+        $('#abschnitt_ids_hidden').val(ids.join(','));
+
+        if (selectedChain.length > 0) {
+            const startBhfId = selectedChain[0].startBahnhofId;
+            const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
+
+            $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+            $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
+        } else {
+            $('#startBahnhof').val('');
+            $('#endBahnhof').val('');
+        }
+
+        drawSelectedSegments();
+    }
+
+    //wird ausgeführt sobald das HTML vollständig geladen wurde
+    //lädt erstes Dropdown
+    //validiert das Formular vorm abschicken
+    $(document).ready(function() {
+        loadInitialData();
+
+        $('#name_input').on('input', updateDisplayAndButton);
+
+        $('#strecken-form').on('submit', function(event) {
+            let isValid = true;
+
+            $('.validation-error').remove();
+            $('.form-control').removeClass('is-invalid');
+
+            const nameInput = $('#name_input');
+            if (nameInput.val().trim() === '') {
+                isValid = false;
+                nameInput.addClass('is-invalid');
+                nameInput.after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte geben Sie einen Namen für die Strecke ein.</div>');
+            }
+
+            if (selectedChain.length === 0) {
+                isValid = false;
+                $('#segment-chain').after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte wählen Sie mindestens einen Streckenabschnitt aus.</div>');
+            }
+
+            if (!isValid) {
+                event.preventDefault();
+                $('html, body').animate({
+                    scrollTop: $(".validation-error").first().offset().top - 100
+                }, 500);
+            }
+        });
+    });
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    let map = L.map('map').setView([47.5162, 14.5501], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let segmentsLayer = L.layerGroup().addTo(map);
+
+    function drawSelectedSegments() {
+        let selectedIds = selectedChain.map(s => s.abschnittId);
+        segmentsLayer.clearLayers();
+
+        if (!selectedIds || selectedIds.length === 0) {
+            return;
+        }
+
+        let fetchPromises = selectedIds.map(id => {
+            return fetch(`/api/abschnitt/${id}`).then(response => response.json());
+        });
+
+        Promise.all(fetchPromises)
+            .then(results => {
+                let bounds = L.latLngBounds();
+
+                results.forEach(data => {
+                    if (data.start && data.end) {
+                        let startLatLng = [data.start.lat, data.start.lon];
+                        let endLatLng = [data.end.lat, data.end.lon];
+
+                        let polyline = L.polyline([startLatLng, endLatLng], {
+                            color: 'blue',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(segmentsLayer);
+
+                        polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
+
+                        L.marker(startLatLng)
+                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                            .addTo(segmentsLayer);
+
+                        L.marker(endLatLng)
+                            .bindPopup(`<b>Endbahnhof:</b> ${data.end.name}`)
+                            .addTo(segmentsLayer);
+
+                        bounds.extend(startLatLng);
+                        bounds.extend(endLatLng);
+                    }
+                });
+
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, {padding: [50, 50]});
+                }
+            })
+            .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+    }
+</script>
 {% endblock %}

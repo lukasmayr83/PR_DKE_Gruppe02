@@ -8,7 +8,7 @@
 
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
-<h2>Strecke hinzufügen</h2>
+<h1>Strecke hinzufügen</h1>
 <div class="flex-container">
 
     <div class="form-wrapper">
@@ -68,7 +68,7 @@
     let allBahnhoefe = {}; //ordnet BahnhofIds die Namen zu
     let selectedChain = []; //speichert vom Benutzer ausgewählte Abschnitte
 
-    //lädt Daten vom Server per AJAX und initialisiert erste Auswahlfeld
+    //lädt Daten vom Server per AJAX und initialisiert erstes Auswahlfeld
     function loadInitialData() {
         const apiUrl = "{{ api_url }}"; //ruft API api_abschnitte_daten auf
 
@@ -78,14 +78,14 @@
             method: 'GET',
             dataType: 'json',
             success: function(data) { //falls alles geklappt hat
-                $('#loading-message').remove();
+                $('#loading-message').remove(); //Lade-Nachricht "Lade Abschnitsdaten..." bei Erfolg entfernen
 
                 if (data.abschnitte && data.bahnhoefe) {
-                    allAbschnitte = data.abschnitte;
-                    allBahnhoefe = data.bahnhoefe;
+                    allAbschnitte = data.abschnitte; //speichert die empfangenen Abschnitte
+                    allBahnhoefe = data.bahnhoefe; //speichert die empfangenen Bahnhöfe
 
                     if (allAbschnitte.length > 0) {
-                        addNextSegmentField(0); // Starte die Kette
+                        addNextSegmentField(0); //Startet die Kette
                     } else {
                         $('#segment-chain').html('<p class="text-warning">Keine Abschnitte in der Datenbank gefunden.</p>');
                     }
@@ -103,30 +103,32 @@
 
     //fügt ein neues Dropdown-Menü hinzu und zeigt nur verfügbare Abschnitte
     function addNextSegmentField(currentIndex) {
-
+        //ermittelt vorherigen Endbahnhof
         const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
-        const filteredAbschnitte = allAbschnitte.filter(abschnitt => {
+        //ermittelt vorherige Spurweite
+        const lastSpurweite = currentIndex > 0 ? selectedChain[currentIndex -1].spurweite : null;
+        //ermittelt alle möglichen Abschnitte ausgehend von dem Bahnhof
+        const filteredAbschnitte = allAbschnitte.filter(abschnitt => { //behält nur alle die true sind
 
             const isAlreadySelected = selectedChain.some(s => s.abschnittId === abschnitt.abschnittId);
 
             if (currentIndex === 0) {
-                return !isAlreadySelected;
+                return !isAlreadySelected; //gibt alle als true zurück
             } else {
-
-                return abschnitt.startBahnhofId === lastEndStationId && !isAlreadySelected;
+                //nur Abschnitte true deren Startbahnhof der gleiche ist wie der Endbahnhof des Abschnitts zuvor und der noch nicht gewählt wurde
+                return abschnitt.startBahnhofId === lastEndStationId && !isAlreadySelected && lastSpurweite === abschnitt.spurweite;
             }
         });
 
-
-        // GEÄNDERT: Einfach return, keine Button-Manipulation
+        //falls es keine passenden Abschnitte mehr gibt, wird kein neues Feld generiert
         if (filteredAbschnitte.length === 0 && currentIndex > 0) {
             return;
         }
 
-
+        //erzeugt ein Dropdown Feld mit den gefilterten Abschnitten als Optionen
         const fieldHtml = `
             <div class="segment-field flex items-center space-x-2 bg-gray-50" data-index="${currentIndex}">
-                <span style="min-width: 90px;" class="font-medium text-gray-600">${currentIndex === 0 ? 'Start' : 'Weiterer'} Abschnitt:</span>
+                <span style="min-width: 90px;" class="font-medium text-gray-600">Abschnitt:</span>
                 <select class="segment-select" data-index="${currentIndex}">
                     <option value="">-- Abschnitt auswählen --</option>
                     ${filteredAbschnitte.map(a => `<option value="${a.abschnittId}">${a.name}</option>`).join('')}
@@ -134,98 +136,93 @@
                 ${currentIndex > 0 ? `<button type="button" class="remove-segment btn-danger text-lg">&times;</button>` : ''}
             </div>
         `;
-
+        //Jquery-Funktion: fügt Dropdown unten an
         $('#segment-chain').append(fieldHtml);
 
 }
 
     //ändern eines Feldes -> entfernt alle nachfolgenden und erstellt das nächste Auswahlfeld
     $('#segment-chain').on('change', '.segment-select', function() {
-        const index = parseInt($(this).data('index'));
-        const selectedId = parseInt($(this).val());
+        const index = parseInt($(this).data('index')); //index des Abschnitts der geändert wurde 0..erste Abschnitt
+        const selectedId = parseInt($(this).val()); //id des Abschnitts
 
-
+        //alle Abschnitte, die einen höheren Index haben und daher danach kommen, werden gelöscht
+        //falls der abschnitt geändert wird
         $(`.segment-field[data-index]`).filter(function() {
             return parseInt($(this).data('index')) > index;
         }).remove();
-        selectedChain.splice(index);
+        selectedChain.splice(index);//nachfolgenden Modelle im Array löschen
 
-        if (selectedId) {
+        if (selectedId) { //wenn Abschnitt gewählt
             const selectedAbschnitt = allAbschnitte.find(a => a.abschnittId === selectedId);
-            selectedChain.push(selectedAbschnitt);
-
-
-            addNextSegmentField(index + 1);
+            selectedChain.push(selectedAbschnitt); //im Array dranhängen
+            addNextSegmentField(index + 1); //nächste Dropdown erzeugen
         }
-
-        updateDisplayAndButton();
+        updateDisplayAndButton(); //um UI-Elemente zu aktualisieren
     });
 
     //löscht den Abschnitt und alle nachfolgenden Abschnitte
-    $('#segment-chain').on('click', '.remove-segment', function() {
-        const fieldToRemove = $(this).closest('.segment-field');
-        const indexToRemove = parseInt(fieldToRemove.data('index'));
+    $('#segment-chain').on('click', '.remove-segment', function() { //reagiert auf löschen Button . remove-segment
+        const fieldToRemove = $(this).closest('.segment-field'); //Dropdown das gelöscht werden soll
+        const indexToRemove = parseInt(fieldToRemove.data('index')); //index des zu entfernenden Abschnitts
 
-
+        //auch alle Abschnitte nach dem zu löschenden Abschnitt müssen gelöscht werden
         $(`.segment-field[data-index]`).filter(function() {
             return parseInt($(this).data('index')) >= indexToRemove;
         }).remove();
-
-
         selectedChain.splice(indexToRemove);
-        addNextSegmentField(selectedChain.length);
 
-        updateDisplayAndButton();
+        addNextSegmentField(selectedChain.length);//neues Dropdown erstellen
+
+        updateDisplayAndButton();//UI-updaten
     });
 
+    //UI, Start-und Endbahnhoffelder und Map aktualisieren
     function updateDisplayAndButton() {
-    const ids = selectedChain.map(a => a.abschnittId);
+    const ids = selectedChain.map(a => a.abschnittId); //erstellt Array, das nur die Ids der Abschnitte speichert
 
-    // Hidden Field füllen
+    //verstecktes Formularfeld, dass an das Backendübergeben wird
     $('#abschnitt_ids_hidden').val(ids.join(','));
 
-    // Start- und Endbahnhof Texte aktualisieren
+    // Start- und Endbahnhof aktualisieren
     if (selectedChain.length > 0) {
-        const startBhfId = selectedChain[0].startBahnhofId;
-        const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
+        const startBhfId = selectedChain[0].startBahnhofId; //startBahnhof = Startbahnhof des ersten Abschnitts
+        const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId; //endbahnhof = Endbahnhof des letzten Abschnitts
 
-        $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+        $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt'); //holt den Namen des Bahnhofs aus den übergebenen Bahnhöfen
         $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
-    } else {
+    } else { //keine Abschnitte ausgewählt -> Felder bleiben leer
         $('#startBahnhof').val('');
         $('#endBahnhof').val('');
     }
-
 
     // Karte aktualisieren
     drawSelectedSegments();
 }
 
 
-    $('#name_input').on('input', updateDisplayAndButton);
 
 
+    //wird ausgeführt sobald das HTML-Dokument vollständig geladen wurde
     $(document).ready(function() {
-    loadInitialData();
+    loadInitialData();//lädt erstes Dropdown
 
-
+    //Formularvalidierung vor dem Start
     $('#strecken-form').on('submit', function(event) {
         let isValid = true;
 
-
+        //entfernt alle alten Fehlermeldungen
         $('.validation-error').remove();
         $('.form-control').removeClass('is-invalid');
 
-
         const nameInput = $('#name_input');
-        if (nameInput.val().trim() === '') {
+        if (nameInput.val().trim() === '') { //falls noch kein Name eingegeben wurde
             isValid = false;
             nameInput.addClass('is-invalid');
             nameInput.after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte geben Sie einen Namen für die Strecke ein.</div>');
         }
 
-
-        if (selectedChain.length === 0) {
+        if (selectedChain.length === 0) { //falls noch keine Abschnitte ausgewählt wurden
             isValid = false;
 
             $('#segment-chain').after('<div class="validation-error text-danger" style="margin-top:5px;">Bitte wählen Sie mindestens einen Streckenabschnitt aus.</div>');
@@ -233,7 +230,8 @@
 
 
         if (!isValid) {
-            event.preventDefault();
+            event.preventDefault(); //verhindert das Absenden des Formulars
+            //scrollt zum Fehler
             $('html, body').animate({
                 scrollTop: $(".validation-error").first().offset().top - 100
             }, 500);
@@ -318,40 +316,5 @@ function drawSelectedSegments() {
         })
         .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
 }
-
-
-function updateDisplayAndButton() {
-    const ids = selectedChain.map(a => a.abschnittId);
-
-    $('#abschnitt_ids_hidden').val(ids.join(','));
-
-    if (selectedChain.length > 0) {
-        const startBhfId = selectedChain[0].startBahnhofId;
-        const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
-
-        $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
-        $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
-    } else {
-        $('#startBahnhof').val('');
-        $('#endBahnhof').val('');
-    }
-
-    const isNameValid = $('#name_input').val().trim().length > 0;
-    const isChainValid = ids.length > 0;
-    const enableSubmit = isChainValid && isNameValid;
-
-    $('#submit-button').prop('disabled', !enableSubmit);
-
-    if (enableSubmit) {
-        $('#error-message').hide();
-    } else if (!isChainValid) {
-         $('#error-message').show();
-    }
-    drawSelectedSegments();
-}
-
-
-
-
 </script>
 {% endblock %}
