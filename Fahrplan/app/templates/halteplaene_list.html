@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Haltepläne</h1>
+
+  <p>
+    <a class="btn btn-primary" href="{{ url_for('halteplan_new') }}">Neuer Halteplan</a>
+  </p>
+
+  {% if halteplaene %}
+    <ul>
+      {% for hp in halteplaene %}
+        <tr>
+          <td>{{ hp.bezeichnung }}</td>
+          <td>{{ hp.strecke.name }}</td>
+          <td>{{ hp.haltepunkte | length }}</td>
+          <td>
+            <a class="btn-secondary-small"
+               href="{{ url_for('halteplan_edit', halteplan_id=hp.halteplan_id) }}">
+              Bearbeiten
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+    </ul>
+  {% else %}
+    <p>Noch keine Haltepläne vorhanden.</p>
+  {% endif %}
+{% endblock %}

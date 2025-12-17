@@ -6,7 +6,7 @@ from wtforms import (
     SubmitField,
     TextAreaField,
     IntegerField,
-    SelectField, SelectMultipleField
+    SelectField, SelectMultipleField, FloatField
 )
 from wtforms.validators import (
     DataRequired,
@@ -123,3 +123,28 @@ class FahrtCreateForm(FlaskForm):
     halteplan_id = SelectField("Halteplan", coerce=int, validators=[DataRequired()])
     mitarbeiter_ids = SelectMultipleField("Mitarbeiter", coerce=int)
     submit = SubmitField("Fahrtdurchführung anlegen")
+
+
+
+class HalteplanCreateForm(FlaskForm):
+    bezeichnung = StringField("Bezeichnung", validators=[DataRequired(), Length(max=128)])
+
+    strecke_id = SelectField("Strecke", coerce=int, validators=[DataRequired()])
+
+    # Bahnhof-IDs in Reihenfolge, z.B. "12, 5, 9"
+    haltepunkte_csv = StringField(
+        "Haltepunkte (Bahnhof-IDs, Reihenfolge, Komma-getrennt)",
+        validators=[DataRequired(), Length(min=1, max=500)]
+    )
+
+    base_price_default = FloatField(
+        "Grundtarif pro Segment (Default, EUR-Cent oder EUR – je nachdem was du nutzt)",
+        validators=[DataRequired(), NumberRange(min=0)]
+    )
+
+    duration_min_default = IntegerField(
+        "Dauer pro Segment (Default, Minuten)",
+        validators=[DataRequired(), NumberRange(min=0)]
+    )
+
+    submit = SubmitField("Halteplan anlegen")

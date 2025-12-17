@@ -313,7 +313,7 @@
             <a class="btn-nav" href="{{ url_for('index') }}">Dashboard</a>
             <a class="btn-nav" href="{{ url_for('mitarbeiter_list') }}">Mitarbeiter</a>
             <a class="btn-nav" href="{{ url_for('fahrten_list') }}">Fahrten</a>
-            <button class="btn-disabled" disabled>Haltepläne (in Arbeit)</button>
+            <a class="btn-nav"  href="{{ url_for('halteplaene_list') }}">Haltepläne</a>
 
         {% elif current_user.is_authenticated %}
             <a class="btn-nav" href="{{ url_for('index') }}">Dashboard</a>

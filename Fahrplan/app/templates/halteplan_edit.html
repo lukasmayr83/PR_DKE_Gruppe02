@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+  <form method="post">
+    <div class="form-group">
+      <label class="form-label">Bezeichnung</label>
+      <input class="form-input" type="text" name="bezeichnung" value="{{ hp.bezeichnung }}" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Strecke auswählen</label>
+      <select class="form-input" name="strecke_id" disabled>
+        {% for s in strecken %}
+          <option value="{{ s.id }}" {% if s.id == selected_strecke_id %}selected{% endif %}>
+            {{ s.name }} (id={{ s.id }})
+          </option>
+        {% endfor %}
+      </select>
+      <!-- damit POST nicht leer ist, falls du irgendwo strecke_id erwartest -->
+      <input type="hidden" name="strecke_id" value="{{ selected_strecke_id }}">
+    </div>
+
+    <h3>Haltepunkte auswählen (Reihenfolge aus Strecke)</h3>
+    <div class="mitarbeiter-list">
+      {% set selected_set = existing_bahnhof_ids | list %}
+      {% for b in bahnhof_rows %}
+        <label class="checkbox-row">
+          <input type="checkbox"
+                 name="halte_bahnhof_ids"
+                 value="{{ b.id }}"
+                 data-label="{{ b.name }}"
+                 onchange="rebuildSegments()"
+                 {% if b.id in selected_set %}checked{% endif %}
+                 disabled>
+          {{ b.name }}
+        </label>
+      {% endfor %}
+    </div>
+
+    <h3 style="margin-top:20px;">Segmente + Haltezeiten</h3>
+    <div id="segments"></div>
+
+    <div class="btn-container" style="margin-top:25px;">
+      <button type="submit" class="btn-primary-small">Änderungen speichern</button>
+      <a href="{{ url_for('halteplaene_list') }}" class="btn-secondary-small">Abbrechen</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  const MIN_COST_MAP = {{ min_cost_map | tojson }};
+  const MIN_DURATION_MAP = {{ min_duration_map | tojson }};
+
+  // Prefill Arrays aus Backend
+  const EXISTING_SEG_DUR = {{ existing_seg_durations | tojson }};
+  const EXISTING_SEG_PRICE = {{ existing_seg_prices | tojson }};
+  const EXISTING_DWELL = {{ existing_dwell_by_index | tojson }};
+
+  function pairKey(a, b) { return `${a}-${b}`; }
+
+  function rebuildSegments() {
+    // hier nehmen wir NUR die checked stops (die sind disabled aber checked)
+    const checked = Array.from(document.querySelectorAll("input[name='halte_bahnhof_ids']:checked"));
+    const stops = checked.map(cb => ({ id: parseInt(cb.value), label: cb.dataset.label }));
+
+    const container = document.getElementById("segments");
+    container.innerHTML = "";
+
+    if (stops.length < 2) {
+      container.innerHTML = "<p class='info-text'>Bitte mindestens 2 Haltepunkte auswählen.</p>";
+      return;
+    }
+
+    let dwellIndex = 0;
+
+    for (let i = 0; i < stops.length - 1; i++) {
+      const from = stops[i];
+      const to = stops[i + 1];
+
+      const k = pairKey(from.id, to.id);
+      const minCost = Number(MIN_COST_MAP[k] ?? 0);
+      const minDur  = Number(MIN_DURATION_MAP[k] ?? 0);
+
+      // Prefill Segmentwerte
+      const savedDur = (EXISTING_SEG_DUR[i] ?? minDur);
+      const savedPrice = (EXISTING_SEG_PRICE[i] ?? minCost);
+
+      const segBlock = document.createElement("div");
+      segBlock.className = "dataset-info";
+      segBlock.innerHTML = `
+        <div style="font-weight:600; margin-bottom:8px;">
+          Segment ${i + 1}: ${from.label} → ${to.label}
+        </div>
+
+        <div class="info-text" style="margin-bottom:10px;">
+          Mindesttarif (kostendeckend): <strong>${minCost.toFixed(2)} €</strong>
+          &nbsp;|&nbsp; Mindestdauer: <strong>${minDur} min</strong>
+        </div>
+
+        <input type="hidden" name="segment_min_cost[]" value="${minCost}">
+
+        <div class="form-group">
+          <label class="form-label">Dauer (Minuten)</label>
+          <input class="form-input" type="number" min="${minDur}"
+                 name="segment_duration_min[]" value="${savedDur}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Grundtarif (EUR)</label>
+          <input class="form-input" type="number" step="1" min="${minCost}"
+                 name="segment_base_price[]" value="${Number(savedPrice).toFixed(2)}" required>
+          <small class="hint">Muss ≥ Mindesttarif sein.</small>
+        </div>
+      `;
+      container.appendChild(segBlock);
+
+      // Haltezeit-Block für Zwischenhalte (to), außer letzter Halt
+      const isLastStop = (i + 1) === (stops.length - 1);
+      if (!isLastStop) {
+        const savedDwell = (EXISTING_DWELL[dwellIndex] ?? 0);
+
+        const haltBlock = document.createElement("div");
+        haltBlock.className = "dataset-info";
+        haltBlock.innerHTML = `
+          <div style="font-weight:600; margin-bottom:8px;">
+            Halt in: ${to.label}
+          </div>
+
+          <div class="info-text" style="margin-bottom:10px;">
+            Haltezeit wird zur Gesamtfahrzeit addiert.
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Haltezeit am Bahnhof (Minuten)</label>
+            <input class="form-input" type="number" min="0"
+                   name="halte_dauer_min[]" value="${savedDwell}" required>
+          </div>
+        `;
+        container.appendChild(haltBlock);
+        dwellIndex += 1;
+      }
+    }
+  }
+
+  rebuildSegments();
+</script>
+
+<style>
+  .form-styled { max-width: 520px; margin-top: 20px; }
+  .form-group { margin-bottom: 22px; }
+  .form-label { font-weight: 600; display: block; margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
+  .dataset-info { background: #f6f6f6; border: 1px solid #ddd; padding: 12px 15px; margin-bottom: 15px; border-radius: 6px; }
+  .hint { font-size: 12px; color: #666; margin-top: 4px; display: inline-block; }
+  .info-text { font-size: 13px; color: #555; margin-bottom: 10px; }
+  .mitarbeiter-list { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; max-height: 260px; overflow-y: auto; background: #fafafa; margin-bottom: 20px; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+  .checkbox-row input[type="checkbox"] { margin: 0; }
+</style>
+
+{% endblock %}

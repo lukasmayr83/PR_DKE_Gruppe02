@@ -9,7 +9,7 @@ from app.models import User, Bahnhof, Abschnitt, Warnung, Strecke, Reihenfolge
 from flask_login import logout_user
 from flask_login import login_required
 import folium
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 import sqlalchemy.orm as so
 
 #############################################################
@@ -1244,3 +1244,61 @@ def api_abschnitte_daten():
         'abschnitte': abschnitt_data,
         'bahnhoefe': bahnhoefe_map
     })
+
+#### api by Moritz (fahrplan)
+
+@app.route("/api/strecken-export", methods=["GET"])
+def api_strecken_export():
+
+    bahnhoefe = db.session.scalars(
+        sa.select(Bahnhof)
+    ).all()
+
+    bahnhof_items = [
+        {
+            "id": b.bahnhofId,
+            "name": b.name
+        }
+        for b in bahnhoefe
+    ]
+
+    abschnitte = db.session.scalars(
+        sa.select(Abschnitt)
+    ).all()
+
+    abschnitt_items = [
+        {
+            "id": a.abschnittId,
+            "startBahnhofId": a.startBahnhofId,
+            "endBahnhofId": a.endBahnhofId,
+            "spurweite": a.spurweite,
+            "laenge": a.laenge,
+            "nutzungsentgelt": a.nutzungsentgelt,
+            "maxGeschwindigkeit": a.max_geschwindigkeit,
+            "laenge": a.laenge,
+        }
+        for a in abschnitte
+    ]
+
+    strecken = db.session.scalars(
+        sa.select(Strecke).options(
+            selectinload(Strecke.reihenfolge)
+        )
+    ).all()
+
+    strecken_items = []
+    for s in strecken:
+        strecken_items.append({
+            "id": s.streckenId,
+            "name": s.name,
+            "abschnittIds": [
+                r.abschnittId
+                for r in sorted(s.reihenfolge, key=lambda x: x.reihenfolge)
+            ]
+        })
+
+    return jsonify({
+        "bahnhoefe": bahnhof_items,
+        "abschnitte": abschnitt_items,
+        "strecken": strecken_items
+    }), 200
