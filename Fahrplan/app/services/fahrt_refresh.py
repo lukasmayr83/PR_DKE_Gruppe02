@@ -21,7 +21,7 @@ def refresh_fahrt_snapshot(fahrt_id: int) -> dict:
     Speichert bei FahrtSegment nur final_price (+ duration_min), wie ausgemacht.
     """
 
-    # 1) Fahrt + Halteplan + alles was wir brauchen laden
+    # 1) Daten laden
     fahrt = db.session.scalar(
         sa.select(Fahrtdurchfuehrung)
         .where(Fahrtdurchfuehrung.fahrt_id == fahrt_id)

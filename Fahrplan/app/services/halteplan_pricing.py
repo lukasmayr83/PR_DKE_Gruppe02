@@ -1,5 +1,3 @@
-# app/services/halteplan_pricing.py
-
 from __future__ import annotations
 
 from typing import Dict, List, Tuple, Optional, Any
@@ -9,17 +7,10 @@ from app import db
 from app.models import StreckeAbschnitt, Abschnitt
 
 
-# ------------------------------------------------------------
-# Konfiguration
-# ------------------------------------------------------------
 
-# Falls du (noch) keine Distanz-Spalte im Abschnitt hast:
-# -> dann wird pro Abschnitt diese Distanz angenommen (damit Dauer berechenbar ist).
 DEFAULT_KM_PER_ABSCHNITT: float = 1.0
 
-# Sicherheitsfaktor für Mindestzeit:
-# Idee: "theoretische Mindestzeit" (km / vmax) ist extrem optimistisch.
-# Mit 0.75 entspricht das: effektive Geschwindigkeit ~ 75% von vmax.
+# faktor für Mindestzeit, (laenge/vmax) *60 *0,75:
 DEFAULT_SPEED_FACTOR: float = 0.75
 
 
@@ -208,10 +199,7 @@ def build_halteplan_segments_payload(
     speed_factor: float = DEFAULT_SPEED_FACTOR,
 ) -> List[dict]:
     """
-    Baut Segmentdaten für einen Halteplan (nur die angefahrenen Bahnhöfe),
-    wobei die Reihenfolge bereits korrekt ist (keine Umwege/Rückfahrten).
-
-    Rückgabe:
+        Rückgabe:
       [
         {
           "position": 1,

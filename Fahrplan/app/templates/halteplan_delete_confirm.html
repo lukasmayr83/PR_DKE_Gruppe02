@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+  <div class="dataset-info">
+    <strong>Achtung:</strong> Dieser Halteplan wird vollständig gelöscht.
+    <ul style="margin-top:10px;">
+      <li>Haltepunkte: <strong>{{ haltepunkte_count }}</strong></li>
+      <li>Segmente: <strong>{{ segmente_count }}</strong></li>
+      <li>Fahrtdurchführungen: <strong>{{ fahrten_count }}</strong> (inkl. Dienstzuweisungen, FahrtHalte, FahrtSegmente)</li>
+    </ul>
+  </div>
+
+  <form method="post">
+    <div class="btn-container" style="display:flex; justify-content:space-between; align-items:center;">
+      <a href="{{ url_for('halteplan_edit', halteplan_id=hp.halteplan_id) }}" class="btn-secondary-small">Abbrechen</a>
+      <button type="submit" class="btn-danger-small">Ja, endgültig löschen</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

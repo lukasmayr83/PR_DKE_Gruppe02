@@ -1,28 +1,68 @@
 {% extends "base.html" %}
+
 {% block content %}
-  <h1>Haltepläne</h1>
+<h1>Haltepläne</h1>
 
-  <p>
-    <a class="btn btn-primary" href="{{ url_for('halteplan_new') }}">Neuer Halteplan</a>
-  </p>
+<div class="btn-container">
+  <a href="{{ url_for('halteplan_new') }}" class="btn-primary-small">
+    Neuer Halteplan
+  </a>
+</div>
 
-  {% if halteplaene %}
-    <ul>
-      {% for hp in halteplaene %}
-        <tr>
-          <td>{{ hp.bezeichnung }}</td>
-          <td>{{ hp.strecke.name }}</td>
-          <td>{{ hp.haltepunkte | length }}</td>
-          <td>
-            <a class="btn-secondary-small"
-               href="{{ url_for('halteplan_edit', halteplan_id=hp.halteplan_id) }}">
-              Bearbeiten
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-    </ul>
-  {% else %}
-    <p>Noch keine Haltepläne vorhanden.</p>
-  {% endif %}
+<div class="table-wrapper">
+  <table class="table table-striped fahrten-table">
+    <thead>
+      <tr>
+        <th class="col-halteplan">Bezeichnung</th>
+        <th class="col-halteplan">Strecke</th>
+        <th class="col-halteplan">Von–Bis</th>
+        <th class="col-mitarbeiter">Halte</th>
+
+        <!-- optional, wenn du “Platz” willst -->
+        <th class="col-verspaetung">Gesamtpreis</th>
+        <th class="col-verspaetung">Gesamtdauer</th>
+
+        <th class="col-aktionen">Aktionen</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.bezeichnung }}</td>
+        <td>{{ r.strecke_name }}</td>
+        <td>{{ r.von }} → {{ r.bis }}</td>
+        <td>{{ r.halte_count }}</td>
+
+        <td>
+          {% if r.total_price is not none %}
+            {{ "%.2f"|format(r.total_price) }} €
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td>
+          {% if r.total_duration is not none %}
+            {{ r.total_duration }} min
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td>
+          <a href="{{ url_for('halteplan_edit', halteplan_id=r.id) }}"
+             class="btn-primary-small btn-inline">
+            Halteplan bearbeiten
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7">Keine Haltepläne vorhanden.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

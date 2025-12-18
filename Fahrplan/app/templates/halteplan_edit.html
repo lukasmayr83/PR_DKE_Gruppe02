@@ -10,7 +10,7 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">Strecke auswählen</label>
+      <label class="form-label">Strecke</label>
       <select class="form-input" name="strecke_id" disabled>
         {% for s in strecken %}
           <option value="{{ s.id }}" {% if s.id == selected_strecke_id %}selected{% endif %}>
@@ -22,7 +22,8 @@
       <input type="hidden" name="strecke_id" value="{{ selected_strecke_id }}">
     </div>
 
-    <h3>Haltepunkte auswählen (Reihenfolge aus Strecke)</h3>
+
+    <h3>Haltepunkte</h3>
     <div class="mitarbeiter-list">
       {% set selected_set = existing_bahnhof_ids | list %}
       {% for b in bahnhof_rows %}
@@ -37,6 +38,13 @@
           {{ b.name }}
         </label>
       {% endfor %}
+    </div>
+
+    <div class="row-right">
+      <a href="{{ url_for('halteplan_delete_confirm', halteplan_id=hp.halteplan_id) }}"
+         class="btn-danger-small">
+        Löschen
+      </a>
     </div>
 
     <h3 style="margin-top:20px;">Segmente + Haltezeiten</h3>
@@ -109,7 +117,7 @@
 
         <div class="form-group">
           <label class="form-label">Grundtarif (EUR)</label>
-          <input class="form-input" type="number" step="1" min="${minCost}"
+          <input class="form-input" type="number" step="0.01" min="${minCost}"
                  name="segment_base_price[]" value="${Number(savedPrice).toFixed(2)}" required>
           <small class="hint">Muss ≥ Mindesttarif sein.</small>
         </div>
@@ -148,16 +156,35 @@
 </script>
 
 <style>
-  .form-styled { max-width: 520px; margin-top: 20px; }
-  .form-group { margin-bottom: 22px; }
-  .form-label { font-weight: 600; display: block; margin-bottom: 6px; }
-  .form-input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
-  .dataset-info { background: #f6f6f6; border: 1px solid #ddd; padding: 12px 15px; margin-bottom: 15px; border-radius: 6px; }
+  .form-styled { max-width: 580px; margin-top: 20px; }
+  .form-group { max-width: 580px; margin-bottom: 22px; }
+  .form-label { max-width: 560px; font-weight: 600; display: block; margin-bottom: 6px; }
+  .form-input { max-width: 580px; width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
+  .dataset-info { background: #f6f6f6; border: 1px solid #ddd; padding: 12px 15px; margin-bottom: 15px; border-radius: 6px; max-width: 600px; }
   .hint { font-size: 12px; color: #666; margin-top: 4px; display: inline-block; }
   .info-text { font-size: 13px; color: #555; margin-bottom: 10px; }
-  .mitarbeiter-list { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; max-height: 260px; overflow-y: auto; background: #fafafa; margin-bottom: 20px; }
-  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+  .mitarbeiter-list { max-width: 560px; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; max-height: 260px; overflow-y: auto; background: #fafafa; margin-bottom: 20px; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px;  }
   .checkbox-row input[type="checkbox"] { margin: 0; }
+  .btn-danger-small {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: 1px solid #b02a37;
+        background: #dc3545;
+        color: #fff;
+        font-size: 13px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+  .row-right {
+      max-width: 560px;
+      display: flex;
+      justify-content: flex-end;
+      margin: 10px 0 20px 0;
+  }
+
 </style>
 
 {% endblock %}

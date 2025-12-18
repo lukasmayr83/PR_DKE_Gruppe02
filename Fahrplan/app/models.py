@@ -125,6 +125,18 @@ class Fahrtdurchfuehrung(db.Model):
         cascade="all, delete-orphan",
     )
 
+    halte: so.Mapped[List["FahrtHalt"]] = so.relationship(
+        "FahrtHalt",
+        back_populates="fahrt",
+        cascade="all, delete-orphan",
+    )
+
+    segmente: so.Mapped[List["FahrtSegment"]] = so.relationship(
+        "FahrtSegment",
+        back_populates="fahrt",
+        cascade="all, delete-orphan",
+    )
+
     abfahrt_zeit: so.Mapped[datetime] = so.mapped_column(sa.DateTime(), nullable=False)
     price_factor: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False, default=1.0)
 
@@ -146,6 +158,11 @@ class FahrtHalt(db.Model):
     )
     bahnhof_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("bahnhof.id"), nullable=False, index=True
+    )
+
+    fahrt: so.Mapped["Fahrtdurchfuehrung"] = so.relationship(
+        "Fahrtdurchfuehrung",
+        back_populates="halte",
     )
 
     position: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
@@ -179,6 +196,11 @@ class FahrtSegment(db.Model):
 
     final_price: so.Mapped[float] = so.mapped_column(sa.Float, nullable=False)
     duration_min: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False, default=0)
+
+    fahrt: so.Mapped["Fahrtdurchfuehrung"] = so.relationship(
+        "Fahrtdurchfuehrung",
+        back_populates="segmente",
+    )
 
     __table_args__ = (
         sa.UniqueConstraint("fahrt_id", "position", name="uq_fahrt_seg_pos"),

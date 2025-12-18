@@ -6,7 +6,7 @@
 <div class="card">
     <h2>Neue Fahrtdurchführung anlegen</h2>
 
-    <!-- Info-Box wie bei "bearbeiten" -->
+
     <div class="dataset-info">
         <strong>Hinweis:</strong><br>
         Die Fahrtdurchführung wird im Status <strong>planmäßig</strong> angelegt.<br>
@@ -22,13 +22,31 @@
             {{ form.halteplan_id(class="form-input") }}
         </div>
 
+        <!-- Abfahrtszeit -->
+        <div class="form-group">
+            <label class="form-label">Abfahrtszeit</label>
+            <input class="form-input" type="datetime-local" name="abfahrt_zeit" required>
+        </div>
+
+
         <!-- Zug-Hinweis -->
         <div class="form-group">
             <label class="form-label">Zug</label>
             <span class="tag-grey">Zug hinzufügen (in Arbeit)</span>
         </div>
 
-        <!-- Mitarbeiter-Zuweisung (gleiches Design wie im Edit-Formular) -->
+        <div class="form-group">
+            <label class="form-label">Preisfaktor</label>
+            <input class="form-input"
+                   type="number"
+                   name="price_factor"
+                   step="0.01"
+                   min="1"
+                   value="1.00"
+                   required>
+        </div>
+
+        <!-- Mitarbeiter-Zuweisung -->
         <h3 style="margin-top: 30px;">Mitarbeiterzuweisung</h3>
 
         <p class="info-text">
@@ -66,7 +84,7 @@
 </div>
 
 <style>
-    /* wie bei fahrt_edit.html */
+
 
     .form-styled {
         max-width: 520px;

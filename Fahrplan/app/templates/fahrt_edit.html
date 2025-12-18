@@ -22,6 +22,30 @@
     <form method="post" class="form-styled" id="fahrt-edit-form">
         {{ form.hidden_tag() }}
 
+        <!-- Abfahrtszeit -->
+        <div class="form-group">
+            <label class="form-label">Abfahrtszeit</label>
+            <input class="form-input"
+                   type="datetime-local"
+                   name="abfahrt_zeit"
+                   required
+                   value="{% if fahrt.abfahrt_zeit %}{{ fahrt.abfahrt_zeit.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+            <small class="hint">Basis für alle berechneten Ankunfts-/Abfahrtszeiten entlang der Strecke.</small>
+        </div>
+
+        <!-- Price Factor -->
+        <div class="form-group">
+            <label class="form-label">Preisfaktor</label>
+            <input class="form-input"
+                   type="number"
+                   name="price_factor"
+                   step="0.01"
+                   min="1"
+                   required
+                   value="{{ (fahrt.price_factor or 1.0) }}">
+            <small class="hint">Muss ≥ 1.00 sein.</small>
+        </div>
+
         <!-- Status -->
         <div class="form-group">
             {{ form.status.label(class="form-label") }}
@@ -32,9 +56,73 @@
         <div class="form-group" id="verspaetung-group">
             {{ form.verspaetung_min.label(class="form-label") }}
             {{ form.verspaetung_min(class="form-input", id="verspaetung-input") }}
-            <small class="hint">
-                Verspätung in Minuten (nur bei verspäteten Fahrten relevant).
-            </small>
+        </div>
+
+        <!-- Anzeige: berechnete Halte/Zeiten -->
+        <h3 style="margin-top: 30px;">Berechnete Haltezeiten</h3>
+
+        <div class="dataset-info">
+            {% if halte_rows %}
+                <div class="table-wrapper">
+                    <table class="table table-striped" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">Pos</th>
+                                <th>Bahnhof</th>
+                                <th style="width:190px;">Ankunft</th>
+                                <th style="width:190px;">Abfahrt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in halte_rows %}
+                            <tr>
+                                <td>{{ h.position }}</td>
+                                <td>{{ h.bahnhof_name }}</td>
+                                <td>{{ h.ankunft_zeit or "-" }}</td>
+                                <td>{{ h.abfahrt_zeit or "-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="info-text" style="margin:0;">Noch keine Halte berechnet (speichern, um neu zu berechnen).</p>
+            {% endif %}
+        </div>
+
+        <!-- Anzeige: berechnete Segmente/Preise -->
+        <h3 style="margin-top: 30px;">Berechnete Segmente</h3>
+
+        <div class="dataset-info">
+            {% if segment_rows %}
+                <div class="table-wrapper">
+                    <table class="table table-striped" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">Pos</th>
+                                <th style="width:140px;">Dauer (min)</th>
+                                <th style="width:140px;">Preis</th>
+                                <th>Von Halt-ID</th>
+                                <th>Nach Halt-ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in segment_rows %}
+                            <tr>
+                                <td>{{ s.position }}</td>
+                                <td>{{ s.duration_min }}</td>
+                                <td>{{ "%.2f"|format(s.final_price) }}</td>
+                                <td>{{ s.von_halt_id }}</td>
+                                <td>{{ s.nach_halt_id }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="hint">Preis = Grundtarif * price_factor.</small>
+            {% else %}
+                <p class="info-text" style="margin:0;">Noch keine Segmente berechnet (speichern, um neu zu berechnen).</p>
+            {% endif %}
         </div>
 
         <!-- Mitarbeiter-Zuweisung -->
@@ -91,12 +179,14 @@
 
     .form-group {
         margin-bottom: 22px;
+        max-width: 520px;
     }
 
     .form-label {
         font-weight: 600;
         display: block;
         margin-bottom: 6px;
+        max-width: 520px;
     }
 
     .form-input {
@@ -106,6 +196,7 @@
         border-radius: 5px;
         font-size: 15px;
         box-sizing: border-box;
+        max-width: 520px;
     }
 
     .dataset-info {
@@ -114,6 +205,7 @@
         padding: 12px 15px;
         margin-bottom: 25px;
         border-radius: 6px;
+        max-width: 520px;
     }
 
     .hint {
@@ -137,6 +229,7 @@
         overflow-y: auto;
         background: #fafafa;
         margin-bottom: 20px;
+        max-width: 520px;
     }
 
     .checkbox-row {
@@ -197,7 +290,7 @@
 
         if (statusSelect) {
             statusSelect.addEventListener("change", updateVerspaetungVisibility);
-            updateVerspaetungVisibility(); // initial
+            updateVerspaetungVisibility();
         }
     })();
 </script>

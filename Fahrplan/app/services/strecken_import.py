@@ -27,7 +27,7 @@ def sync_from_strecken(base_url: str) -> dict:
 
     try:
         # -----------------------
-        # 1) Bahnhöfe upserten
+        # 1) Bahnhöfe
         # -----------------------
         bahnhof_map = {}  # external_id -> internal id (DB pk)
         for b in data.get("bahnhoefe", []):
@@ -43,7 +43,7 @@ def sync_from_strecken(base_url: str) -> dict:
             bahnhof_map[ext_id] = obj.id
 
         # -----------------------
-        # 2) Abschnitte upserten
+        # 2) Abschnitte
         # -----------------------
         abschnitt_map = {}  # external_id -> internal id
         for a in data.get("abschnitte", []):
@@ -71,7 +71,7 @@ def sync_from_strecken(base_url: str) -> dict:
             abschnitt_map[ext_id] = obj.id
 
         # -----------------------
-        # 3) Strecken upserten + Join-Tabelle neu setzen
+        # 3) Strecken  + Join-Tabelle neu setzen
         # -----------------------
         strecken_count = 0
         links_count = 0
