@@ -133,7 +133,7 @@ def search_wartungen(request, nur_aktuelle=False, svnr=None):
     suchbegriff = request.args.get("q", "").strip()
     query = (db.select(Wartungszeitraum).join(Wartung, Wartung.wartungszeitid == Wartungszeitraum.wartungszeitid)
              .join(Mitarbeiter, Mitarbeiter.svnr == Wartung.svnr)
-             .join(Zuege, Zuege.zugid == Wartung.zugid).distinct())
+             .join(Zuege, Zuege.zugid == Wartung.zugid).distinct().order_by(Wartungszeitraum.wartungszeitid))
 
     if svnr:
         query = query.where(Wartung.svnr == svnr)

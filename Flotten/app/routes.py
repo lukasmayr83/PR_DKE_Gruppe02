@@ -1,5 +1,4 @@
 from flask import render_template, flash, redirect, url_for, request, jsonify, session
-from urllib.parse import urlsplit
 from app import db
 from flask import current_app as app
 from app.forms import LoginForm, PersonenwagenForm, TriebwagenForm, ZuegeForm, MitarbeiterAddForm, MitarbeiterEditForm,WartungszeitraumForm
@@ -205,12 +204,11 @@ def triebwagen_action():
 
     tw = db.session.get(Triebwagen, wagen_id)
 
-# Triebwagen kann nicht gelöscht werden, wenn er einem Zug zugeordnet ist
-    if action == "loeschen":
-        if tw.istfrei is not None:
-            flash("Wagen ist in einem Zug und kann nicht gelöscht werden!")
-            return redirect(url_for('uebers_triebwagen'))
+    if tw.istfrei is not None:
+        flash("Wagen ist in einem Zug und kann nicht gelöscht oder bearbeitet werden!")
+        return redirect(url_for('uebers_triebwagen'))
 
+    if action == "loeschen":
         db.session.delete(tw)
         db.session.commit()
         flash("Triebwagen erfolgreich gelöscht.")
@@ -232,14 +230,6 @@ def bearbeite_triebwagen(wagen_id):
         return redirect(url_for('uebers_triebwagen'))
 
     if form.validate_on_submit():
-        # Spurweite darf nicht geändert werden, wenn der Wagen in einem Zug ist
-        if tw.istfrei is not None and tw.spurweite != form.spurweite.data:
-            flash("Spurweite darf nicht geändert werden, wenn der Wagen in einem Zug ist!")
-            return redirect(url_for('bearbeite_triebwagen', wagen_id=wagen_id))
-        # Maximale Zugkraft darf nicht geändert werden, wenn der Wagen in einem Zug ist
-        if tw.istfrei is not None and tw.maxzugkraft != form.maxzugkraft.data:
-            flash("Maximale Zugkraft darf nicht geändert werden, wenn der Wagen in einem Zug ist!")
-            return redirect(url_for('bearbeite_triebwagen', wagen_id=wagen_id))
 
         tw.maxzugkraft = form.maxzugkraft.data
         tw.spurweite  = form.spurweite.data
@@ -301,6 +291,10 @@ def zuege_action():
             return redirect(url_for('uebers_zuege'))
 
         zug = db.session.get(Zuege, zug_id)
+
+        if zug.aktuelle_wartungs_anzeige != "FALSE":
+            flash("Dieser Zug befindet sich aktuell in Wartung und kann daher nicht bearbeitet oder gelöscht werden!")
+            return redirect(url_for('uebers_zuege'))
 
         if action == "loeschen":
             for w in zug.wagen:
@@ -407,9 +401,28 @@ def mitarbeiter_action():
         return redirect(url_for('uebers_mitarbeiter'))
 
     mitarbeiter = db.session.get(Mitarbeiter, svnr)
+    now = datetime.now()
 
     if action == "loeschen":
-        user_to_delete =mitarbeiter.user
+
+        for wartung in mitarbeiter.wartungen:
+            wzr = wartung.wartungszeitraum
+
+            start_dt = datetime.combine(wzr.datum, wzr.von.time())
+            end_dt = datetime.combine(wzr.datum, wzr.bis.time())
+
+            if start_dt <= now <= end_dt:
+                flash("Mitarbeiter befindet sich aktuell in einer Wartung und kann daher nicht gelöscht werden!")
+                return redirect(url_for('uebers_mitarbeiter'))
+
+            if start_dt > now:
+                anzahl_ma = Wartung.query.filter_by(wartungszeitid=wartung.wartungszeitid).count()
+
+                if anzahl_ma <= 1:
+                    flash(f"Mitarbeiter ist der einzige zugeteilt für die zukünftige Wartung Nummer: {wartung.wartungszeitid} und kann daher nicht gelöscht werden!")
+                    return redirect(url_for('uebers_mitarbeiter'))
+
+        user_to_delete = mitarbeiter.user
         db.session.delete(mitarbeiter)
         if user_to_delete:
             db.session.delete(user_to_delete)
@@ -660,7 +673,6 @@ def bearbeite_wartungszeitraum(wartungszeitid):
                 svnr=sv,
                 zugid=form.zugid.data
             ))
-
         db.session.commit()
         flash("Wartungszeitraum erfolgreich aktualisiert.")
         return redirect(url_for('dashboard_admin'))

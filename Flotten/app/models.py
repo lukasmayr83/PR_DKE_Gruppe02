@@ -130,7 +130,7 @@ class Mitarbeiter(db.Model):
 
     user: so.Mapped["User"] = so.relationship(back_populates="mitarbeiter")
 
-    wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates="mitarbeiter")
+    wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates="mitarbeiter",cascade="all, delete-orphan")
 
 class Wartungszeitraum(db.Model):
     __tablename__ = 'wartungszeitraum'
@@ -154,7 +154,7 @@ class Wartung(db.Model):
 
     wartungid: so.Mapped[int] = so.mapped_column(primary_key=True)
 
-    svnr: so.Mapped[int] = so.mapped_column(sa.ForeignKey("mitarbeiter.svnr"))
+    svnr: so.Mapped[int] = so.mapped_column(sa.ForeignKey("mitarbeiter.svnr", ondelete="cascade"))
     zugid: so.Mapped[int] = so.mapped_column(sa.ForeignKey("zuege.zugid"))
     wartungszeitid: so.Mapped[int] = so.mapped_column(sa.ForeignKey("wartungszeitraum.wartungszeitid"))
 

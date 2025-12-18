@@ -71,6 +71,9 @@ def validate_all(form, req):
         return False
     if not validate_von_vor_bis(form.von.data, form.bis.data):
         return False
+    if not validate_zug_wartung_keine_ueberlappung(form.zugid.data, form.datum.data, form.von.data, form.bis.data):
+        flash("Dieser Zug hat in diesem Zeitraum bereits eine Wartung!")
+        return False
     return True
 
 def validate_zug_datum_von_bis(form):
@@ -110,3 +113,24 @@ def get_verfuegbare_mitarbeiter(datum, von, bis, ignore_wzid=None):
     ).scalars().all()
 
     return verfuegbare
+
+ # Prüft ob der Zug im Zeitraum bereits eine andere Wartung hat
+def validate_zug_wartung_keine_ueberlappung(zugid, datum, von, bis, ignore_wzid=None):
+
+    von_dt = datetime.combine(datum, von)
+    bis_dt = datetime.combine(datum, bis)
+
+    query = db.select(Wartung).join(Wartungszeitraum).where(
+        Wartung.zugid == zugid,
+        Wartungszeitraum.von < bis_dt,
+        Wartungszeitraum.bis > von_dt
+    )
+
+    if ignore_wzid is not None:
+        query = query.where(Wartung.wartungszeitid != int(ignore_wzid))
+
+    result = db.session.execute(query).scalars().all()
+    if result:
+        return False  # Überschneidung gefunden
+
+    return True
