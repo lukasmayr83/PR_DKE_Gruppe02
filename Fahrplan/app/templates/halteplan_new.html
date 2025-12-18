@@ -98,7 +98,7 @@
 
         <div class="form-group">
           <label class="form-label">Grundtarif (EUR)</label>
-          <input class="form-input" type="number" step="1" min="${minCost}"
+          <input class="form-input" type="number" step="0.01" min="${minCost}"
                  name="segment_base_price[]" value="${minCost.toFixed(2)}" required>
           <small class="hint">Muss ≥ Mindesttarif sein.</small>
         </div>
