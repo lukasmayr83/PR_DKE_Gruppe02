@@ -70,7 +70,7 @@ class AktionForm(FlaskForm):
         "Halteplan auswählen",
         choices=[
             ("", "keine"),
-            ("1", "Halteplan [Linz Hbf - Innsbruck Hbf]"),
+            ("1", "Halteplan [Linz Hbf - Innsbruck Hbf]"),     # hart codiert zur DEMO !
         ],
         validators=[Optional()],
     )
@@ -78,3 +78,25 @@ class AktionForm(FlaskForm):
     aktiv = BooleanField("Aktiv")
 
     submit = SubmitField("Speichern")
+
+# Verbindungssuche
+class VerbindungssucheForm(FlaskForm):
+    startbahnhof = StringField(
+        "Startbahnhof",
+        validators=[DataRequired(), Length(max=120)]
+    )
+    zielbahnhof = StringField(
+        "Zielbahnhof",
+        validators=[DataRequired(), Length(max=120)]
+    )
+    datum = DateField(
+        "Datum (YYYY-MM-DD)",
+        format="%Y-%m-%d",
+        validators=[DataRequired()],
+    )
+    uhrzeit = StringField(
+        "Uhrzeit (HH:MM)",
+        validators=[DataRequired(), Length(max=5)]
+    )
+    sitzplatz = BooleanField("Sitzplatz reservieren")
+    submit = SubmitField("Suchen")

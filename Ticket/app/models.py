@@ -42,3 +42,41 @@ class Aktion(db.Model):
 
     def __repr__(self) -> str:
         return f"<Aktion {self.name} ({self.typ})>"
+
+
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Zu welchem User gehört das Ticket
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+
+    # Status + Metadaten
+    erstelltAm = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    status = db.Column(db.String(20), nullable=False, default="aktiv")  # "aktiv", "storniert"
+
+    # Wo steige ich ein / aus + Info zum Umstieg
+    start_halt = db.Column(db.String(120), nullable=False)
+    ziel_halt = db.Column(db.String(120), nullable=False)
+    anzahl_umstiege = db.Column(db.Integer, nullable=False, default=0)
+
+    # Fahrtdaten (für Anzeige in "Meine Tickets")
+    abfahrt = db.Column(db.DateTime, nullable=False)
+    ankunft = db.Column(db.DateTime, nullable=False)
+
+    # Referenzen auf das Fahrplan-System (vereinfachte IDs)
+    fahrt_id = db.Column(db.Integer, nullable=False)
+    halteplan_id = db.Column(db.Integer, nullable=True)
+
+    # Preis +Sitzplatz
+    gesamtPreis = db.Column(db.Float, nullable=False)
+    sitzplatzReservierung = db.Column(db.Boolean, nullable=False, default=False)
+
+    # Aktion (falls verwendet)
+    aktion_id = db.Column(db.Integer, db.ForeignKey("aktion.id", ondelete="SET NULL"), nullable=True)
+
+ # obsolet? backref debugging
+    kunde = db.relationship("User", backref=db.backref("tickets", lazy=True, passive_deletes=True))
+    aktion = db.relationship("Aktion", backref=db.backref("tickets", lazy=True, passive_deletes=True))
+
+    def __repr__(self):
+        return f"<Ticket {self.id} ({self.start_halt} -> {self.ziel_halt})>"
