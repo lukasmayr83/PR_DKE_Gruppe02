@@ -81,7 +81,7 @@ body {
 .map-container {
     flex: 1;
     min-width: 0;
-    border: 1px solid #dee2e6;
+    border: none;
     border-radius: 6px;
     overflow: hidden;
     height: 80%;
