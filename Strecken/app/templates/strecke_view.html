@@ -7,7 +7,7 @@
     input[readonly], select[disabled] { background-color: #e9ecef; cursor: not-allowed; }
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
-<h2>Strecke Details</h2>
+<h1>Strecke Details</h1>
 <div class="flex-container">
 
     <div class="form-wrapper">
@@ -171,11 +171,29 @@
 
                         polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
 
-                        L.marker(startLatLng)
+                        L.marker(startLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
                             .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
                             .addTo(segmentsLayer);
 
-                        L.marker(endLatLng)
+                        L.marker(endLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
                             .bindPopup(`<b>Ende:</b> ${data.end.name}`)
                             .addTo(segmentsLayer);
 

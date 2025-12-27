@@ -110,7 +110,7 @@ class AbschnittForm(FlaskForm):
             self.endBahnhof.errors.append(msg)
             return False
 
-        #falls Start- und Endbahnhof gleiche Id wie vor dem bearbeiten haben wird Query,
+        #falls Start- und Endbahnhof gleiche Id wie vor dem Bearbeiten haben wird Query,
         #die sonst eine Fehlermeldung aufwirft nicht mehr ausgeführt
         if (start_id == self.original_start_id) and (end_id == self.original_end_id):
             return True
@@ -124,7 +124,6 @@ class AbschnittForm(FlaskForm):
         abschnitt = db.session.scalar(query)
 
         if abschnitt is not None:
-
             msg = 'Dieser Abschnitt (gleiches Start- und Endbahnhof-Paar) existiert bereits.'
             self.startBahnhof.errors.append(msg)
             self.endBahnhof.errors.append(msg)
@@ -146,13 +145,15 @@ class BahnhofForm(FlaskForm):
     adresse = StringField('Adresse des Bahnhofs', validators=[DataRequired()])
     submit = SubmitField('Bahnhof speichern')
 
+    #speichert ursprüngliche Adresse und Name des bahnhofs ab
     def __init__(self, original_name=None, original_adresse=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.original_name = original_name
         self.original_adresse = original_adresse
 
+    #kontrolliert ob es den Namen und die Adresse nicht schon ein anderer Bahnhof hat
     def validate_name(self, field):
-        if self.original_name is None or field.data != self.original_name: #erste neuen Bahnhof ete Bahnhof wurde schon bearbeitet
+        if self.original_name is None or field.data != self.original_name:
             bahnhof = db.session.scalar(
                 sa.select(Bahnhof).where(Bahnhof.name == field.data)
             )
@@ -180,12 +181,13 @@ class StreckenForm(FlaskForm):
     abschnitt = SelectMultipleField("Abschnitte", coerce=int)
     submit = SubmitField('Strecke speichern')
 
+    #speichert ursprünglichen Name der Strecke
     def __init__(self, original_name=None, *args, **kwargs):
         super(StreckenForm, self).__init__(*args, **kwargs)
         self.original_name = original_name
 
     def validate_name(self, name):
-        # Wenn der Name gleich geblieben ist, ist das OK
+        # Wenn der Name gleich geblieben ist, ist das ok
         if self.original_name and name.data == self.original_name:
             return
 
@@ -207,7 +209,7 @@ class WarnungForm(FlaskForm):
     beschreibung = StringField('Beschreibung der Warnung', validators=[DataRequired()])
     abschnitt = SelectMultipleField("Abschnitt", coerce=int, validators=[DataRequired()])
     startZeit = DateTimeLocalField("gültig ab", validators=[DataRequired()])
-    endZeit = DateTimeLocalField("gültig bis (optional)", validators=[Optional()])
+    endZeit = DateTimeLocalField("gültig bis (optional)", validators=[Optional()]) #ist optional
     submit = SubmitField('Warnung speichern')
 
     def validate(self, extra_validators=None):
@@ -215,6 +217,7 @@ class WarnungForm(FlaskForm):
         if not super().validate(extra_validators=extra_validators):
             return False
 
+        #prüft ob Endzeit falls vorhanden später ist als Startzeit
         startZeit = self.startZeit.data
         endZeit = self.endZeit.data
 
@@ -223,10 +226,8 @@ class WarnungForm(FlaskForm):
 
         if endZeit <= startZeit:
             msg = 'Startzeit der Warnung muss vor der Endzeit liegen.'
-
             self.startZeit.errors.append(msg)
             self.endZeit.errors.append(msg)
-
             return False
 
         return True

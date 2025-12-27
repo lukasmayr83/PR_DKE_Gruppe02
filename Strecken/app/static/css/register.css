@@ -1,12 +1,14 @@
+/*Bild*/
 .image-wrapper {
-    flex: 2;
+    flex: 2; /*ist doppelt so groß wie das Formular */
     position: relative;
     min-width: 400px;
     height: 75vh;
     border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /*damit die Ecken schön abgerundet sind*/
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);  /*erzeugt Schatten*/
     background-image: url('../img/MA.png');
+    /*wird in der Mitte des Containers platziert und füllt den Container ohne das Bild zu verzehren*/
     background-size: cover;
     background-position: center center;
 }

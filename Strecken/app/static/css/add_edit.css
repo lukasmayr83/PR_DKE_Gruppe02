@@ -123,7 +123,7 @@ h1 {
     margin-left: 25px;
 }
 
- /* Select2  */
+    /* Select2  */
 
     /* äußerer Rahmen */
     .select2-container .select2-selection--multiple {
@@ -161,6 +161,20 @@ h1 {
         margin-top: 2px !important;
         margin-bottom: 2px !important;
         margin-right: 6px !important;
-        padding: 4px 8px !important;
+        padding: 2px 8px 2px 8px !important;
     }
+
+    /*X-Button-Style*/
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #dc3545 !important;
+    margin-right: 5px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+}
+
+    /*x-Button-Hover*/
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #a71d2a !important;
+    background-color: transparent !important;
+}
 

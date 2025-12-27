@@ -21,9 +21,10 @@ from typing import List
 def load_user(id):
     return db.session.get(User, int(id))
 
+
 class RoleEnum(enum.Enum):
-    admin = "admin"
-    mitarbeiter = "mitarbeiter"
+    admin = "admin" #kann alles bearbeiten und löschen
+    mitarbeiter = "mitarbeiter" # kann nur die Dinge anschauen
 
 
 class User( UserMixin, db.Model):
@@ -32,7 +33,7 @@ class User( UserMixin, db.Model):
                                                 unique=True)
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True,
                                              unique=True)
-    password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
+    password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256)) #Hash für Paswort
 
     role: so.Mapped[RoleEnum] = so.mapped_column(
         sa.Enum(RoleEnum),
@@ -49,6 +50,7 @@ class User( UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    #generiert automatisch einen Avatar aus der
     def avatar(self, size):
         digest = md5(self.email.lower().encode('utf-8')).hexdigest()
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
@@ -82,6 +84,7 @@ class Bahnhof (db.Model):
             self.latitude = float(data[0]["lat"])
             self.longitude = float(data[0]["lon"])
 
+    #Realtionships: geben alle Abschnitte zurück der Bahnhöfe zurück
     start_abschnitte: so.Mapped[list['Abschnitt']] = so.relationship(
             "Abschnitt",
             back_populates="startBahnhof",
@@ -98,6 +101,7 @@ class Bahnhof (db.Model):
 #################     Warnung    ############################
 #############################################################
 
+#Assoziationstabelle für M2M-Beziehung zwischen Abschnitt und Warnung
 abschnitt_warnung_m2m = sa.Table(
     'abschnitt_warnung',
     db.metadata,
@@ -121,8 +125,6 @@ class Warnung(db.Model):
         back_populates="warnungen"
     )
 
-    def __repr__(self):
-        return f'<Warnung {self.warnungId}: {self.bezeichnung}>'
 
 #############################################################
 #################    Abschnitt   ############################
@@ -137,6 +139,7 @@ class Abschnitt(db.Model):
     max_geschwindigkeit: so.Mapped[int] = so.mapped_column()
     laenge: so.Mapped[float] = so.mapped_column()
 
+    #FK zu Bahnhöfen
     startBahnhofId: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey('bahnhof.bahnhofId'),
         index=True,
@@ -148,6 +151,7 @@ class Abschnitt(db.Model):
         nullable=False
     )
 
+    #Relationship
     startBahnhof: so.Mapped["Bahnhof"] = so.relationship(
         "Bahnhof",
         foreign_keys=[startBahnhofId],
@@ -165,6 +169,7 @@ class Abschnitt(db.Model):
         back_populates="abschnitte"
     )
 
+    #DB prüft, ob Start- und Endbahnhof unterschiedlich sind
     __table_args__ = (
         db.CheckConstraint(
             "startBahnhofId <> endBahnhofId",
@@ -178,19 +183,7 @@ class Abschnitt(db.Model):
         return f"{self.startBahnhof.name} → {self.endBahnhof.name}"
 
 
-    def warnung_hinzufuegen(self, warnung):
-        if not self.hat_warnung(warnung):
-            self.warnungen.add(warnung)
 
-    def warnung_entfernen(self, warnung):
-        if self.hat_warnung(warnung):
-            self.warnungen.remove(warnung)
-
-    def hat_warnung(self, warnung):
-        query = self.warnungen.select().where(
-            Warnung.warnungId == warnung.warnungId
-        )
-        return db.session.scalar(query) is not None
 
 #############################################################
 #################   Reigenfolge  ############################
@@ -198,18 +191,14 @@ class Abschnitt(db.Model):
 
 class Reihenfolge(db.Model):
     __tablename__ = 'strecke_abschnitt'
-
-
+    #PK besteht aus StreckeId und AbschnittId
     streckeId: so.Mapped[int] = so.mapped_column(sa.ForeignKey('strecken.streckenId'), primary_key=True)
     abschnittId: so.Mapped[int] = so.mapped_column(sa.ForeignKey('abschnitt.abschnittId'), primary_key=True)
     reihenfolge: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
-    abschnitt: so.Mapped['Abschnitt'] = so.relationship(backref="strecken_abschnitt_ref")
-
+    abschnitt: so.Mapped['Abschnitt'] = so.relationship(backref="strecken_abschnitt_ref") #Relationship
 
     __table_args__ = (db.UniqueConstraint('streckeId', 'reihenfolge', name='_strecke_reihenfolge_uc'),)
 
-    def __repr__(self):
-        return f"<Reihenfolge StreckeID={self.streckeId} AbschnittID={self.abschnittId} Pos={self.reihenfolge}>"
 
 
 
@@ -223,27 +212,26 @@ class Strecke(db.Model):
     streckenId: so.Mapped[int] = so.mapped_column(sa.Integer, primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False, unique=True)
 
-
+    #Relationship
     reihenfolge: so.Mapped[List['Reihenfolge']] = so.relationship(
         'Reihenfolge',
         order_by='Reihenfolge.reihenfolge',
         cascade='all, delete-orphan'
     )
 
-    def __repr__(self):
-        return f"<Strecke {self.name}>"
-
+    #gibt Abschnitte in der Reihenfolge zurück
     @property
     def abschnitte_in_reihenfolge(self):
         return [verbindung.abschnitt for verbindung in self.reihenfolge]
 
+    #ermittelt den Start- und Endbahnhof der Strecke
     @property
     def start_end_bahnhoefe(self):
         abschnitte = self.abschnitte_in_reihenfolge
         if not abschnitte:
             return None, None
 
-        start_bhf = abschnitte[0].startBahnhof
-        end_bhf = abschnitte[-1].endBahnhof
+        start_bhf = abschnitte[0].startBahnhof #Start-Bahnhof der Strecke = StartBahnhof des ersten Abschnitts
+        end_bhf = abschnitte[-1].endBahnhof #End-Bahnhof der Strecke = EndBahnhof des letzten Abschnitts
 
         return start_bhf, end_bhf

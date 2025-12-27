@@ -62,7 +62,7 @@
     let allBahnhoefe = {};
     let selectedChain = [];
 
-    //lädt die IDs der Abschnitte ins Frontend
+    //lädt die IDs der Abschnitte ins Frontend; wandelt Liste in JSON um
     let existingAbschnitte = {{ existing_abschnitte | tojson | safe }};
 
     //lädt alle notwendigen Initialdaten vom Backend
@@ -73,9 +73,10 @@
             url: apiUrl,
             method: 'GET',
             dataType: 'json',
-            success: function(data) {
-                $('#loading-message').remove();
+            success: function(data) {  //was bei Erfolg passiert
+                $('#loading-message').remove(); //Ladetext entfernen
 
+                //prüft ob Daten vorhanden sind
                 if (data.abschnitte && data.bahnhoefe) {
                     allAbschnitte = data.abschnitte;
                     allBahnhoefe = data.bahnhoefe;
@@ -93,10 +94,9 @@
                     $('#segment-chain').html('<p class="text-danger">Fehler: Unerwartetes Datenformat vom Server.</p>');
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
+            error: function(jqXHR) {
                 $('#loading-message').remove();
-                $('#segment-chain').html('<p class="text-danger">Fehler beim Laden der Abschnitte: ' + textStatus + '</p>');
-                console.error("AJAX Error:", errorThrown);
+                $('#segment-chain').html('<p class="text-danger">Fehler beim Laden (Status: ' + jqXHR.status + ')</p>');
             }
         });
     }
@@ -119,6 +119,7 @@
     //lädt die Dropdowns nur mit möglichen Abschnitten
     function addNextSegmentField(currentIndex, preselectedId = null) {
         const lastEndStationId = currentIndex > 0 ? selectedChain[currentIndex - 1].endBahnhofId : null;
+        const lastSpurweite = currentIndex > 0 ? selectedChain[currentIndex -1].spurweite : null;
 
         const filteredAbschnitte = allAbschnitte.filter(abschnitt => {
             const isAlreadySelected = selectedChain.some(s => s.abschnittId === abschnitt.abschnittId);
@@ -127,7 +128,7 @@
                 return !isAlreadySelected || abschnitt.abschnittId === preselectedId;
             } else {
                 return abschnitt.startBahnhofId === lastEndStationId &&
-                       (!isAlreadySelected || abschnitt.abschnittId === preselectedId);
+                       (!isAlreadySelected || abschnitt.abschnittId === preselectedId) && lastSpurweite === abschnitt.spurweite;
             }
         });
 
@@ -284,11 +285,29 @@
 
                         polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
 
-                        L.marker(startLatLng)
+                        L.marker(startLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
                             .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
                             .addTo(segmentsLayer);
 
-                        L.marker(endLatLng)
+                        L.marker(endLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
                             .bindPopup(`<b>Endbahnhof:</b> ${data.end.name}`)
                             .addTo(segmentsLayer);
 

@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- CSS für Leaflet & DataTables-->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <h1>Alle Warnungen</h1>
-
 <div class="main-content-flex">
     <div class="table-container">
 
+        <!-- Zeitfilter Standartwert: aktuelle Warnungen -->
         <div style="margin-bottom: 15px;">
             <label for="timeFilter" style="font-weight: bold; margin-right: 10px;">Zeitraum filtern:</label>
             <select id="timeFilter" class="form-control" style="display: inline-block; width: auto;">
@@ -19,6 +21,7 @@
             </select>
         </div>
 
+        <!-- Tabelle mit Warnungen -->
         <form method="POST" action="{{ url_for('delete_multiple_warnung') }}" id="warnung-form">
             <div class="table-scroll-wrapper">
                 <table id="warnungTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
@@ -39,7 +42,7 @@
                     </thead>
                     <tbody>
                         {% for w in posts %}
-                        <tr>
+                        <tr data-warnung-id="{{ w.warnungId }}">
                             {% if role.value != 'mitarbeiter' %}
                             <td><input type="checkbox" name="warnung_ids" value="{{ w.warnungId }}"></td>
                             {% endif %}
@@ -49,7 +52,7 @@
                             <td>{{ '-' if w.endZeit is none else w.endZeit }}</td>
                             <td>
                                 {% for abschnitt in w.abschnitte %}
-                                    {{ abschnitt.name }}<br>
+                                    <span data-abschnitt-id="{{ abschnitt.abschnittId }}">{{ abschnitt.name }}</span><br>
                                 {% endfor %}
                             </td>
                             {% if role.value != 'mitarbeiter' %}
@@ -63,7 +66,8 @@
                 </table>
             </div>
 
-<div style="margin-top: 10px;">
+            <!-- Löschnachricht anzeigen-->
+            <div style="margin-top: 10px;">
                 {% if role.value != 'mitarbeiter' %}
                     <button type="submit" class="btn btn-danger"
                             onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
@@ -93,20 +97,19 @@
     </div>
 
     <div class="map-container">
-        {% if map_html %}
-        {{ map_html | safe }}
-        {% else %}
-        <p>Keine Warnungen vorhanden.</p>
-        {% endif %}
+        <div id="map" style="height: 600px; width: 100%;"></div>
     </div>
 </div>
 
+<!-- JS für Leaflet & DataTables-->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="//cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+    //wird erst ausgeführt wenn HTML geladen wurde
     $(document).ready(function() {
-        //richtige Spalten finden
+        //definiert die Spalten für die Start- und Endzeiten der Warnung abhängig von der Rolle
         {% if role.value != 'mitarbeiter' %}
             var colStart = 3;
             var colEnd = 4;
@@ -115,32 +118,39 @@
             var colEnd = 3;
         {% endif %}
 
-        //eigene Filterregel hinzufügen
-        $.fn.dataTable.ext.search.push(
+        //  Filterregel
+        $.fn.dataTable.ext.search.push( //fügt Filterregel zu DataTables hinzu
             function(settings, data) {
-                var filterType = $('#timeFilter').val();
 
-                // Datumsstrings aus der Tabelle holen
-                var startStr = data[colStart];
-                var endStr = data[colEnd];
+                var filterType = $('#timeFilter').val(); //liest den Wert aus dem Dropdown-Filter
 
+                //Daten aus der Tabelle extrahieren
+                var startStr = data[colStart];  //Startzeit
+                var endStr = data[colEnd]; //Endzeit
+
+                //Strings in Date-Objekte umwandeln
                 var startDate = new Date(startStr);
                 var endDate = (endStr.length > 5) ? new Date(endStr) : null;
 
                 var now = new Date(); //aktuelle Datum
 
+                //zeigt alle Warnungen an
                 if (filterType === 'all') {
                     return true;
                 }
 
+                //zeigt alle aktuelle Warnungen an
                 if (filterType === 'current') {
+                    //aktuelle Datum zwischen Start- und Enddatum
                     return startDate <= now && (endDate === null || endDate >= now);
                 }
 
+                //zeigt alle zukünftigen Warnungen an
                 if (filterType === 'future') {
                     return startDate > now;
                 }
 
+                //zeigt alle vergangenen Warnungen an
                 if (filterType === 'past') {
                     return endDate !== null && endDate < now;
                 }
@@ -149,7 +159,7 @@
             }
         );
 
-        // 3. DataTable initialisieren
+        //DataTable initialisieren
         var table = new DataTable('#warnungTable', {
             language: {
                 info: 'Seite _PAGE_ von _PAGES_ angezeigt',
@@ -159,32 +169,201 @@
                 zeroRecords: 'Nichts gefunden',
                 search: 'Suchen:'
             },
-            // Sortiere standardmäßig nach Startzeit (absteigend, damit neueste oben sind)
             order: [[colStart, 'desc']],
             columnDefs: [
                 {% if role.value != 'mitarbeiter' %}
                     { width: "30px", targets: 0, orderable: false },
                     { width: "15%", targets: 1 },
                     { width: "25%", targets: 2 },
-                    { width: "12%", targets: 3 }, // Start
-                    { width: "12%", targets: 4 }, // Ende
+                    { width: "12%", targets: 3 },
+                    { width: "12%", targets: 4 },
                     { width: "auto", targets: 5 },
                     { width: "100px", targets: 6, orderable: false }
                 {% else %}
                     { width: "15%", targets: 0 },
                     { width: "25%", targets: 1 },
-                    { width: "12%", targets: 2 }, // Start
-                    { width: "12%", targets: 3 }, // Ende
-                    { width: "auto", targets: 4 },
+                    { width: "12%", targets: 2 },
+                    { width: "12%", targets: 3 },
+                    { width: "auto", targets: 4 }
                 {% endif %}
             ]
         });
 
-        // Event Listener: Dropdown geändert -> Tabelle neu zeichnen
+        //Event Listener: Dropdown geändert -> Tabelle neu zeichnen
         $('#timeFilter').on('change', function() {
             table.draw();
         });
 
+        //Karte initialisieren
+        let map = L.map('map').setView([47.5162, 14.5501], 7); // auf Ö zentrieren
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        //LayerGroup für Linien und Marker
+        let segmentsLayer = L.layerGroup().addTo(map);
+
+        //Alle gefilterten Warnungen, die gezeichnet werden sollten, aus der Tabelle holen
+        function getVisibleWarnings() {
+            let warnings = []; //speichert die Warnungen
+
+            //durch alle sichtbaren Zeilen der Tabelle iterieren
+            $('#warnungTable').DataTable().rows({search: 'applied'}).every(function() {
+
+                let rowData = this.data(); //holt die Daten der Zeile
+                let rowNode = this.node(); //gibt das HTML-Element zurück
+
+                let warnungId = $(rowNode).data('warnung-id'); //WarnungID
+
+                //Spaltennummern abhängig von Rollen setzen
+                {% if role.value != 'mitarbeiter' %}
+                    let bezeichnung = rowData[1];
+                    let abschnitteColIndex = 5;
+                {% else %}
+                    let bezeichnung = rowData[0];
+                    let abschnitteColIndex = 4;
+                {% endif %}
+
+                //Abschnitt-IDs aus den span-Elementen extrahieren
+                let abschnittIds = [];
+                //sucht zuerst die Zelle mit den Abschnitten -> dann nach allen <span> -> iteriert
+                $(rowNode).find('td').eq(abschnitteColIndex).find('span[data-abschnitt-id]').each(function() {
+                    let id = $(this).data('abschnitt-id'); //liest ID aus
+                    if (id) {
+                        abschnittIds.push(id); //fügt ID zu Array hinzu
+                    }
+                });
+
+                //fügt Objekt mit allen Daten zum Array warnings hinzu
+                if (warnungId && abschnittIds.length > 0) {
+                    warnings.push({
+                        warnungId: warnungId,
+                        abschnittIds: abschnittIds, //gibt alle AbschnittIds der Warnung zurück
+                        bezeichnung: bezeichnung
+                    });
+                }
+            });
+            return warnings; //gibt Array mit allen sichtbaren Warnungen zurück
+        }
+
+        //Zeichnet alle in der Tabelle sichtbaren Warnungen auf der Karte
+        function drawVisibleWarnings() {
+            segmentsLayer.clearLayers(); //löscht alle aktuellen Marker und Linien der Karte
+
+            let warnings = getVisibleWarnings(); //ruft Methode oben auf -> bekommt alle zu zeichnenden Warnungen
+
+            //wenn es keine Warnungen gibt -> Map auf Ö zentrieren
+            if (warnings.length === 0) {
+                map.setView([47.5162, 14.5501], 7);
+                return; //Funktion beenden
+            }
+
+            //Sammelt alle eindeutigen Abschnitt-IDs
+            let allAbschnittIds = new Set(); //Set -> keine Duplikate -> alle AbschnittIds
+            warnings.forEach(w => { //jede Warnung durchlaufen
+                w.abschnittIds.forEach(id => allAbschnittIds.add(id)); //alle Abschnitte der Warnung durchiterieren
+            });
+
+            //holt Koordinaten für alle Abschnitte
+            let fetchPromises = Array.from(allAbschnittIds).map(id => {
+                return fetch(`/api/abschnitt/${id}`)
+                    .then(response => response.json())
+                    .catch(err => {
+                        console.error(`Fehler beim Laden von Abschnitt ${id}:`, err);
+                        return null;
+                    });
+            });
+
+            //lädt alle Abschnitte
+            Promise.all(fetchPromises)
+                .then(results => {
+                    let bounds = L.latLngBounds(); //Rechteck das auf der Karte angezeigt werden soll
+                    let abschnittData = {}; //Map für Abschnittsdaten
+
+                    //Abschnittsdaten in Map speichern
+                    results.forEach(data => {
+                        if (data && data.start && data.end) {
+                            abschnittData[data.id] = data;
+                        }
+                    });
+
+                    //Für jede Warnung die Abschnitte zeichnen
+                    warnings.forEach(warning => {
+                        warning.abschnittIds.forEach(abschnittId => {
+                            let data = abschnittData[abschnittId];
+
+                            if (data && data.start && data.end) {
+                                let startLatLng = [data.start.lat, data.start.lon];
+                                let endLatLng = [data.end.lat, data.end.lon];
+
+                                //Linie zeichnen
+                                let polyline = L.polyline([startLatLng, endLatLng], {
+                                    color: 'orange',
+                                    weight: 4,
+                                    opacity: 0.8
+                                }).addTo(segmentsLayer);
+                                polyline.bindPopup(`
+                                    <b>Warnung:</b> ${warning.bezeichnung}<br>
+                                    <b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}
+                                `);
+
+                                // Marker für Start- und Endbahnhof von https://github.com/pointhi/leaflet-color-markers
+                                L.marker(startLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
+                                .bindPopup(`<b>Bahnhof:</b> ${data.start.name}`)
+                                .addTo(segmentsLayer);
+
+                                L.marker(endLatLng, {
+                                    icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    })
+                                })
+                                .bindPopup(`<b>Bahnhof:</b> ${data.end.name}`)
+                                .addTo(segmentsLayer);
+
+                                bounds.extend(startLatLng); //Koordinaten hinzufügen
+                                bounds.extend(endLatLng);
+                            }
+                        });
+                    });
+
+                    //Karte an alle sichtbaren Warnungen anpassen
+                    if (bounds.isValid()) {
+                        map.fitBounds(bounds, {padding: [50, 50]});
+                    }
+                })
+                .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));
+        }
+
+        //Initial die Karte zeichnen
+        setTimeout(function() {
+            drawVisibleWarnings();
+        }, 100);
+
+        // Event Listener für Filter-Änderungen
+        $('#timeFilter').on('change', function() {
+            setTimeout(function() {
+                drawVisibleWarnings();
+            }, 100);
+        });
+
+        // Event Listener für Suche/Seitenwechsel in DataTable
+        $('#warnungTable').on('draw.dt', function() {
+            drawVisibleWarnings();
+        });
     });
 </script>
 {% endblock %}
