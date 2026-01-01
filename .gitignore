@@ -1,7 +1,16 @@
-venv/
-.venv/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+venv/
+.venv/
+
+# IDEs
 .idea/
-*.ps1
-**/__pycache__/
+.vscode/
+
+# Flask / SQLite
+Ticket/instance/
+Ticket/instance/*.db

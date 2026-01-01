@@ -20,12 +20,10 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    # SQLite: keine constraint drops (unnamed constraints -> ValueError)
     with op.batch_alter_table("ticket", schema=None) as batch_op:
         batch_op.add_column(sa.Column("abfahrt", sa.DateTime(), nullable=True))
         batch_op.add_column(sa.Column("ankunft", sa.DateTime(), nullable=True))
 
-    # Optional: falls es schon Tickets gab, fülle leere Werte sinnvoll
     op.execute('UPDATE ticket SET abfahrt = erstelltAm WHERE abfahrt IS NULL')
     op.execute('UPDATE ticket SET ankunft = erstelltAm WHERE ankunft IS NULL')
 

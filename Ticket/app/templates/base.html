@@ -1,36 +1,54 @@
 <!doctype html>
 <html lang="de">
   <head>
+    <!-- Basis-Meta -->
     <meta charset="utf-8">
+
+    <!-- Titel wird von den Templates überschrieben (block title) -->
     <title>{% block title %}Ticket{% endblock %}</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
+      /* Standard-Boxmodell damit Padding/Borders nicht nerven */
       * { box-sizing: border-box; }
+
+      /* Grundlayout */
       body {
         margin: 0;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: #ffffff;
         color: #000000;
       }
+
+      /* Header mit einfacher Trennlinie */
       header {
         border-bottom: 1px solid #000;
         padding: 8px 16px;
       }
+
+      /* Navigation Links */
       nav a {
         margin-right: 16px;
         text-decoration: none;
         color: #000;
         font-size: 14px;
       }
+
+      /* Aktiver Menüpunkt: fett + underline */
       nav a.active {
         font-weight: 600;
         text-decoration: underline;
       }
+
+      /* Content-Bereich zentriert */
       main {
         max-width: 900px;
         margin: 24px auto;
         padding: 0 16px 32px;
       }
+
+      /* Überschriften-Style */
       h1 {
         font-size: 36px;
         margin-bottom: 24px;
@@ -39,16 +57,21 @@
         font-size: 24px;
         margin: 16px 0;
       }
+
+      /* Labels über Inputs */
       label {
         display: block;
         margin-bottom: 4px;
         font-size: 14px;
       }
+
+      /* Inputs / Selects usw. */
       input[type="text"],
       input[type="password"],
       input[type="email"],
       input[type="number"],
-      input[type="datetime"],
+      input[type="date"],
+      input[type="datetime-local"],
       textarea,
       select {
         width: 260px;
@@ -57,16 +80,22 @@
         background: #fff;
         font-size: 14px;
       }
+
+      /* Textarea bissl größer */
       textarea {
         width: 320px;
         min-height: 60px;
       }
+
+      /* Zeilenlayout für Formularfelder */
       .field-row {
         display: flex;
         gap: 24px;
         margin-bottom: 12px;
         align-items: flex-start;
       }
+
+      /* Standard Button */
       .btn {
         display: inline-block;
         margin-top: 12px;
@@ -76,6 +105,8 @@
         cursor: pointer;
         font-size: 14px;
       }
+
+      /* Tabellen-Layout */
       table {
         border-collapse: collapse;
         width: 100%;
@@ -87,6 +118,8 @@
         padding: 4px 8px;
         text-align: left;
       }
+
+      /* Flash-Messages Container */
       .flash {
         margin-bottom: 12px;
         padding: 8px;
@@ -95,48 +128,68 @@
       }
     </style>
   </head>
+
   <body>
     <header>
       <nav>
+
         {% if current_user.is_authenticated and current_user.username == 'admin' %}
-          <!-- Admin-Menü -->
+          <!-- Navigation für Admin -->
           <a href="{{ url_for('main.aktionen_uebersicht') }}"
              class="{% if request.endpoint == 'main.aktionen_uebersicht' %}active{% endif %}">
             Aktionsübersicht
           </a>
+
           <a href="{{ url_for('main.aktion_global_new') }}"
              class="{% if request.endpoint == 'main.aktion_global_new' %}active{% endif %}">
             Globale-Aktion anlegen
           </a>
+
           <a href="{{ url_for('main.aktion_fahrplan_new') }}"
              class="{% if request.endpoint == 'main.aktion_fahrplan_new' %}active{% endif %}">
             Fahrplan-Aktion anlegen
           </a>
+
+          <!-- Logout -->
           <a href="{{ url_for('main.logout') }}">Logout</a>
+
+          <!-- Anzeige wer gerade eingeloggt ist -->
           <span style="font-size: 12px; margin-left: 8px;">Eingeloggt als {{ current_user.username }}</span>
 
         {% elif current_user.is_authenticated %}
-          <!-- Kunden-Menü -->
+          <!-- Navigation für Kund*innen -->
           <a href="{{ url_for('main.verbindungssuche') }}"
              class="{% if request.endpoint == 'main.verbindungssuche' %}active{% endif %}">
             Verbindungssuche
           </a>
+
           <a href="{{ url_for('main.meine_tickets') }}"
              class="{% if request.endpoint == 'main.meine_tickets' %}active{% endif %}">
             Meine Tickets
           </a>
+
+          <!-- Profil-Seite -->
+          <a href="{{ url_for('main.profil') }}"
+             class="{% if request.endpoint == 'main.profil' %}active{% endif %}">
+            Profil
+          </a>
+
+          <!-- Link bleibt absichtlich so benannt wie im Projekt -->
           <a href="{{ url_for('main.logout') }}">Login/Logout</a>
+
+          <!-- Anzeige wer gerade eingeloggt ist -->
           <span style="font-size: 12px; margin-left: 8px;">Eingeloggt als {{ current_user.username }}</span>
 
         {% else %}
-          <!-- Nicht eingeloggt -->
+          <!-- Navigation für nicht eingeloggte User -->
           <a href="{{ url_for('main.login') }}">Login</a>
         {% endif %}
-      </nav>
 
+      </nav>
     </header>
 
     <main>
+      <!-- Flash-Messages (z.B. Erfolg/Fehler Hinweise) -->
       {% with messages = get_flashed_messages() %}
         {% if messages %}
           <div class="flash">
@@ -146,6 +199,8 @@
           </div>
         {% endif %}
       {% endwith %}
+
+      <!-- Content Block für alle Unterseiten -->
       {% block content %}{% endblock %}
     </main>
   </body>

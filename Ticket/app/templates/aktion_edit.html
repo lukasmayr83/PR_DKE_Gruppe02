@@ -2,76 +2,78 @@
 {% block title %}Aktion bearbeiten{% endblock %}
 
 {% block content %}
-  <h1>Ticket</h1>
-  <h2>Aktion bearbeiten</h2>
+  <h1>Aktion bearbeiten</h1>
 
-  <!-- Formular zum Aktualisieren -->
+  {% if is_running %}
+    <p style="margin: 12px 0; padding: 10px; border: 1px solid #f0ad4e;">
+      Diese Aktion ist aktuell <strong>aktiv</strong>. Sie kann nicht mehr bearbeitet werden – nur beendet.
+    </p>
+  {% endif %}
+
   <form method="post">
     {{ form.hidden_tag() }}
 
     <div class="field-row">
       <div>
         <label>Name</label>
-        {{ form.name() }}
+        {{ form.name(disabled=is_running) }}
       </div>
       <div>
         <label>Wert %</label>
-        {{ form.rabattWert() }}
+        {{ form.rabattWert(disabled=is_running) }}
       </div>
     </div>
 
     <div class="field-row">
       <div>
         <label>Beschreibung</label>
-        {{ form.beschreibung() }}
+        {{ form.beschreibung(disabled=is_running) }}
       </div>
     </div>
 
     <div class="field-row">
       <div>
-        <label>Startdatum (DD.MM.JJJJ)</label>
-        {{ form.startZeit() }}
+        <label>Startdatum</label>
+        {{ form.startZeit(disabled=is_running) }}
       </div>
       <div>
-        <label>Enddatum (DD.MM.JJJJ)</label>
-        {{ form.endeZeit() }}
+        <label>Enddatum</label>
+        {{ form.endeZeit(disabled=is_running) }}
       </div>
     </div>
 
     <div class="field-row">
       <div>
         <label>Typ</label>
-        {% if aktion.typ == 'global' %}
-          <!-- Nur lesbarer Text -->
-          <input type="text" value="GLOBAL" readonly>
-          <!-- Hidden-Felder -->
-          <input type="hidden" name="{{ form.typ.name }}" value="global">
-          <input type="hidden" name="{{ form.halteplanId.name }}" value="">
-        {% else %}
-          <input type="text" value="HALTEPLAN" readonly>
-          <input type="hidden" name="{{ form.typ.name }}" value="halteplan">
-        {% endif %}
+        <input type="text" value="{{ 'GLOBAL' if aktion.typ == 'global' else 'HALTEPLAN' }}" readonly>
       </div>
 
       {% if aktion.typ == 'halteplan' %}
         <div>
-          <label>Halteplan auswählen</label>
-          {{ form.halteplanId() }}
+          <label>Halteplan</label>
+          {{ form.halteplanId(disabled=is_running) }}
         </div>
       {% endif %}
     </div>
 
     <div class="field-row">
       <div>
-        {{ form.aktiv() }}
+        {{ form.aktiv(disabled=is_running) }}
         {{ form.aktiv.label }}
       </div>
     </div>
 
-    <button class="btn" type="submit">Änderungen übernehmen</button>
+    {% if not is_running %}
+      <button class="btn" type="submit">Änderungen übernehmen</button>
+    {% endif %}
   </form>
 
-  <!-- Formular zum Löschen -->
+  {% if is_running %}
+    <form method="post" action="{{ url_for('main.aktion_stop', aktion_id=aktion.id) }}" style="margin-top:12px;">
+      <button class="btn" type="submit">Aktion beenden</button>
+    </form>
+  {% endif %}
+
   <form method="post" action="{{ url_for('main.aktion_delete', aktion_id=aktion.id) }}" style="margin-top:16px;">
     <button class="btn" type="submit">Aktion löschen</button>
   </form>

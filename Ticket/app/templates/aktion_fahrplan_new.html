@@ -27,20 +27,21 @@
 
     <div class="field-row">
       <div>
-        <label>Startdatum (DD.MM.JJJJ)</label>
+        <label>Startdatum (YYYY-MM-DD)</label>
         {{ form.startZeit() }}
       </div>
       <div>
-        <label>Enddatum (DD.MM.JJJJ)</label>
+        <label>Enddatum (YYYY-MM-DD)</label>
         {{ form.endeZeit() }}
       </div>
     </div>
 
     <div class="field-row">
       <div>
-        <label>Halteplan auswählen</label>
-        {{ form.halteplanId() }}
+            {{ form.halteplanId.label }}
+            {{ form.halteplanId() }}
       </div>
+
     </div>
 
     <div class="field-row">

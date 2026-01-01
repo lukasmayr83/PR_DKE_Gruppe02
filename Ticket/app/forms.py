@@ -28,75 +28,49 @@ class RegisterForm(FlaskForm):
     submit = SubmitField("Register")
 
 
-# Formular für Aktionen
-class AktionForm(FlaskForm):
-    name = StringField(
-        "Name",
-        validators=[DataRequired(), Length(max=100)]
-    )
+# Profil bearbeiten
+class ProfileForm(FlaskForm):
+    email = StringField("E-Mail", validators=[DataRequired(), Email(), Length(max=120)])
+    first_name = StringField("Vorname", validators=[Optional(), Length(max=64)])
+    last_name = StringField("Nachname", validators=[Optional(), Length(max=64)])
+    birthdate = DateField("Geburtsdatum", format="%Y-%m-%d", validators=[Optional()])
 
-    beschreibung = TextAreaField(
-        "Beschreibung",
-        validators=[Optional(), Length(max=1000)]
+    new_password = PasswordField("Neues Passwort", validators=[Optional(), Length(min=4)])
+    new_password2 = PasswordField(
+        "Neues Passwort wiederholen",
+        validators=[Optional(), EqualTo("new_password", message="Passwörter müssen übereinstimmen.")]
     )
-
-    startZeit = DateField(
-        "Startdatum (DD.MM.JJJJ)",
-        format="%Y-%m-%d",
-        validators=[DataRequired()],
-    )
-
-    endeZeit = DateField(
-        "Enddatum (DD.MM.JJJJ)",
-        format="%Y-%m-%d",
-        validators=[DataRequired()],
-    )
-
-    rabattWert = FloatField(
-        "Wert %",
-        validators=[Optional(), NumberRange(min=0.0, max=100.0)]
-    )
-
-    typ = SelectField(
-        "Typ",
-        choices=[
-            ("global", "GLOBAL"),
-            ("halteplan", "HALTEPLAN"),
-        ],
-        validators=[DataRequired()],
-    )
-
-    halteplanId = SelectField(
-        "Halteplan auswählen",
-        choices=[
-            ("", "keine"),
-            ("1", "Halteplan [Linz Hbf - Innsbruck Hbf]"),     # hart codiert zur DEMO !
-        ],
-        validators=[Optional()],
-    )
-
-    aktiv = BooleanField("Aktiv")
 
     submit = SubmitField("Speichern")
 
-# Verbindungssuche
-class VerbindungssucheForm(FlaskForm):
-    startbahnhof = StringField(
-        "Startbahnhof",
-        validators=[DataRequired(), Length(max=120)]
-    )
-    zielbahnhof = StringField(
-        "Zielbahnhof",
-        validators=[DataRequired(), Length(max=120)]
-    )
-    datum = DateField(
-        "Datum (YYYY-MM-DD)",
-        format="%Y-%m-%d",
+
+# Formular für Aktionen
+class AktionForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired(), Length(max=100)])
+
+    beschreibung = TextAreaField("Beschreibung", validators=[Optional(), Length(max=1000)])
+
+    startZeit = DateField("Startdatum (YYYY-MM-DD)", format="%Y-%m-%d", validators=[DataRequired()])
+    endeZeit = DateField("Enddatum (YYYY-MM-DD)", format="%Y-%m-%d", validators=[DataRequired()])
+
+    rabattWert = FloatField("Wert %", validators=[Optional(), NumberRange(min=0.0, max=100.0)])
+
+    typ = SelectField(
+        "Typ",
+        choices=[("global", "GLOBAL"), ("halteplan", "HALTEPLAN")],
         validators=[DataRequired()],
     )
-    uhrzeit = StringField(
-        "Uhrzeit (HH:MM)",
-        validators=[DataRequired(), Length(max=5)]
-    )
-    sitzplatz = BooleanField("Sitzplatz reservieren")
+
+    halteplanId = SelectField("Halteplan", choices=[], validators=[Optional()], coerce=str)
+
+    aktiv = BooleanField("Aktiv")
+    submit = SubmitField("Speichern")
+
+
+# Verbindungssuche
+class VerbindungssucheForm(FlaskForm):
+    startbahnhof = StringField("Startbahnhof", validators=[DataRequired(), Length(max=120)])
+    zielbahnhof = StringField("Zielbahnhof", validators=[DataRequired(), Length(max=120)])
+    datum = DateField("Datum (YYYY-MM-DD)", format="%Y-%m-%d", validators=[DataRequired()])
+    uhrzeit = StringField("Uhrzeit (HH:MM)", validators=[DataRequired(), Length(max=5)])
     submit = SubmitField("Suchen")

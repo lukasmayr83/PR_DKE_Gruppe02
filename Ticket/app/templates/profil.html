@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+  <h1>Profil</h1>
+
+  <form method="post">
+    {{ form.hidden_tag() }}
+
+    <div class="field-row">
+      <div>
+        <label>E-Mail</label>
+        {{ form.email() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Vorname</label>
+        {{ form.first_name() }}
+      </div>
+      <div>
+        <label>Nachname</label>
+        {{ form.last_name() }}
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Geburtsdatum (YYYY-MM-DD)</label>
+        {{ form.birthdate() }}
+      </div>
+    </div>
+
+    <h3>Passwort ändern (optional)</h3>
+    <div class="field-row">
+      <div>
+        <label>Neues Passwort</label>
+        {{ form.new_password() }}
+      </div>
+      <div>
+        <label>Neues Passwort wiederholen</label>
+        {{ form.new_password2() }}
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Speichern</button>
+  </form>
+{% endblock %}

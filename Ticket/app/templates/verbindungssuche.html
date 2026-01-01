@@ -4,35 +4,34 @@
   <h1>Ticket</h1>
   <h2>Verbindungssuche</h2>
 
+  <datalist id="bahnhoefe-list">
+    {% for name in (bahnhoefe or []) %}
+      <option value="{{ name }}"></option>
+    {% endfor %}
+  </datalist>
+
   <form method="post">
     {{ form.hidden_tag() }}
 
     <div class="field-row">
       <div>
         <label>Startbahnhof</label>
-        {{ form.startbahnhof() }}
+        {{ form.startbahnhof(list="bahnhoefe-list") }}
       </div>
       <div>
         <label>Zielbahnhof</label>
-        {{ form.zielbahnhof() }}
+        {{ form.zielbahnhof(list="bahnhoefe-list") }}
       </div>
     </div>
 
     <div class="field-row">
       <div>
-        <label>Datum (DD.MM.JJJJ)</label>
+        <label>Datum (YYYY-MM-DD)</label>
         {{ form.datum() }}
       </div>
       <div>
         <label>Uhrzeit (HH:MM)</label>
         {{ form.uhrzeit() }}
-      </div>
-    </div>
-
-    <div class="field-row">
-      <div>
-        {{ form.sitzplatz() }}
-        {{ form.sitzplatz.label }}
       </div>
     </div>
 
@@ -51,13 +50,38 @@
         <th>Aktion</th>
         <th>Optionen</th>
       </tr>
+
       {% for v in verbindungen %}
         <tr>
-          <td>{{ v.start_halt }} → {{ v.ziel_halt }}</td>
+          <td>
+            {{ v.start_halt }} → {{ v.ziel_halt }}
+
+            {% if v.anzahl_umstiege == 1 %}
+              <div style="margin-top:6px; font-size: 0.95em;">
+                <strong>Umstieg:</strong> {{ v.umstieg_bahnhof }}<br>
+                <span>Ankunft: {{ v.umstieg_ankunft_display }}</span><br>
+                <span>Abfahrt: {{ v.umstieg_abfahrt_display }}</span>
+              </div>
+            {% endif %}
+
+            {% if v.warnungen %}
+              <div style="margin-top:6px; font-size: 0.95em;">
+                {% for w in v.warnungen %}
+                  <div>⚠ {{ w.bezeichnung }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </td>
+
           <td>{{ v.abfahrt_display }}</td>
           <td>{{ v.ankunft_display }}</td>
           <td>{{ v.anzahl_umstiege }}</td>
-          <td>{{ "%.2f"|format(v.preis) }} €</td>
+
+          <td>
+            {{ "%.2f"|format(v.preis) }} €
+            <div style="font-size:0.85em; margin-top:4px;">Sitzplatz +5.00 € optional</div>
+          </td>
+
           <td>
             {% if v.aktion_name %}
               {{ v.aktion_name }} ({{ v.aktion_rabatt }}%)
@@ -65,17 +89,35 @@
               –
             {% endif %}
           </td>
+
           <td>
-            <form method="post" action="{{ url_for('main.ticket_buchen', fahrt_id=v.id) }}">
+            <form method="post" action="{{ url_for('main.ticket_buchen', fahrt_id=v.fahrt_id) }}">
+              <input type="hidden" name="fahrt_id" value="{{ v.fahrt_id }}">
+              <input type="hidden" name="halteplan_id" value="{{ v.halteplan_id }}">
+              <input type="hidden" name="zug_id" value="{{ v.zug_id }}">
+
               <input type="hidden" name="start_halt" value="{{ v.start_halt }}">
               <input type="hidden" name="ziel_halt" value="{{ v.ziel_halt }}">
               <input type="hidden" name="abfahrt" value="{{ v.abfahrt_iso }}">
               <input type="hidden" name="ankunft" value="{{ v.ankunft_iso }}">
+
               <input type="hidden" name="umstiege" value="{{ v.anzahl_umstiege }}">
-              <input type="hidden" name="halteplan_id" value="{{ v.halteplan_id }}">
               <input type="hidden" name="preis" value="{{ v.preis }}">
-              <input type="hidden" name="sitzplatz" value="{{ '1' if v.sitzplatz else '0' }}">
               <input type="hidden" name="aktion_id" value="{{ v.aktion_id or '' }}">
+
+              <input type="hidden" name="fahrt_id2" value="{{ v.fahrt_id2 or '' }}">
+              <input type="hidden" name="halteplan_id2" value="{{ v.halteplan_id2 or '' }}">
+              <input type="hidden" name="zug_id2" value="{{ v.zug_id2 or 0 }}">
+
+              <input type="hidden" name="umstieg_bahnhof" value="{{ v.umstieg_bahnhof or '' }}">
+              <input type="hidden" name="umstieg_ankunft" value="{{ v.umstieg_ankunft_iso or '' }}">
+              <input type="hidden" name="umstieg_abfahrt" value="{{ v.umstieg_abfahrt_iso or '' }}">
+
+              <label style="display:block; margin:8px 0 6px 0;">
+                <input type="checkbox" name="sitzplatz" value="1">
+                Sitzplatz reservieren (+5.00 €)
+              </label>
+
               <button class="btn" type="submit">Buchen</button>
             </form>
           </td>

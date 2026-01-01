@@ -1,38 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Meine Tickets{% endblock %}
 {% block content %}
-  <h1>Ticket</h1>
-  <h2>Meine Tickets</h2>
+  <h1>Meine Tickets</h1>
 
   {% if tickets %}
     <table>
       <tr>
-        <th>Ticket-ID</th>
-        <th>Erstellt am</th>
-        <th>Verbindung</th>
+        <th>ID</th>
+        <th>Strecke</th>
         <th>Abfahrt</th>
         <th>Ankunft</th>
-        <th>Umstiege</th>
-        <th>Sitzplatz</th>
-        <th>Preis</th>
         <th>Status</th>
+        <th>Preis</th>
         <th>Optionen</th>
       </tr>
+
       {% for t in tickets %}
         <tr>
           <td>{{ t.id }}</td>
-          <td>{{ t.erstelltAm.strftime("%d.%m.%Y %H:%M") }}</td>
-          <td>{{ t.start_halt }} → {{ t.ziel_halt }}</td>
-          <td>{{ t.abfahrt.strftime("%d.%m.%Y %H:%M") }}</td>
-          <td>{{ t.ankunft.strftime("%d.%m.%Y %H:%M") }}</td>
-          <td>{{ t.anzahl_umstiege }}</td>
-          <td>{{ "ja" if t.sitzplatzReservierung else "nein" }}</td>
-          <td>{{ "%.2f"|format(t.gesamtPreis) }} €</td>
-          <td>{{ t.status }}</td>
           <td>
-            {% if t.status != "storniert" %}
-              <form method="post" action="{{ url_for('main.ticket_storno', ticket_id=t.id) }}">
-                <button class="btn" type="submit">Storno</button>
+            {{ t.start_halt }} → {{ t.ziel_halt }}
+            {% if t.anzahl_umstiege == 1 and t.umstieg_bahnhof %}
+              <div style="margin-top:6px; font-size:0.95em;">
+                <strong>Umstieg:</strong> {{ t.umstieg_bahnhof }}
+              </div>
+            {% endif %}
+          </td>
+          <td>{{ t.abfahrt.strftime("%d.%m.%Y %H:%M") if t.abfahrt else "-" }}</td>
+          <td>{{ t.ankunft.strftime("%d.%m.%Y %H:%M") if t.ankunft else "-" }}</td>
+
+          <td>
+            {% if t.status == "aktiv" %}
+              Aktiv
+            {% elif t.status == "storniert" %}
+              Storniert
+            {% elif t.status == "verbraucht" %}
+              Verbraucht
+            {% else %}
+              {{ t.status }}
+            {% endif %}
+          </td>
+
+          <td>{{ "%.2f"|format(t.gesamtPreis) }} €</td>
+
+          <td>
+            {% if t.status == "aktiv" and t.abfahrt and t.abfahrt > now %}
+              <form method="post" action="{{ url_for('main.ticket_storno', ticket_id=t.id) }}" style="display:inline;">
+                <button class="btn" type="submit">Stornieren</button>
               </form>
             {% else %}
               –
@@ -42,6 +56,6 @@
       {% endfor %}
     </table>
   {% else %}
-    <p>Sie haben noch keine Tickets.</p>
+    <p>Keine Tickets vorhanden.</p>
   {% endif %}
 {% endblock %}
