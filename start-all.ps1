@@ -22,7 +22,7 @@ $services = @(
 # Clean start: venv löschen & neu erstellen?
 # $true  = jedes Mal komplett neu (langsam, aber sicher)
 # $false = venv behalten, nur deps/db upgrade/run (schneller)
-$RECREATE_VENV = $true
+$RECREATE_VENV = $false                                           # DS 30.12.2025
 
 function Invoke-InDir($dir, [scriptblock]$block) {
   if (!(Test-Path $dir)) { throw "Ordner nicht gefunden: $dir" }

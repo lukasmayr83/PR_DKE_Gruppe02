@@ -1101,3 +1101,122 @@ def api_sync_strecken():
     from app.services.strecken_import import sync_from_strecken
     result = sync_from_strecken("http://127.0.0.1:5001")
     return jsonify(result)
+
+# API by Daniel
+
+@app.route("/api/fahrtdurchfuehrungen/snapshot", methods=["GET"])
+def api_fahrtdurchfuehrungen_snapshot():
+    def dt(v):
+        return v.isoformat() if v else None
+
+    # alle Fahrten laden
+    fahrten = db.session.scalars(
+        sa.select(Fahrtdurchfuehrung).order_by(Fahrtdurchfuehrung.fahrt_id.asc())
+    ).all()
+
+    items = []
+
+    for f in fahrten:
+        # Halte (mit Bahnhofnamen)
+        halte_rows = db.session.execute(
+            sa.select(
+                FahrtHalt.id.label("halt_id"),
+                FahrtHalt.bahnhof_id.label("bahnhof_id"),
+                FahrtHalt.position.label("pos"),
+                Bahnhof.name.label("bahnhof_name"),
+                FahrtHalt.ankunft_zeit.label("ankunft"),
+                FahrtHalt.abfahrt_zeit.label("abfahrt"),
+            )
+            .join(Bahnhof, Bahnhof.id == FahrtHalt.bahnhof_id)
+            .where(FahrtHalt.fahrt_id == f.fahrt_id)
+            .order_by(FahrtHalt.position.asc())
+        ).all()
+
+        # Segmente (Preis je Segment), map: nach_halt_id -> final_price
+        seg_rows = db.session.execute(
+            sa.select(
+                FahrtSegment.nach_halt_id,
+                FahrtSegment.final_price,
+                FahrtSegment.position,
+            )
+            .where(FahrtSegment.fahrt_id == f.fahrt_id)
+            .order_by(FahrtSegment.position.asc())
+        ).all()
+
+        price_by_nach_halt = {int(r.nach_halt_id): float(r.final_price or 0.0) for r in seg_rows}
+
+        haltepunkte = []
+        for r in halte_rows:
+            halt_id = int(r.halt_id)
+            pos = int(r.pos)
+
+            haltepunkte.append({
+                "haltId": halt_id,
+                "order": pos,
+                "bahnhofId": int(r.bahnhof_id),
+                "bahnhofName": r.bahnhof_name,
+                "planAnkunft": dt(r.ankunft),
+                "planAbfahrt": dt(r.abfahrt),
+                "tarif": 0.0 if pos == 1 else float(price_by_nach_halt.get(halt_id, 0.0)),
+            })
+
+        items.append({
+            "fahrtdurchfuehrungId": int(f.fahrt_id),
+            "halteplanId": int(f.halteplan_id),
+            "zugId": int(f.zug_id or 0),
+            "haltepunkte": haltepunkte,
+        })
+
+    return jsonify({"total": len(items), "items": items}), 200
+
+# API by Daniel Aktion Halteplan
+
+@app.route("/api/halteplaene", methods=["GET"])
+def api_halteplaene():
+    q = (request.args.get("q") or "").strip().lower()
+
+    halteplaene = db.session.scalars(
+        sa.select(Halteplan)
+        .options(
+            selectinload(Halteplan.strecke),
+            selectinload(Halteplan.haltepunkte),
+        )
+        .order_by(Halteplan.halteplan_id.asc())
+    ).all()
+
+    # Bahnhofnamen einmal laden
+    bahnhof_ids = set()
+    for hp in halteplaene:
+        for h in (hp.haltepunkte or []):
+            bahnhof_ids.add(int(h.bahnhof_id))
+
+    bahnhoefe = Bahnhof.query.filter(Bahnhof.id.in_(list(bahnhof_ids))).all() if bahnhof_ids else []
+    bahnhof_name = {int(b.id): b.name for b in bahnhoefe}
+
+    items = []
+    for hp in halteplaene:
+        bezeichnung = (hp.bezeichnung or "").strip()
+        strecke_name = hp.strecke.name if hp.strecke else ""
+
+        stops = sorted(list(hp.haltepunkte or []), key=lambda x: x.position or 0)
+        von = "-"
+        bis = "-"
+        if stops:
+            von = bahnhof_name.get(int(stops[0].bahnhof_id), "-")
+            bis = bahnhof_name.get(int(stops[-1].bahnhof_id), "-")
+
+        hay = " ".join([bezeichnung, strecke_name, von, bis]).lower()
+        if q and q not in hay:
+            continue
+
+        items.append({
+            "halteplanId": int(hp.halteplan_id),
+            "bezeichnung": bezeichnung,
+            "streckeId": int(hp.strecke_id) if hp.strecke_id else None,
+            "streckeName": strecke_name or None,
+            "von": von,
+            "bis": bis,
+            "halteCount": len(stops),
+        })
+
+    return jsonify({"total": len(items), "items": items}), 200
