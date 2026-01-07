@@ -29,10 +29,26 @@
         </div>
 
 
-        <!-- Zug-Hinweis -->
-        <div class="form-group">
-            <label class="form-label">Zug</label>
-            <span class="tag-grey">Zug hinzufügen (in Arbeit)</span>
+        <!-- Zug- -->
+        <h3 style="margin-top: 25px;">Zug auswählen</h3>
+
+        <p class="info-text">
+          Wähle genau einen Zug für diese Fahrtdurchführung.
+        </p>
+
+        <div class="zug-list">
+          {% for value, label in form.zug_id.choices %}
+            <label class="radio-row">
+              <input
+                type="radio"
+                name="zug_id"
+                value="{{ value }}"
+                required
+                {% if form.zug_id.data and (form.zug_id.data|int == value|int) %}checked{% endif %}
+              >
+              {{ label }}
+            </label>
+          {% endfor %}
         </div>
 
         <div class="form-group">
@@ -167,6 +183,28 @@
         color: #777;
         margin-left: 4px;
     }
+
+      .zug-list {
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          padding: 10px 12px;
+          max-height: 220px;
+          overflow-y: auto;
+          background: #fafafa;
+          margin-bottom: 20px;
+      }
+
+      .radio-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 0;
+          font-size: 14px;
+      }
+
+      .radio-row input[type="radio"] {
+          margin: 0;
+      }
 </style>
 
 {% endblock %}

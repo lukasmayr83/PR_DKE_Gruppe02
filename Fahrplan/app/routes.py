@@ -28,7 +28,9 @@ from app.models import (
     Abschnitt,
     StreckeAbschnitt,
     FahrtSegment,
-    FahrtHalt
+    FahrtHalt,
+    Zug,
+    ZugWartung
 )
 from urllib.parse import urlsplit
 from datetime import datetime, timezone
@@ -38,6 +40,10 @@ from app.services.fahrt_refresh import refresh_fahrt_snapshot
 from app.services.halteplan_pricing import compute_min_cost_map, compute_min_duration_map, to_json_keyed_map
 from sqlalchemy.orm import joinedload, selectinload
 from app.services.fahrt_builder import rebuild_fahrt_halte_und_segmente
+from app.services.sync_flotte import sync_from_flotte
+from app.services.sync_wartungen import sync_wartungen_from_flotte
+from app.services.wartung_check import has_wartung_overlap, find_zug_fahrt_overlap
+import requests
 
 def admin_required(view_func):
     @wraps(view_func)
@@ -282,6 +288,11 @@ def fahrten_new():
     alle_mitarbeiter = Mitarbeiter.query.order_by(Mitarbeiter.name).all()
     form.mitarbeiter_ids.choices = [(m.id, m.name) for m in alle_mitarbeiter]
 
+    form.zug_id.choices = [
+        (z.id, f"{z.bezeichnung} (ext={z.external_id})")
+        for z in Zug.query.order_by(Zug.bezeichnung).all()
+    ]
+
     if form.validate_on_submit():
         # 1) Abfahrtszeit lesen (datetime-local => "YYYY-MM-DDTHH:MM")
         abfahrt_raw = (request.form.get("abfahrt_zeit") or "").strip()
@@ -308,7 +319,7 @@ def fahrten_new():
         # 2) Fahrtdurchführung anlegen
         f = Fahrtdurchfuehrung(
             halteplan_id=form.halteplan_id.data,
-            zug_id=0,  # wird später gepflegt
+            zug_id=form.zug_id.data,
             status=FahrtdurchfuehrungStatus.PLANMAESSIG,
             verspaetung_min=0,
             abfahrt_zeit=abfahrt_dt,
@@ -401,6 +412,39 @@ def fahrten_new():
             # next loop current time = departure from "to" (oder arrival wenn letzter)
             current = to_h.abfahrt_zeit or to_h.ankunft_zeit
 
+        fahrt_start = f.abfahrt_zeit
+        fahrt_end = current  # nach Loop: letzte Ankunft
+
+
+
+        zug = db.session.get(Zug, f.zug_id)
+        if zug and has_wartung_overlap(zug.external_id, fahrt_start, fahrt_end):
+            db.session.rollback()
+            flash(
+                "Konflikt: Der ausgewählte Zug hat in diesem Zeitraum eine Wartung. "
+                "Bitte anderen Zug oder andere Abfahrtszeit wählen.",
+                "danger",
+            )
+            return redirect(url_for("fahrten_new"))
+
+        # NEU: Overlap-Check mit anderen Fahrtdurchführungen
+        with db.session.no_autoflush:
+            conflict = find_zug_fahrt_overlap(
+                zug_id=f.zug_id,
+                start_dt=fahrt_start,
+                end_dt=fahrt_end,
+                exclude_fahrt_id=f.fahrt_id,
+            )
+
+        if conflict:
+            db.session.rollback()
+            flash(
+                f"Konflikt: Zug ist bereits in Fahrtdurchführung #{conflict.fahrt_id} "
+                f"({conflict.abfahrt_zeit}) belegt. Bitte anderen Zug oder Abfahrtszeit wählen.",
+                "danger",
+            )
+            return redirect(url_for("fahrten_new"))
+
         db.session.commit()
         flash("Fahrtdurchführung inkl. Personal + Halte/Segmente erfolgreich angelegt.", "success")
         return redirect(url_for("fahrten_list"))
@@ -422,6 +466,11 @@ def fahrt_edit(fahrt_id: int):
     # Mitarbeiterliste
     alle_mitarbeiter = db.session.scalars(
         sa.select(Mitarbeiter).order_by(Mitarbeiter.name)
+    ).all()
+
+    # ZÜGE laden (für Radio-Auswahl)
+    alle_zuege = db.session.scalars(
+        sa.select(Zug).order_by(Zug.bezeichnung)
     ).all()
 
     # bestehende Zuweisungen
@@ -449,32 +498,27 @@ def fahrt_edit(fahrt_id: int):
         .order_by(FahrtSegment.position)
     ).all()
 
-    # GET: Formular vorbelegen
     if request.method == "GET":
         form.status.data = fahrt.status.name
         form.verspaetung_min.data = fahrt.verspaetung_min or 0
 
-    # POST: Status / Verspätung + Mitarbeiter + (neu) Abfahrtszeit/Preisfaktor + Rebuild
     if form.validate_on_submit():
         # 1) Status / Verspätung
         fahrt.status = FahrtdurchfuehrungStatus[form.status.data]
-        if form.status.data == "VERSPAETET":
-            fahrt.verspaetung_min = form.verspaetung_min.data
-        else:
-            fahrt.verspaetung_min = 0
+        fahrt.verspaetung_min = form.verspaetung_min.data if form.status.data == "VERSPAETET" else 0
 
-        # 2) Abfahrtszeit (datetime-local) + price_factor
+        # 2) Abfahrtszeit
         abfahrt_raw = request.form.get("abfahrt_zeit", "").strip()
         if not abfahrt_raw:
             flash("Bitte eine Abfahrtszeit angeben.", "warning")
             return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
-
         try:
             fahrt.abfahrt_zeit = datetime.strptime(abfahrt_raw, "%Y-%m-%dT%H:%M")
         except ValueError:
             flash("Ungültiges Datumsformat für Abfahrtszeit.", "warning")
             return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
 
+        # 3) Preisfaktor
         pf_raw = request.form.get("price_factor", "1.0").strip()
         try:
             pf = float(pf_raw)
@@ -482,21 +526,38 @@ def fahrt_edit(fahrt_id: int):
             pf = 1.0
         fahrt.price_factor = max(1.0, pf)
 
-        # 3) Mitarbeiter-Zuweisungen
+        # 4) NEU: Zug ändern (Radio: genau 1 Wert)
+        zug_id_raw = (request.form.get("zug_id") or "").strip()
+        if not zug_id_raw:
+            flash("Bitte einen Zug auswählen.", "warning")
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+        try:
+            new_zug_id = int(zug_id_raw)
+        except ValueError:
+            flash("Ungültige Zug-Auswahl.", "warning")
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+
+        #  Existenz check
+        zug_obj = db.session.get(Zug, new_zug_id)
+        if not zug_obj:
+            flash("Ausgewählter Zug existiert nicht.", "warning")
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+
+        fahrt.zug_id = new_zug_id
+
+        # 5) Mitarbeiter-Zuweisungen
         id_strings = request.form.getlist("mitarbeiter_ids")
         neue_ids = {int(x) for x in id_strings}
 
-        # entfernte löschen
         for dz in bestehende_zuweisungen:
             if dz.mitarbeiter_id not in neue_ids:
                 db.session.delete(dz)
 
-        # neue hinzufügen
         for mid in neue_ids:
             if mid not in bestehende_ids:
                 db.session.add(Dienstzuweisung(fahrt_id=fahrt_id, mitarbeiter_id=mid))
 
-        # 4) Halte + Segmente neu berechnen/speichern
+        # 6) Halte + Segmente neu berechnen/speichern
         try:
             rebuild_fahrt_halte_und_segmente(fahrt)
         except Exception as e:
@@ -504,12 +565,48 @@ def fahrt_edit(fahrt_id: int):
             flash(f"Fehler beim Neubauen der Fahrt-Halte/Segmente: {e}", "danger")
             return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
 
+        # 7) Zeitraum bestimmen (ohne extra Endzeit-Spalte)
+        fahrt_start = fahrt.abfahrt_zeit
+        fahrt_end = db.session.scalar(
+            sa.select(sa.func.max(FahrtHalt.ankunft_zeit)).where(FahrtHalt.fahrt_id == fahrt_id)
+        )
+
+        if not fahrt_start or not fahrt_end:
+            db.session.rollback()
+            flash("Konnte Start/Ende der Fahrt nicht berechnen.", "danger")
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+
+        # 8) Wartungs-Check
+        if zug_obj and has_wartung_overlap(zug_obj.external_id, fahrt_start, fahrt_end):
+            db.session.rollback()
+            flash(
+                "Konflikt: Der ausgewählte Zug hat in diesem Zeitraum eine Wartung. "
+                "Bitte anderen Zug oder andere Abfahrtszeit wählen.",
+                "danger",
+            )
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+
+        # 9) Overlap-Check mit anderen Fahrten (exclude self)
+        with db.session.no_autoflush:
+            conflict = find_zug_fahrt_overlap(
+                zug_id=fahrt.zug_id,
+                start_dt=fahrt_start,
+                end_dt=fahrt_end,
+                exclude_fahrt_id=fahrt_id,
+            )
+
+        if conflict:
+            db.session.rollback()
+            flash(
+                f"Konflikt: Zug ist bereits in Fahrtdurchführung #{conflict.fahrt_id} "
+                f"({conflict.abfahrt_zeit}) belegt. Bitte anderen Zug oder Abfahrtszeit wählen.",
+                "danger",
+            )
+            return redirect(url_for("fahrt_edit", fahrt_id=fahrt_id))
+
         db.session.commit()
         flash("Fahrtdurchführung wurde gespeichert.", "success")
         return redirect(url_for("fahrten_list"))
-
-    # Checkboxen
-    zugewiesene_ids = bestehende_ids
 
     return render_template(
         "fahrt_edit.html",
@@ -517,11 +614,11 @@ def fahrt_edit(fahrt_id: int):
         fahrt=fahrt,
         form=form,
         mitarbeiter_liste=alle_mitarbeiter,
-        zugewiesene_ids=zugewiesene_ids,
+        zugewiesene_ids=bestehende_ids,
         halte_rows=halte_rows,
-        segment_rows=segment_rows,  # falls schon vorhanden
+        segment_rows=segment_rows,
+        alle_zuege=alle_zuege,  # NEU
     )
-
 @app.route("/fahrten/<int:fahrt_id>/delete", methods=["GET", "POST"])
 @admin_required
 def fahrt_delete(fahrt_id):
@@ -1095,128 +1192,37 @@ def api_refresh_fahrt(fart_id):
 
 ####fürs synchen script aufrufen/damit alles auf den richtigen ports läuft
 
-
 @app.route("/api/sync/strecken", methods=["POST"])
 def api_sync_strecken():
     from app.services.strecken_import import sync_from_strecken
-    result = sync_from_strecken("http://127.0.0.1:5001")
-    return jsonify(result)
+    try:
+        result = sync_from_strecken("http://127.0.0.1:5001")
+        if not result.get("ok", True):
+            return jsonify(result), 502
+        return jsonify(result), 200
+    except requests.RequestException as e:
+        return jsonify({"ok": False, "error": str(e)}), 503
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
-# API by Daniel
 
-@app.route("/api/fahrtdurchfuehrungen/snapshot", methods=["GET"])
-def api_fahrtdurchfuehrungen_snapshot():
-    def dt(v):
-        return v.isoformat() if v else None
+@app.route("/api/sync/flotte", methods=["POST"])
+def api_sync_flotte():
+    try:
+        result = sync_from_flotte("http://127.0.0.1:5003")
+        if not result.get("ok", True):
+            return jsonify(result), 502
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 503
 
-    # alle Fahrten laden
-    fahrten = db.session.scalars(
-        sa.select(Fahrtdurchfuehrung).order_by(Fahrtdurchfuehrung.fahrt_id.asc())
-    ).all()
 
-    items = []
-
-    for f in fahrten:
-        # Halte (mit Bahnhofnamen)
-        halte_rows = db.session.execute(
-            sa.select(
-                FahrtHalt.id.label("halt_id"),
-                FahrtHalt.bahnhof_id.label("bahnhof_id"),
-                FahrtHalt.position.label("pos"),
-                Bahnhof.name.label("bahnhof_name"),
-                FahrtHalt.ankunft_zeit.label("ankunft"),
-                FahrtHalt.abfahrt_zeit.label("abfahrt"),
-            )
-            .join(Bahnhof, Bahnhof.id == FahrtHalt.bahnhof_id)
-            .where(FahrtHalt.fahrt_id == f.fahrt_id)
-            .order_by(FahrtHalt.position.asc())
-        ).all()
-
-        # Segmente (Preis je Segment), map: nach_halt_id -> final_price
-        seg_rows = db.session.execute(
-            sa.select(
-                FahrtSegment.nach_halt_id,
-                FahrtSegment.final_price,
-                FahrtSegment.position,
-            )
-            .where(FahrtSegment.fahrt_id == f.fahrt_id)
-            .order_by(FahrtSegment.position.asc())
-        ).all()
-
-        price_by_nach_halt = {int(r.nach_halt_id): float(r.final_price or 0.0) for r in seg_rows}
-
-        haltepunkte = []
-        for r in halte_rows:
-            halt_id = int(r.halt_id)
-            pos = int(r.pos)
-
-            haltepunkte.append({
-                "haltId": halt_id,
-                "order": pos,
-                "bahnhofId": int(r.bahnhof_id),
-                "bahnhofName": r.bahnhof_name,
-                "planAnkunft": dt(r.ankunft),
-                "planAbfahrt": dt(r.abfahrt),
-                "tarif": 0.0 if pos == 1 else float(price_by_nach_halt.get(halt_id, 0.0)),
-            })
-
-        items.append({
-            "fahrtdurchfuehrungId": int(f.fahrt_id),
-            "halteplanId": int(f.halteplan_id),
-            "zugId": int(f.zug_id or 0),
-            "haltepunkte": haltepunkte,
-        })
-
-    return jsonify({"total": len(items), "items": items}), 200
-
-# API by Daniel Aktion Halteplan
-
-@app.route("/api/halteplaene", methods=["GET"])
-def api_halteplaene():
-    q = (request.args.get("q") or "").strip().lower()
-
-    halteplaene = db.session.scalars(
-        sa.select(Halteplan)
-        .options(
-            selectinload(Halteplan.strecke),
-            selectinload(Halteplan.haltepunkte),
-        )
-        .order_by(Halteplan.halteplan_id.asc())
-    ).all()
-
-    # Bahnhofnamen einmal laden
-    bahnhof_ids = set()
-    for hp in halteplaene:
-        for h in (hp.haltepunkte or []):
-            bahnhof_ids.add(int(h.bahnhof_id))
-
-    bahnhoefe = Bahnhof.query.filter(Bahnhof.id.in_(list(bahnhof_ids))).all() if bahnhof_ids else []
-    bahnhof_name = {int(b.id): b.name for b in bahnhoefe}
-
-    items = []
-    for hp in halteplaene:
-        bezeichnung = (hp.bezeichnung or "").strip()
-        strecke_name = hp.strecke.name if hp.strecke else ""
-
-        stops = sorted(list(hp.haltepunkte or []), key=lambda x: x.position or 0)
-        von = "-"
-        bis = "-"
-        if stops:
-            von = bahnhof_name.get(int(stops[0].bahnhof_id), "-")
-            bis = bahnhof_name.get(int(stops[-1].bahnhof_id), "-")
-
-        hay = " ".join([bezeichnung, strecke_name, von, bis]).lower()
-        if q and q not in hay:
-            continue
-
-        items.append({
-            "halteplanId": int(hp.halteplan_id),
-            "bezeichnung": bezeichnung,
-            "streckeId": int(hp.strecke_id) if hp.strecke_id else None,
-            "streckeName": strecke_name or None,
-            "von": von,
-            "bis": bis,
-            "halteCount": len(stops),
-        })
-
-    return jsonify({"total": len(items), "items": items}), 200
+@app.route("/api/sync/wartungen", methods=["POST"])
+def api_sync_wartungen():
+    try:
+        result = sync_wartungen_from_flotte("http://127.0.0.1:5003")
+        if not result.get("ok", True):
+            return jsonify(result), 502
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 503

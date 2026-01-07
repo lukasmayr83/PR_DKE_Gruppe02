@@ -108,7 +108,10 @@ class Fahrtdurchfuehrung(db.Model):
     )
 
     # extern
-    zug_id: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)
+    zug_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("zug.id"), nullable=False, index=True
+    )
+    zug: so.Mapped["Zug"] = so.relationship("Zug")
 
     status: so.Mapped[FahrtdurchfuehrungStatus] = so.mapped_column(
         sa.Enum(FahrtdurchfuehrungStatus),
@@ -123,18 +126,21 @@ class Fahrtdurchfuehrung(db.Model):
     dienstzuweisungen: so.Mapped[List["Dienstzuweisung"]] = so.relationship(
         back_populates="fahrt",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     halte: so.Mapped[List["FahrtHalt"]] = so.relationship(
         "FahrtHalt",
         back_populates="fahrt",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     segmente: so.Mapped[List["FahrtSegment"]] = so.relationship(
         "FahrtSegment",
         back_populates="fahrt",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     abfahrt_zeit: so.Mapped[datetime] = so.mapped_column(sa.DateTime(), nullable=False)
@@ -154,7 +160,7 @@ class FahrtHalt(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
 
     fahrt_id: so.Mapped[int] = so.mapped_column(
-        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id"), nullable=False, index=True
+        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id", ondelete="CASCADE"), nullable=False, index=True
     )
     bahnhof_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("bahnhof.id"), nullable=False, index=True
@@ -182,7 +188,7 @@ class FahrtSegment(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
 
     fahrt_id: so.Mapped[int] = so.mapped_column(
-        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id"), nullable=False, index=True
+        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     von_halt_id: so.Mapped[int] = so.mapped_column(
@@ -238,7 +244,7 @@ class Dienstzuweisung(db.Model):
     dienst_id: so.Mapped[int] = so.mapped_column(primary_key=True)
 
     fahrt_id: so.Mapped[int] = so.mapped_column(
-        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id"), nullable=False
+        sa.ForeignKey("fahrtdurchfuehrung.fahrt_id", ondelete="CASCADE"), nullable=False, index=True,
     )
     mitarbeiter_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey("mitarbeiter.id"), nullable=False
@@ -353,3 +359,53 @@ class StreckeAbschnitt(db.Model):
     strecke_id = db.Column(db.Integer, db.ForeignKey("strecke.id"), primary_key=True)
     abschnitt_id = db.Column(db.Integer, db.ForeignKey("abschnitt.id"), primary_key=True)
     position = db.Column(db.Integer)
+
+
+class Zug(db.Model):
+    __tablename__ = "zug"
+
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+
+    # aus Flotten-Service: zugId
+    external_id: so.Mapped[int] = so.mapped_column(sa.Integer, unique=True, index=True, nullable=False)
+
+    bezeichnung: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
+
+    spurweite: so.Mapped[float | None] = so.mapped_column(sa.Float, nullable=True)
+
+    wartungen: so.Mapped[list["ZugWartung"]] = so.relationship(
+        "ZugWartung",
+        back_populates="zug",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return f"<Zug ext={self.external_id} {self.bezeichnung}>"
+
+
+class ZugWartung(db.Model):
+    __tablename__ = "zug_wartung"
+
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+
+    zug_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey("zug.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    external_wartungszeitid: so.Mapped[int] = so.mapped_column(
+        sa.Integer,
+        nullable=False,
+        index=True,
+    )
+
+    von: so.Mapped[datetime] = so.mapped_column(sa.DateTime(), nullable=False)
+    bis: so.Mapped[datetime] = so.mapped_column(sa.DateTime(), nullable=False)
+
+    zug: so.Mapped["Zug"] = so.relationship("Zug", back_populates="wartungen")
+
+    __table_args__ = (
+        sa.UniqueConstraint("zug_id", "external_wartungszeitid", name="uq_zugwartung_zug_ext"),
+        sa.CheckConstraint("bis > von", name="ck_zugwartung_bis_gt_von"),
+    )

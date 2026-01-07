@@ -4,21 +4,184 @@
 <h1>Admin-Dashboard</h1>
 
 <div class="card">
-    <h2>Verwaltung</h2>
+  <h2>Verwaltung</h2>
 
-    <div class="btn-group">
+  <div class="btn-group">
     <a class="btn-wide" href="{{ url_for('mitarbeiter_list') }}">
-        Mitarbeiter verwalten
+      Mitarbeiter verwalten
     </a>
 
     <a class="btn-wide" href="{{ url_for('fahrten_list') }}">
-        Fahrtdurchführungen verwalten
+      Fahrtdurchführungen verwalten
     </a>
 
-    <a class="btn-wide"  href="{{ url_for('halteplaene_list') }}">
-        Haltepläne verwalten
+    <a class="btn-wide" href="{{ url_for('halteplaene_list') }}">
+      Haltepläne verwalten
     </a>
-     </div>
+  </div>
 
+  <section class="card" style="margin-top: 16px;">
+    <h2>Synchronisation</h2>
+    <p>Aktualisiere Daten aus den externen Services. </p>
+
+    <!-- Layout: Buttons links untereinander, Status rechts daneben -->
+    <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-top:12px;">
+
+      <!-- Buttons links -->
+      <div style="display:flex; flex-direction:column; gap:10px; min-width:240px;">
+        <button type="button" class="btn btn-primary sync-btn" id="btn-sync-all">
+          Alles synchronisieren (Strecken + Züge + Wartungen)
+        </button>
+
+        <button type="button" class="btn btn-secondary sync-btn" id="btn-sync-zuege">
+          Züge + Wartungen synchronisieren
+        </button>
+
+        <button type="button" class="btn btn-secondary sync-btn" id="btn-sync-strecken">
+          Nur Strecken synchronisieren
+        </button>
+      </div>
+
+      <!-- Status rechts -->
+      <div id="sync-status" style="flex:1; min-width:320px; padding:10px; border:1px solid #ddd; border-radius:8px; background:#fafafa;">
+        <strong>Status:</strong>
+        <div id="sync-log" style="margin-top:6px; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></div>
+      </div>
+    </div>
+
+    <!-- kleine Button-Anpassungen (ohne restliches Layout zu verändern) -->
+    <style>
+      .sync-btn{
+        padding: 8px 12px;
+        font-size: 0.95rem;
+        border-radius: 10px;
+        width: 100%;
+      }
+      /* dezente Farbe für Secondary (falls dein CSS keine btn-secondary-Farbe setzt) */
+      .btn.btn-secondary.sync-btn{
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #0f172a;
+      }
+      .btn.btn-secondary.sync-btn:hover{
+        background: #e2e8f0;
+      }
+    </style>
+
+    <script>
+      const logEl = document.getElementById("sync-log");
+
+      function log(msg) {
+        logEl.textContent += msg + "\n";
+      }
+
+      function setBusy(isBusy) {
+        document.getElementById("btn-sync-all").disabled = isBusy;
+        document.getElementById("btn-sync-zuege").disabled = isBusy;
+        document.getElementById("btn-sync-strecken").disabled = isBusy;
+      }
+
+      async function postJson(url) {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 8000);
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+          signal: controller.signal
+        });
+
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { ok: false, error: text }; }
+
+        // WICHTIG: auch ok:false als Fehler behandeln
+        if (!res.ok || (data && data.ok === false)) {
+          const msg = (data && (data.error || data.message)) || `HTTP ${res.status}`;
+          throw new Error(msg);
+        }
+
+        return data;
+      } catch (err) {
+        if (err.name === "AbortError") {
+          throw new Error("Timeout: Service antwortet nicht (Port/Service offline?)");
+        }
+        throw new Error(err.message || String(err));
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+      async function syncStrecken() {
+        log("→ Starte Sync: Strecken …");
+        const data = await postJson("/api/sync/strecken");
+        log("✓ Strecken OK: " + (typeof data === "string" ? data : JSON.stringify(data)));
+      }
+
+      async function syncZuege() {
+        log("→ Starte Sync: Züge/Flotte …");
+        const data = await postJson("/api/sync/flotte");
+        log("✓ Züge/Flotte OK: " + (typeof data === "string" ? data : JSON.stringify(data)));
+      }
+
+      async function syncWartungen() {
+        log("→ Starte Sync: Wartungen …");
+        const data = await postJson("/api/sync/wartungen");
+        log("✓ Wartungen OK: " + (typeof data === "string" ? data : JSON.stringify(data)));
+      }
+
+      // 1) Alles: Strecken + Züge + Wartungen
+      document.getElementById("btn-sync-all").addEventListener("click", async () => {
+        logEl.textContent = "";
+        setBusy(true);
+        try {
+          await syncStrecken();
+          await syncZuege();
+          await syncWartungen();
+          log("✓ ALLES erfolgreich synchronisiert.");
+        } catch (e) {
+          log("✗ FEHLER (Alles): " + e.message);
+          log("  Tipp: Prüfe, ob Services laufen:");
+          log("   - Strecken-Service: http://127.0.0.1:5001");
+          log("   - Flotten/Wartungen-Service: http://127.0.0.1:5003");
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      // 2) Züge + Wartungen
+      document.getElementById("btn-sync-zuege").addEventListener("click", async () => {
+        logEl.textContent = "";
+        setBusy(true);
+        try {
+          await syncZuege();
+          await syncWartungen();
+          log("✓ Züge + Wartungen erfolgreich synchronisiert.");
+        } catch (e) {
+          log("✗ FEHLER (Züge/Wartungen): " + e.message);
+          log("  Tipp: Läuft der Flotten-Service auf http://127.0.0.1:5003 ?");
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      // 3) Nur Strecken
+      document.getElementById("btn-sync-strecken").addEventListener("click", async () => {
+        logEl.textContent = "";
+        setBusy(true);
+        try {
+          await syncStrecken();
+          log("✓ Strecken erfolgreich synchronisiert.");
+        } catch (e) {
+          log("✗ FEHLER (Strecken): " + e.message);
+          log("  Tipp: Läuft der Strecken-Service auf http://127.0.0.1:5001 ?");
+        } finally {
+          setBusy(false);
+        }
+      });
+    </script>
+  </section>
 </div>
 {% endblock %}

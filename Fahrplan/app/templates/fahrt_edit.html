@@ -33,6 +33,29 @@
             <small class="hint">Basis für alle berechneten Ankunfts-/Abfahrtszeiten entlang der Strecke.</small>
         </div>
 
+        <!-- Zug-Auswahl (Single Select wie Mitarbeiter, aber Radio) -->
+        <h3 style="margin-top: 30px;">Zugauswahl</h3>
+
+        <p class="info-text">Wähle den Zug für diese Fahrtdurchführung.</p>
+
+        <div class="mitarbeiter-list">
+          {% if alle_zuege %}
+            {% for z in alle_zuege %}
+              <label class="checkbox-row">
+                <input type="radio"
+                       name="zug_id"
+                       value="{{ z.id }}"
+                       {% if fahrt.zug_id == z.id %}checked{% endif %}
+                       required>
+                {{ z.bezeichnung }}
+                <span class="subtext">(ext={{ z.external_id }})</span>
+              </label>
+            {% endfor %}
+          {% else %}
+            <p>Es sind noch keine Züge vorhanden (bitte Flotte synchronisieren).</p>
+          {% endif %}
+        </div>
+
         <!-- Price Factor -->
         <div class="form-group">
             <label class="form-label">Preisfaktor</label>

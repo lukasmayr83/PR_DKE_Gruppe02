@@ -123,7 +123,7 @@ class FahrtCreateForm(FlaskForm):
     halteplan_id = SelectField("Halteplan", coerce=int, validators=[DataRequired()])
     mitarbeiter_ids = SelectMultipleField("Mitarbeiter", coerce=int)
     submit = SubmitField("Fahrtdurchführung anlegen")
-
+    zug_id = SelectField("Zug", coerce=int, validators=[DataRequired()])
 
 
 class HalteplanCreateForm(FlaskForm):
