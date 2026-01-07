@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from flask import current_app
 
 from alembic import context
+from sqlalchemy import text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -89,7 +90,7 @@ def run_migrations_online():
             if script.upgrade_ops.is_empty():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
-
+        """
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
@@ -105,7 +106,31 @@ def run_migrations_online():
 
         with context.begin_transaction():
             context.run_migrations()
+"""
 
+    conf_args = current_app.extensions['migrate'].configure_args
+    if conf_args.get("process_revision_directives") is None:
+        conf_args["process_revision_directives"] = process_revision_directives
+
+    connectable = get_engine()
+
+    with connectable.connect() as connection:
+        # --- SQLITE-SPECIAL: FK während Migration deaktivieren ---
+        # (nur für Migrationen, nicht für Runtime deiner App)
+
+        # --- SQLITE-SPECIAL: Batch-Mode aktivieren (für ALTER TABLE etc.) ---
+        conf_args.setdefault("render_as_batch", True)
+
+        context.configure(
+            connection=connection,
+            target_metadata=get_metadata(),
+            **conf_args
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+        # wieder aktivieren
 
 if context.is_offline_mode():
     run_migrations_offline()

@@ -839,3 +839,45 @@ def get_zug_wagen_api(zug_id):
         "personenwagen": wagen_liste
     }
     return jsonify(items)
+
+
+# Wartungs export Route (Moritz)
+
+@app.route("/api/wartungen-export", methods=["GET"])
+def api_wartungen_export():
+    """
+    Liefert alle aktuellen + zukünftigen Wartungen (nicht vergangene).
+    Format ist bewusst flach, damit Fahrplan leicht importieren kann.
+    """
+    now = datetime.now()
+    items = []
+
+    # Alle Wartungs-Join-Einträge (Wartung) + Zeitraum
+    wartungen = (
+        db.session.query(Wartung)
+        .join(Wartungszeitraum, Wartung.wartungszeitid == Wartungszeitraum.wartungszeitid)
+        .all()
+    )
+
+    for w in wartungen:
+        wz = w.wartungszeitraum
+        if not wz:
+            continue
+
+        # Ende der Wartung als datetime bauen und filtern
+        end_dt = datetime.combine(wz.datum, wz.bis.time())
+        if end_dt < now:
+            continue
+
+        items.append({
+            "zugId": int(w.zugid),
+            "wartungszeitid": int(wz.wartungszeitid),
+            "datum": wz.datum.isoformat(),
+            "von": wz.von.time().isoformat(),
+            "bis": wz.bis.time().isoformat(),
+            "dauer": int(wz.dauer),
+        })
+
+    # optional sortieren
+    items.sort(key=lambda x: (x["datum"], x["von"], x["zugId"]))
+    return jsonify(items)
