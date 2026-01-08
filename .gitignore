@@ -9,6 +9,7 @@ venv/
 
 # IDEs
 .idea/
+../.idea
 .vscode/
 
 # Flask / SQLite
