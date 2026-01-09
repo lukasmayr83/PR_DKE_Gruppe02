@@ -25,23 +25,55 @@
                 <tr>
                     <th class="col-id">Fahrt-ID</th>
                     <th class="col-halteplan">Halteplan</th>
-                    <th class="col-zug">Zug-ID</th>
+
+                    <th class="col-start">Start Bahnhof</th>
+                    <th class="col-startzeit">Plan Abfahrt</th>
+
+                    <th class="col-ende">Ziel Bahnhof</th>
+                    <th class="col-endzeit">Plan Ankunft</th>
+
+                    <th class="col-zug">Zug</th>
                     <th class="col-status">Status</th>
                     <th class="col-verspaetung">Verspätung (Min)</th>
                 </tr>
             </thead>
             <tbody>
                 {% for f in fahrten %}
+                {% set s = start_info.get(f.fahrt_id) %}
+                {% set e = end_info.get(f.fahrt_id) %}
                 <tr>
                     <td>{{ f.fahrt_id }}</td>
                     <td>{{ f.halteplan.bezeichnung }}</td>
-                    <td>{{ f.zug_id }}</td>
+
+                    <td>{{ s.bahnhof if s else "-" }}</td>
+                    <td>
+                        {% if s and s.zeit %}
+                            {{ s.zeit.strftime("%d.%m.%Y %H:%M") }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>{{ e.bahnhof if e else "-" }}</td>
+                    <td>
+                        {% if e and e.zeit %}
+                            {{ e.zeit.strftime("%d.%m.%Y %H:%M") }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {# schöner als nur die ID: #}
+                        {{ f.zug.bezeichnung if f.zug else f.zug_id }}
+                    </td>
+
                     <td>{{ f.status.value }}</td>
                     <td>{{ f.verspaetung_min or '-' }}</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5">
+                    <td colspan="9">
                         Dir wurden noch keine Fahrten zugewiesen.
                     </td>
                 </tr>
@@ -52,31 +84,18 @@
 </div>
 
 <style>
-    /* etwas feinere Spaltenbreiten für die Mitarbeiter-Ansicht */
+    .fahrten-table-mitarbeiter .col-id { width: 80px; white-space: nowrap; }
+    .fahrten-table-mitarbeiter .col-halteplan { min-width: 180px; }
 
-    .fahrten-table-mitarbeiter .col-id {
-        width: 80px;
-        white-space: nowrap;
-    }
+    .fahrten-table-mitarbeiter .col-start { min-width: 160px; }
+    .fahrten-table-mitarbeiter .col-startzeit { width: 150px; white-space: nowrap; }
 
-    .fahrten-table-mitarbeiter .col-halteplan {
-        min-width: 180px;
-    }
+    .fahrten-table-mitarbeiter .col-ende { min-width: 160px; }
+    .fahrten-table-mitarbeiter .col-endzeit { width: 150px; white-space: nowrap; }
 
-    .fahrten-table-mitarbeiter .col-zug {
-        width: 110px;
-        white-space: nowrap;
-    }
-
-    .fahrten-table-mitarbeiter .col-status {
-        width: 130px;
-        white-space: nowrap;
-    }
-
-    .fahrten-table-mitarbeiter .col-verspaetung {
-        width: 140px;
-        white-space: nowrap;
-    }
+    .fahrten-table-mitarbeiter .col-zug { width: 140px; white-space: nowrap; }
+    .fahrten-table-mitarbeiter .col-status { width: 130px; white-space: nowrap; }
+    .fahrten-table-mitarbeiter .col-verspaetung { width: 140px; white-space: nowrap; }
 
     .card-header-row {
         display: flex;

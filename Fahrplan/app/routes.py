@@ -13,6 +13,7 @@ from flask import render_template, flash, redirect, url_for, request, abort, jso
 from flask_login import current_user, login_user, logout_user, login_required
 from datetime import datetime, timedelta
 import sqlalchemy as sa
+from sqlalchemy.orm import aliased
 from app.models import (
     User,
     Mitarbeiter,
@@ -35,6 +36,7 @@ from app.models import (
 from urllib.parse import urlsplit
 from datetime import datetime, timezone
 from functools import wraps
+from sqlalchemy import func, and_
 from app.services.strecken_import import sync_from_strecken
 from app.services.fahrt_refresh import refresh_fahrt_snapshot
 from app.services.halteplan_pricing import compute_min_cost_map, compute_min_duration_map, to_json_keyed_map
@@ -711,38 +713,164 @@ def meine_fahrten():
 
     ma = current_user.mitarbeiter
 
-    # Alle Fahrten, denen dieser Mitarbeiter zugewiesen ist
     fahrten = (
         db.session.query(Fahrtdurchfuehrung)
         .join(Dienstzuweisung, Dienstzuweisung.fahrt_id == Fahrtdurchfuehrung.fahrt_id)
         .filter(Dienstzuweisung.mitarbeiter_id == ma.id)
-        .order_by(Fahrtdurchfuehrung.fahrt_id)
+        .order_by(Fahrtdurchfuehrung.abfahrt_zeit.asc())  # optional besser als fahrt_id
         .all()
     )
+
+    fahrt_ids = [f.fahrt_id for f in fahrten]
+    start_info = {}
+    end_info = {}
+
+    if fahrt_ids:
+        # START: position == 1
+        start_rows = (
+            db.session.query(
+                FahrtHalt.fahrt_id,
+                Bahnhof.name,
+                FahrtHalt.abfahrt_zeit,
+                FahrtHalt.ankunft_zeit,
+            )
+            .join(Bahnhof, Bahnhof.id == FahrtHalt.bahnhof_id)
+            .filter(FahrtHalt.fahrt_id.in_(fahrt_ids))
+            .filter(FahrtHalt.position == 1)
+            .all()
+        )
+
+        for fid, bname, abf, ank in start_rows:
+            start_info[fid] = {
+                "bahnhof": bname,
+                "zeit": abf or ank,  # fallback falls abfahrt_zeit mal NULL wäre
+            }
+
+        # ENDE: max(position) pro fahrt
+        subq = (
+            db.session.query(
+                FahrtHalt.fahrt_id.label("fahrt_id"),
+                func.max(FahrtHalt.position).label("max_pos"),
+            )
+            .filter(FahrtHalt.fahrt_id.in_(fahrt_ids))
+            .group_by(FahrtHalt.fahrt_id)
+            .subquery()
+        )
+
+        end_rows = (
+            db.session.query(
+                FahrtHalt.fahrt_id,
+                Bahnhof.name,
+                FahrtHalt.ankunft_zeit,
+            )
+            .join(subq, and_(
+                FahrtHalt.fahrt_id == subq.c.fahrt_id,
+                FahrtHalt.position == subq.c.max_pos
+            ))
+            .join(Bahnhof, Bahnhof.id == FahrtHalt.bahnhof_id)
+            .all()
+        )
+
+        for fid, bname, ank in end_rows:
+            end_info[fid] = {
+                "bahnhof": bname,
+                "zeit": ank,
+            }
 
     return render_template(
         "meine_fahrten.html",
         title="Meine Fahrten",
         fahrten=fahrten,
         mitarbeiter=ma,
+        start_info=start_info,
+        end_info=end_info,
     )
+
 
 @app.route("/fahrten/alle")
 @login_required
 def fahrten_alle():
-    # Nur sinnvoll für Mitarbeiter; Admin ohne Mitarbeiter-Objekt bekommt 403
     if not current_user.mitarbeiter:
         abort(403)
 
     mitarbeiter = current_user.mitarbeiter
 
-    #  Fahrten laden
-    fahrten = Fahrtdurchfuehrung.query.all()
+    # --- 1) Basis: alle Fahrten (wie bisher, nur mit order_by)
+    fahrten = (
+        db.session.query(Fahrtdurchfuehrung)
+        .order_by(Fahrtdurchfuehrung.fahrt_id)
+        .all()
+    )
 
-    #  Zuweisungen des Mitarbeiters holen
+    # --- 2) Zuweisungen des Mitarbeiters
     zugewiesene_fahrten_ids = {
         dz.fahrt_id
         for dz in Dienstzuweisung.query.filter_by(mitarbeiter_id=mitarbeiter.id).all()
+    }
+
+    # --- 3) Start-/Endhalt pro Fahrt via SQL
+    FH_start = aliased(FahrtHalt)
+    FH_end = aliased(FahrtHalt)
+    B_start = aliased(Bahnhof)
+    B_end = aliased(Bahnhof)
+
+    # min/max Position je fahrt_id
+    pos_subq = (
+        db.session.query(
+            FahrtHalt.fahrt_id.label("fahrt_id"),
+            sa.func.min(FahrtHalt.position).label("min_pos"),
+            sa.func.max(FahrtHalt.position).label("max_pos"),
+        )
+        .group_by(FahrtHalt.fahrt_id)
+        .subquery()
+    )
+
+    rows = (
+        db.session.query(
+            Fahrtdurchfuehrung.fahrt_id.label("fahrt_id"),
+
+            # Start
+            B_start.name.label("start_bahnhof"),
+            FH_start.abfahrt_zeit.label("start_abfahrt_zeit"),
+
+            # Ende
+            B_end.name.label("end_bahnhof"),
+            FH_end.ankunft_zeit.label("end_ankunft_zeit"),
+        )
+        .join(pos_subq, pos_subq.c.fahrt_id == Fahrtdurchfuehrung.fahrt_id)
+
+        # Start-Halt (Position = min_pos)
+        .join(
+            FH_start,
+            sa.and_(
+                FH_start.fahrt_id == Fahrtdurchfuehrung.fahrt_id,
+                FH_start.position == pos_subq.c.min_pos,
+            ),
+        )
+        .join(B_start, B_start.id == FH_start.bahnhof_id)
+
+        # End-Halt (Position = max_pos)
+        .join(
+            FH_end,
+            sa.and_(
+                FH_end.fahrt_id == Fahrtdurchfuehrung.fahrt_id,
+                FH_end.position == pos_subq.c.max_pos,
+            ),
+        )
+        .join(B_end, B_end.id == FH_end.bahnhof_id)
+
+        .all()
+    )
+
+    # Map: fahrt_id -> start/end infos
+    start_end_map = {
+        r.fahrt_id: {
+            "start_bahnhof": r.start_bahnhof,
+            "start_abfahrt_zeit": r.start_abfahrt_zeit,
+            "end_bahnhof": r.end_bahnhof,
+            "end_ankunft_zeit": r.end_ankunft_zeit,
+        }
+        for r in rows
     }
 
     return render_template(
@@ -751,8 +879,8 @@ def fahrten_alle():
         fahrten=fahrten,
         mitarbeiter=mitarbeiter,
         zugewiesene_fahrten_ids=zugewiesene_fahrten_ids,
+        start_end_map=start_end_map,   # <-- NEU
     )
-
 
 
 
