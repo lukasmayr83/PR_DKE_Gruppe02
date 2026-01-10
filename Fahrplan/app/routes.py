@@ -11,7 +11,7 @@ from app.forms import (
 
 from flask import render_template, flash, redirect, url_for, request, abort, jsonify
 from flask_login import current_user, login_user, logout_user, login_required
-from datetime import datetime, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 import sqlalchemy as sa
 from sqlalchemy.orm import aliased
 from app.models import (
@@ -34,7 +34,6 @@ from app.models import (
     ZugWartung
 )
 from urllib.parse import urlsplit
-from datetime import datetime, timezone
 from functools import wraps
 from sqlalchemy import func, and_
 from app.services.strecken_import import sync_from_strecken
@@ -45,6 +44,14 @@ from app.services.fahrt_builder import rebuild_fahrt_halte_und_segmente
 from app.services.sync_flotte import sync_from_flotte
 from app.services.sync_wartungen import sync_wartungen_from_flotte
 from app.services.wartung_check import has_wartung_overlap, find_zug_fahrt_overlap
+
+from app.services.fahrplan_helper import (
+    generate_datetimes_interval,
+    compute_fahrt_window,
+    auto_assign_trains,
+    auto_assign_crew,
+)
+
 import requests
 
 def admin_required(view_func):
@@ -271,6 +278,144 @@ def fahrten_list():
         title="Fahrtdurchführungen"
     )
 
+def create_fahrt_internal(
+    *,
+    halteplan_id: int,
+    zug_id: int,
+    abfahrt_dt: datetime,
+    mitarbeiter_ids: list[int],
+    price_factor: float,
+) -> Fahrtdurchfuehrung:
+    """
+    Interne Create-Logik für eine Fahrtdurchführung.
+    Identisch zur bisherigen fahrten_new-Logik, aber:
+    - keine flash/redirect
+    - Fehler via Exceptions (ValueError/RuntimeError)
+    - KEIN commit (Caller entscheidet commit/rollback)
+    """
+
+    if price_factor < 1.0:
+        raise ValueError("Preisfaktor muss ≥ 1.0 sein.")
+
+    # 1) Fahrtdurchführung anlegen
+    f = Fahrtdurchfuehrung(
+        halteplan_id=halteplan_id,
+        zug_id=zug_id,
+        status=FahrtdurchfuehrungStatus.PLANMAESSIG,
+        verspaetung_min=0,
+        abfahrt_zeit=abfahrt_dt,
+        price_factor=price_factor,
+    )
+    db.session.add(f)
+    db.session.flush()  # f.fahrt_id verfügbar
+
+    # 2) Dienstzuweisungen speichern
+    for mid in (mitarbeiter_ids or []):
+        db.session.add(Dienstzuweisung(fahrt_id=f.fahrt_id, mitarbeiter_id=mid))
+
+    # 3) Haltepunkte + Segmente aus Halteplan holen
+    hp_stops = (
+        db.session.query(Haltepunkt)
+        .filter(Haltepunkt.halteplan_id == f.halteplan_id)
+        .order_by(Haltepunkt.position)
+        .all()
+    )
+    if len(hp_stops) < 2:
+        raise ValueError("Der ausgewählte Halteplan hat zu wenige Haltepunkte.")
+
+    hp_segs = (
+        db.session.query(HalteplanSegment)
+        .filter(HalteplanSegment.halteplan_id == f.halteplan_id)
+        .order_by(HalteplanSegment.position)
+        .all()
+    )
+    if len(hp_segs) != (len(hp_stops) - 1):
+        raise ValueError("Halteplan-Segmente passen nicht zur Anzahl der Haltepunkte.")
+
+    # 4) FahrtHalt erzeugen
+    fahrt_halte: list[FahrtHalt] = []
+    for idx, hp_h in enumerate(hp_stops, start=1):
+        fh = FahrtHalt(
+            fahrt_id=f.fahrt_id,
+            bahnhof_id=hp_h.bahnhof_id,
+            position=idx,
+            ankunft_zeit=None,
+            abfahrt_zeit=None,
+        )
+        db.session.add(fh)
+        fahrt_halte.append(fh)
+
+    db.session.flush()  # IDs für von_halt_id / nach_halt_id
+
+    # 5) Zeiten berechnen + FahrtSegment erzeugen
+    current = f.abfahrt_zeit
+    fahrt_halte[0].ankunft_zeit = current
+    fahrt_halte[0].abfahrt_zeit = current
+
+    for i, hp_seg in enumerate(hp_segs):
+        from_h = fahrt_halte[i]
+        to_h = fahrt_halte[i + 1]
+
+        travel_min = int(hp_seg.duration_min or 0)
+        seg_arrival = current + timedelta(minutes=travel_min)
+
+        # next stop arrival
+        to_h.ankunft_zeit = seg_arrival
+
+        # dwell at "to" (außer letzter Halt)
+        is_last_stop = (i + 1) == (len(fahrt_halte) - 1)
+        if not is_last_stop:
+            dwell = int(hp_stops[i + 1].halte_dauer_min or 0)
+            to_h.abfahrt_zeit = seg_arrival + timedelta(minutes=dwell)
+        else:
+            to_h.abfahrt_zeit = None
+
+        # Segment speichern (Preis = base_price * price_factor)
+        base = float(hp_seg.base_price or 0.0)
+        final_price = round(base * float(f.price_factor or 1.0), 2)
+
+        db.session.add(
+            FahrtSegment(
+                fahrt_id=f.fahrt_id,
+                von_halt_id=from_h.id,
+                nach_halt_id=to_h.id,
+                position=i + 1,
+                final_price=final_price,
+                duration_min=travel_min,
+            )
+        )
+
+        # next loop current time = departure from "to" (oder arrival wenn letzter)
+        current = to_h.abfahrt_zeit or to_h.ankunft_zeit
+
+    fahrt_start = f.abfahrt_zeit
+    fahrt_end = current  # nach Loop: letzte Ankunft
+
+    # 6) Wartungs-Check
+    zug = db.session.get(Zug, f.zug_id)
+    if zug and has_wartung_overlap(zug.external_id, fahrt_start, fahrt_end):
+        raise RuntimeError(
+            "Konflikt: Der ausgewählte Zug hat in diesem Zeitraum eine Wartung."
+        )
+
+    # 7) Overlap-Check mit anderen Fahrtdurchführungen
+    with db.session.no_autoflush:
+        conflict = find_zug_fahrt_overlap(
+            zug_id=f.zug_id,
+            start_dt=fahrt_start,
+            end_dt=fahrt_end,
+            exclude_fahrt_id=f.fahrt_id,
+        )
+
+    if conflict:
+        raise RuntimeError(
+            f"Konflikt: Zug ist bereits in Fahrtdurchführung #{conflict.fahrt_id} "
+            f"({conflict.abfahrt_zeit}) belegt."
+        )
+
+    return f
+
+
 
 
 
@@ -290,13 +435,14 @@ def fahrten_new():
     alle_mitarbeiter = Mitarbeiter.query.order_by(Mitarbeiter.name).all()
     form.mitarbeiter_ids.choices = [(m.id, m.name) for m in alle_mitarbeiter]
 
+    # Züge laden
     form.zug_id.choices = [
         (z.id, f"{z.bezeichnung} (ext={z.external_id})")
         for z in Zug.query.order_by(Zug.bezeichnung).all()
     ]
 
     if form.validate_on_submit():
-        # 1) Abfahrtszeit lesen (datetime-local => "YYYY-MM-DDTHH:MM")
+        # Abfahrtszeit lesen (datetime-local => "YYYY-MM-DDTHH:MM")
         abfahrt_raw = (request.form.get("abfahrt_zeit") or "").strip()
         if not abfahrt_raw:
             flash("Bitte eine Abfahrtszeit angeben.", "warning")
@@ -308,6 +454,7 @@ def fahrten_new():
             flash("Abfahrtszeit hat ein ungültiges Format.", "warning")
             return redirect(url_for("fahrten_new"))
 
+        # Preisfaktor
         price_factor_raw = (request.form.get("price_factor") or "").strip()
         try:
             price_factor = float(price_factor_raw) if price_factor_raw else 1.0
@@ -318,136 +465,29 @@ def fahrten_new():
         if price_factor < 1.0:
             flash("Preisfaktor muss ≥ 1.0 sein.", "warning")
             return redirect(url_for("fahrten_new"))
-        # 2) Fahrtdurchführung anlegen
-        f = Fahrtdurchfuehrung(
-            halteplan_id=form.halteplan_id.data,
-            zug_id=form.zug_id.data,
-            status=FahrtdurchfuehrungStatus.PLANMAESSIG,
-            verspaetung_min=0,
-            abfahrt_zeit=abfahrt_dt,
-            price_factor=price_factor,
-        )
-        db.session.add(f)
-        db.session.flush()  # f.fahrt_id
 
-        # 3) Dienstzuweisungen speichern
-        for mit_id in form.mitarbeiter_ids.data:
-            db.session.add(Dienstzuweisung(fahrt_id=f.fahrt_id, mitarbeiter_id=mit_id))
-
-        # 4) Haltepunkte + Segmente aus Halteplan holen
-        hp_stops = (
-            db.session.query(Haltepunkt)
-            .filter(Haltepunkt.halteplan_id == f.halteplan_id)
-            .order_by(Haltepunkt.position)
-            .all()
-        )
-        if len(hp_stops) < 2:
+        try:
+            create_fahrt_internal(
+                halteplan_id=form.halteplan_id.data,
+                zug_id=form.zug_id.data,
+                abfahrt_dt=abfahrt_dt,
+                mitarbeiter_ids=list(form.mitarbeiter_ids.data or []),
+                price_factor=price_factor,
+            )
+            db.session.commit()
+        except ValueError as e:
             db.session.rollback()
-            flash("Der ausgewählte Halteplan hat zu wenige Haltepunkte.", "warning")
+            flash(str(e), "warning")
+            return redirect(url_for("fahrten_new"))
+        except RuntimeError as e:
+            db.session.rollback()
+            flash(str(e), "danger")
+            return redirect(url_for("fahrten_new"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Unerwarteter Fehler beim Anlegen: {e}", "danger")
             return redirect(url_for("fahrten_new"))
 
-        hp_segs = (
-            db.session.query(HalteplanSegment)
-            .filter(HalteplanSegment.halteplan_id == f.halteplan_id)
-            .order_by(HalteplanSegment.position)
-            .all()
-        )
-        if len(hp_segs) != (len(hp_stops) - 1):
-            db.session.rollback()
-            flash("Halteplan-Segmente passen nicht zur Anzahl der Haltepunkte.", "warning")
-            return redirect(url_for("fahrten_new"))
-
-        # 5) FahrtHalt erzeugen
-        fahrt_halte: list[FahrtHalt] = []
-        for idx, hp_h in enumerate(hp_stops, start=1):
-            fh = FahrtHalt(
-                fahrt_id=f.fahrt_id,
-                bahnhof_id=hp_h.bahnhof_id,
-                position=idx,
-                ankunft_zeit=None,
-                abfahrt_zeit=None,
-            )
-            db.session.add(fh)
-            fahrt_halte.append(fh)
-
-        db.session.flush()  # IDs für von_halt_id / nach_halt_id
-
-        # 6) Zeiten berechnen + FahrtSegment erzeugen
-        current = f.abfahrt_zeit
-        fahrt_halte[0].ankunft_zeit = current
-        fahrt_halte[0].abfahrt_zeit = current
-
-        for i, hp_seg in enumerate(hp_segs):
-            from_h = fahrt_halte[i]
-            to_h = fahrt_halte[i + 1]
-
-            travel_min = int(hp_seg.duration_min or 0)
-            seg_arrival = current + timedelta(minutes=travel_min)
-
-            # next stop arrival
-            to_h.ankunft_zeit = seg_arrival
-
-            # dwell at "to" (außer letzter Halt)
-            is_last_stop = (i + 1) == (len(fahrt_halte) - 1)
-            dwell = 0
-            if not is_last_stop:
-                dwell = int(hp_stops[i + 1].halte_dauer_min or 0)
-                to_h.abfahrt_zeit = seg_arrival + timedelta(minutes=dwell)
-            else:
-                to_h.abfahrt_zeit = None
-
-            # Segment speichern (Preis = base_price * price_factor)
-            base = float(hp_seg.base_price or 0.0)
-            final_price = round(base * float(f.price_factor or 1.0), 2)
-
-            db.session.add(
-                FahrtSegment(
-                    fahrt_id=f.fahrt_id,
-                    von_halt_id=from_h.id,
-                    nach_halt_id=to_h.id,
-                    position=i + 1,
-                    final_price=final_price,
-                    duration_min=travel_min,
-                )
-            )
-
-            # next loop current time = departure from "to" (oder arrival wenn letzter)
-            current = to_h.abfahrt_zeit or to_h.ankunft_zeit
-
-        fahrt_start = f.abfahrt_zeit
-        fahrt_end = current  # nach Loop: letzte Ankunft
-
-
-
-        zug = db.session.get(Zug, f.zug_id)
-        if zug and has_wartung_overlap(zug.external_id, fahrt_start, fahrt_end):
-            db.session.rollback()
-            flash(
-                "Konflikt: Der ausgewählte Zug hat in diesem Zeitraum eine Wartung. "
-                "Bitte anderen Zug oder andere Abfahrtszeit wählen.",
-                "danger",
-            )
-            return redirect(url_for("fahrten_new"))
-
-        # NEU: Overlap-Check mit anderen Fahrtdurchführungen
-        with db.session.no_autoflush:
-            conflict = find_zug_fahrt_overlap(
-                zug_id=f.zug_id,
-                start_dt=fahrt_start,
-                end_dt=fahrt_end,
-                exclude_fahrt_id=f.fahrt_id,
-            )
-
-        if conflict:
-            db.session.rollback()
-            flash(
-                f"Konflikt: Zug ist bereits in Fahrtdurchführung #{conflict.fahrt_id} "
-                f"({conflict.abfahrt_zeit}) belegt. Bitte anderen Zug oder Abfahrtszeit wählen.",
-                "danger",
-            )
-            return redirect(url_for("fahrten_new"))
-
-        db.session.commit()
         flash("Fahrtdurchführung inkl. Personal + Halte/Segmente erfolgreich angelegt.", "success")
         return redirect(url_for("fahrten_list"))
 
@@ -457,6 +497,7 @@ def fahrten_new():
         form=form,
         mitarbeiter_liste=alle_mitarbeiter,
     )
+
 
 @app.route("/fahrten/<int:fahrt_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -569,9 +610,11 @@ def fahrt_edit(fahrt_id: int):
 
         # 7) Zeitraum bestimmen (ohne extra Endzeit-Spalte)
         fahrt_start = fahrt.abfahrt_zeit
-        fahrt_end = db.session.scalar(
-            sa.select(sa.func.max(FahrtHalt.ankunft_zeit)).where(FahrtHalt.fahrt_id == fahrt_id)
-        )
+        with db.session.no_autoflush:
+            fahrt_end = db.session.scalar(
+                sa.select(sa.func.max(FahrtHalt.ankunft_zeit)).where(FahrtHalt.fahrt_id == fahrt_id)
+            )
+        db.session.flush()
 
         if not fahrt_start or not fahrt_end:
             db.session.rollback()
@@ -621,6 +664,158 @@ def fahrt_edit(fahrt_id: int):
         segment_rows=segment_rows,
         alle_zuege=alle_zuege,  # NEU
     )
+
+@app.route("/fahrten/bulk", methods=["GET"])
+@login_required
+@admin_required
+def fahrten_bulk_form():
+    halteplaene = Halteplan.query.order_by(Halteplan.bezeichnung).all()
+    mitarbeiter = Mitarbeiter.query.order_by(Mitarbeiter.name).all()
+    return render_template(
+        "fahrten_bulk_form.html",
+        title="Fahrten im Intervall anlegen",
+        halteplaene=halteplaene,
+        mitarbeiter=mitarbeiter,
+    )
+
+@app.route("/fahrten/bulk/preview", methods=["POST"])
+@login_required
+@admin_required
+def fahrten_bulk_preview():
+    halteplan_id = int(request.form["halteplan_id"])
+
+    start_date = date.fromisoformat(request.form["start_date"])
+    end_date = date.fromisoformat(request.form["end_date"])
+    start_time = time.fromisoformat(request.form["start_time"])
+    interval_minutes = int(request.form["interval_minutes"])
+    trips_per_day = int(request.form["trips_per_day"])
+    weekdays = {int(x) for x in request.form.getlist("weekdays")}
+
+    crew_size = int(request.form.get("crew_size") or 0)
+
+    # falls du price_factor im bulk-form schon hast:
+    pf_raw = (request.form.get("price_factor") or "1.0").strip()
+    try:
+        price_factor = float(pf_raw)
+    except ValueError:
+        price_factor = 1.0
+    if price_factor < 1.0:
+        price_factor = 1.0
+
+    datetimes = generate_datetimes_interval(
+        start_date=start_date,
+        end_date=end_date,
+        first_departure_time=start_time,
+        interval_minutes=interval_minutes,
+        trips_per_day=trips_per_day,
+        weekdays=weekdays,
+    )
+
+    windows = [compute_fahrt_window(halteplan_id, dt) for dt in datetimes]
+
+    zuege = Zug.query.order_by(Zug.bezeichnung).all()
+    suggested_zug_ids = auto_assign_trains(windows, zuege)
+
+    mitarbeiter_ids = [m.id for m in Mitarbeiter.query.order_by(Mitarbeiter.name).all()]
+    crew_assignments = auto_assign_crew(
+        mitarbeiter_ids=mitarbeiter_ids,
+        crew_size=crew_size,
+        num_fahrten=len(windows),
+        seed=42,
+    )
+
+    preview_rows = []
+    for idx, (start_dt, end_dt) in enumerate(windows):
+        zug_id = suggested_zug_ids[idx]
+        errors = []
+
+        if zug_id is None:
+            errors.append("Kein Zug verfügbar")
+
+        preview_rows.append({
+            "index": idx,
+            "start": start_dt,
+            "end": end_dt,
+            "zug_id": zug_id,
+            "crew_ids": crew_assignments[idx],
+            "errors": errors,
+            "is_valid": len(errors) == 0,
+        })
+
+    return render_template(
+        "fahrten_bulk_preview.html",
+        title="Preview: Fahrten im Intervall",
+        halteplan_id=halteplan_id,
+        zuege=zuege,
+        preview_rows=preview_rows,
+        crew_size=crew_size,
+        price_factor=price_factor,
+    )
+
+
+
+@app.route("/fahrten/bulk/create", methods=["POST"])
+@login_required
+@admin_required
+def fahrten_bulk_create():
+    halteplan_id = int(request.form["halteplan_id"])
+
+    # Preisfaktor
+    pf_raw = (request.form.get("price_factor") or "1.0").strip()
+    try:
+        price_factor = float(pf_raw)
+    except ValueError:
+        price_factor = 1.0
+    if price_factor < 1.0:
+        price_factor = 1.0
+
+    created = 0
+
+    try:
+        i = 0
+        while True:
+            start_key = f"start_{i}"
+            zug_key = f"zug_{i}"
+            if start_key not in request.form:
+                break
+
+            start_dt = datetime.fromisoformat(request.form[start_key])
+
+            zug_id_raw = (request.form.get(zug_key) or "").strip()
+            if not zug_id_raw:
+                # Zug ist bei dir Pflicht -> daher Fehler
+                raise ValueError(f"Bei Fahrt #{i+1} wurde kein Zug ausgewählt.")
+
+            zug_id = int(zug_id_raw)
+
+            crew_ids = [int(x) for x in request.form.getlist(f"crew_{i}")]
+
+            # legt an, wirft Exception bei Konflikten (Wartung/Overlap) oder Validierungsproblemen
+            create_fahrt_internal(
+                halteplan_id=halteplan_id,
+                zug_id=zug_id,
+                abfahrt_dt=start_dt,
+                mitarbeiter_ids=crew_ids,
+                price_factor=price_factor,
+            )
+
+            created += 1
+            i += 1
+
+        if created == 0:
+            raise ValueError("Keine Fahrten zum Anlegen übergeben.")
+
+        db.session.commit()
+        flash(f"{created} Fahrten wurden angelegt.", "success")
+        return redirect(url_for("fahrten_list"))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Abbruch: Es wurde nichts gespeichert. Grund: {e}", "danger")
+        return redirect(url_for("fahrten_bulk_form"))
+
+
+
 @app.route("/fahrten/<int:fahrt_id>/delete", methods=["GET", "POST"])
 @admin_required
 def fahrt_delete(fahrt_id):
@@ -1280,8 +1475,6 @@ def halteplan_delete_confirm(halteplan_id: int):
     )
 
 
-from flask import request, render_template, redirect, url_for, flash
-from app.models import Halteplan
 
 @app.route("/halteplaene/<int:halteplan_id>/delete", methods=["GET", "POST"])
 @login_required
@@ -1322,7 +1515,6 @@ def api_refresh_fahrt(fart_id):
 
 @app.route("/api/sync/strecken", methods=["POST"])
 def api_sync_strecken():
-    from app.services.strecken_import import sync_from_strecken
     try:
         result = sync_from_strecken("http://127.0.0.1:5001")
         if not result.get("ok", True):

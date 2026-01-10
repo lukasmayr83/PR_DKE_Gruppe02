@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+  <h2>Preview: Fahrten im Intervall</h2>
+
+  <div class="dataset-info">
+    <strong>Regel:</strong> Speichern erfolgt <strong>nur</strong>, wenn alle Fahrten gültig sind.
+    Ungültige Zeilen werden rot markiert und blockieren den Speichern-Button.
+  </div>
+
+  {# any_invalid sauber berechnen #}
+  {% set ns = namespace(any_invalid=false) %}
+  {% for row in preview_rows %}
+    {% if not row.is_valid %}
+      {% set ns.any_invalid = true %}
+    {% endif %}
+  {% endfor %}
+
+  <form method="post" action="{{ url_for('fahrten_bulk_create') }}" class="form-styled">
+    <input type="hidden" name="halteplan_id" value="{{ halteplan_id }}">
+    <input type="hidden" name="price_factor" value="{{ "%.2f"|format(price_factor or 1.0) }}">
+
+    <div class="table-wrapper">
+      <table class="table table-striped" style="width:100%;">
+        <thead>
+          <tr>
+            <th style="width:60px;">#</th>
+            <th style="width:210px;">Start</th>
+            <th style="width:210px;">Ende</th>
+            <th>Zug</th>
+            <th style="width:140px;">Crew</th>
+            <th style="width:220px;">Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in preview_rows %}
+            <tr class="{% if row.is_valid %}row-ok{% else %}row-bad{% endif %}">
+              <td>{{ row.index + 1 }}</td>
+
+              <td>
+                {{ row.start }}
+                <input type="hidden" name="start_{{ row.index }}" value="{{ row.start.isoformat() }}">
+              </td>
+
+              <td>{{ row.end }}</td>
+
+              <td>
+                {% if row.zug_id %}
+                  <select name="zug_{{ row.index }}" class="form-input-inline" required>
+                    {% for z in zuege %}
+                      <option value="{{ z.id }}" {% if z.id == row.zug_id %}selected{% endif %}>
+                        {{ z.bezeichnung }} (ext={{ z.external_id }})
+                      </option>
+                    {% endfor %}
+                  </select>
+                {% else %}
+                  <span class="text-danger">❌ Kein Zug verfügbar</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {# Crew als hidden inputs mitgeben #}
+                {% for mid in row.crew_ids %}
+                  <input type="hidden" name="crew_{{ row.index }}" value="{{ mid }}">
+                {% endfor %}
+
+                <span class="tag-grey">{{ row.crew_ids|length }} MA</span>
+              </td>
+
+              <td>
+                {% if row.is_valid %}
+                  ✅ OK
+                {% else %}
+                  ❌ {{ row.errors|join(", ") }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="btn-container" style="margin-top: 18px;">
+      <button type="submit"
+              class="btn-primary-small"
+              {% if ns.any_invalid %}disabled{% endif %}>
+        Fahrten anlegen
+      </button>
+
+      <a href="{{ url_for('fahrten_bulk_form') }}" class="btn-secondary-small">
+        Zurück
+      </a>
+
+      <a href="{{ url_for('fahrten_list') }}" class="btn-secondary-small" style="margin-left:auto;">
+        Abbrechen
+      </a>
+    </div>
+
+    {% if ns.any_invalid %}
+      <p class="info-text" style="margin-top:10px; color:#b00020;">
+        ⚠️ Es gibt ungültige Fahrten. Bitte zurückgehen und Intervall/Wochentage anpassen oder sicherstellen,
+        dass ausreichend Züge verfügbar sind.
+      </p>
+    {% endif %}
+  </form>
+</div>
+
+<style>
+  /* an fahrten_new.html angelehnt */
+  .form-styled { max-width: 980px; margin-top: 20px; }
+
+  .dataset-info {
+    background: #f6f6f6;
+    border: 1px solid #ddd;
+    padding: 12px 15px;
+    margin-bottom: 18px;
+    border-radius: 6px;
+    max-width: 980px;
+  }
+
+  .info-text { font-size: 13px; color: #555; margin-bottom: 10px; }
+
+  .tag-grey {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #e9ecef;
+    color: #555;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .table-wrapper { max-width: 980px; overflow-x: auto; }
+
+  .form-input-inline {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: #fff;
+    min-width: 320px;
+  }
+
+  /* Ampel-Zeilen */
+  .row-ok { background: #f0fff4; }
+  .row-bad { background: #fff5f5; }
+
+  /* optional: kleine "danger" Farbe */
+  .text-danger { color: #b00020; font-weight: 600; }
+</style>
+
+{% endblock %}

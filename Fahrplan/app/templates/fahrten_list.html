@@ -7,6 +7,10 @@
     <a href="{{ url_for('fahrten_new') }}" class="btn-primary-small">
         Neue Fahrtdurchführung anlegen
     </a>
+
+    <a href="{{ url_for('fahrten_bulk_form') }}" class="btn-primary-small">
+        Neuen Fahrplan anlegen
+    </a>
 </div>
 
 <div class="table-wrapper">
@@ -16,9 +20,11 @@
             <th class="col-id">ID</th>
             <th class="col-halteplan">Halteplan</th>
             <th class="col-zug">Zug</th>
+            <th class="col-abfahrt_zeit">Abfahrtszeit</th>
             <th class="col-status">Status</th>
             <th class="col-verspaetung">Verspätung</th>
             <th class="col-mitarbeiter">Mitarbeiter</th>
+            <th class="col-Preisfaktor">Preisfaktor</th>
             <th class="col-aktionen">Aktionen</th>
         </tr>
     </thead>
@@ -31,18 +37,21 @@
 
             <td>
                 {% if f.zug_id %}
-                    {{ f.zug_id }}
+                    {{ f.zug.bezeichnung }}
                 {% else %}
                     <span class="badge-grey">kein Zug</span>
                 {% endif %}
             </td>
 
+            <td>{{ f.abfahrt_zeit }}</td>
             <td>{{ f.status.value }}</td>
             <td>{{ f.verspaetung_min or "-" }}</td>
 
             <td>
                 {{ mitarbeiter_counts[f.fahrt_id] | default(0) }} Mitarbeiter
             </td>
+
+            <td>{{ f.price_factor }}</td>
 
             <td>
                 <a href="{{ url_for('fahrt_edit', fahrt_id=f.fahrt_id) }}"

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="card">
+  <h2>Fahrten im Intervall anlegen</h2>
+
+  <div class="dataset-info">
+    <strong>Hinweis:</strong><br>
+    Du legst mehrere Fahrtdurchführungen auf einmal an (Intervall + Wochentage).<br>
+    Danach kommt eine <strong>Vorschau</strong>, in der Züge & Crew vorgeschlagen werden.
+    Speichern erfolgt <strong>nur</strong>, wenn alle Fahrten gültig sind (All-or-Nothing).
+  </div>
+
+  <form method="post" action="{{ url_for('fahrten_bulk_preview') }}" class="form-styled">
+
+    <div class="form-group">
+      <label class="form-label">Halteplan</label>
+      <select class="form-input" name="halteplan_id" required>
+        {% for hp in halteplaene %}
+          <option value="{{ hp.halteplan_id }}">{{ hp.bezeichnung }} (id={{ hp.halteplan_id }})</option>
+        {% endfor %}
+      </select>
+      <small class="hint">Basis für Zeiten/Segmente: Abfahrt am ersten Halt des Halteplans.</small>
+    </div>
+
+    <h3 style="margin-top: 25px;">Zeitraum & Intervall</h3>
+
+    <div class="form-group">
+      <label class="form-label">Startdatum</label>
+      <input class="form-input" type="date" name="start_date" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Enddatum</label>
+      <input class="form-input" type="date" name="end_date" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Startzeit der ersten Fahrt</label>
+      <input class="form-input" type="time" name="start_time" required>
+      <small class="hint">Startzeit am ersten Bahnhof des Halteplans.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Intervall (Minuten)</label>
+      <input class="form-input" type="number" name="interval_minutes" min="1"  required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Fahrten pro Tag</label>
+      <input class="form-input" type="number" name="trips_per_day" min="1"  required>
+    </div>
+
+    <h3 style="margin-top: 25px;">Wochentage</h3>
+    <p class="info-text">Wähle aus, an welchen Wochentagen Fahrten generiert werden</p>
+
+    <div class="mitarbeiter-list" style="max-height:none;">
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="0" checked> Montag</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="1" checked> Dienstag</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="2" checked> Mittwoch</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="3" checked> Donnerstag</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="4" checked> Freitag</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="5"> Samstag</label>
+      <label class="checkbox-row"><input type="checkbox" name="weekdays" value="6"> Sonntag</label>
+    </div>
+
+    <h3 style="margin-top: 25px;">Zuweisungen</h3>
+
+    <div class="form-group">
+      <label class="form-label">Crew-Größe (Anzahl Mitarbeiter pro Fahrt)</label>
+      <input class="form-input" type="number" name="crew_size" min="0" value="2" required>
+      <small class="hint">0 = keine automatische Crew-Zuweisung.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Preisfaktor (für alle neuen Fahrten)</label>
+      <input class="form-input" type="number" name="price_factor" step="0.01" min="1" value="1.00" required>
+      <small class="hint">Muss ≥ 1.00 sein.</small>
+    </div>
+
+    <div class="btn-container" style="margin-top: 25px;">
+      <button type="submit" class="btn-primary-small">Preview erstellen</button>
+      <a href="{{ url_for('fahrten_list') }}" class="btn-secondary-small">Abbrechen</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  /* sehr nah an fahrten_new.html */
+  .form-styled { max-width: 520px; margin-top: 20px; }
+  .form-group { margin-bottom: 22px; max-width: 520px; }
+  .form-label { font-weight: 600; display: block; margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; box-sizing: border-box; }
+  .dataset-info { background: #f6f6f6; border: 1px solid #ddd; padding: 12px 15px; margin-bottom: 25px; border-radius: 6px; max-width: 520px; }
+  .hint { font-size: 12px; color: #666; margin-top: 4px; display: inline-block; }
+  .info-text { font-size: 13px; color: #555; margin-bottom: 10px; max-width: 520px; }
+
+  .mitarbeiter-list {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 12px;
+    overflow-y: auto;
+    background: #fafafa;
+    margin-bottom: 20px;
+    max-width: 520px;
+  }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+  .checkbox-row input { margin: 0; }
+</style>
+
+{% endblock %}
