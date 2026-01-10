@@ -9,9 +9,12 @@ venv/
 
 # IDEs
 .idea/
-../.idea
 .vscode/
 
-# Flask / SQLite
-Ticket/instance/
-Ticket/instance/*.db
+# Ticket DB:
+Ticket/instance/*
+!Ticket/instance/tickets.db
+
+Ticket/instance/*.db-journal
+Ticket/instance/*.db-wal
+Ticket/instance/*.db-shm
