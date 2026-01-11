@@ -12,6 +12,16 @@ body {
     margin-bottom: 0 !important;
 }
 
+table.dataTable {
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+td, th {
+    white-space: nowrap;
+}
+
+
 /* Farbe für Tabellen-Header */
 .table thead th {
     background-color: #b8b4b4;
