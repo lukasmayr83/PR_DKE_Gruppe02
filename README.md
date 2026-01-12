@@ -42,5 +42,18 @@ Passwort: user
 
 +++++++++++++++++++++++++++++++++++++++++
 
+Flotten Login:
 
+Admin Login Daten: 
+Username: admin
+Passwort admin
+
+Mitarbeiter Login Daten für Mitarbeiter 2:
+Username: User2 
+Passwort: User2
+
+(Für alle Mitarbeiter identisch - es ändert sich nur die Nummer
+eg: User3 / User3, User4 / User4 )
+
++++++++++++++++++++++++++++++++++++++++++
 
