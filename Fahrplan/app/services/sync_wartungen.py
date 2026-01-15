@@ -18,20 +18,6 @@ def _combine_date_time(date_str: str | None, time_str: str | None) -> datetime |
 def sync_wartungen_from_flotte(base_url: str) -> dict:
     """
     Holt Wartungen aus dem Flotten-Service und synchronisiert sie nach Fahrplan.
-
-    Unterstützte JSON-Formate:
-    A) flat list (empfohlen):
-       [
-         {"zugId": 1, "wartungszeitid": 10, "datum": "...", "von": "...", "bis": "..."},
-         ...
-       ]
-
-    B) grouped by zug:
-       [
-         {"zugId": 1, "wartungen": [{"wartungszeitid": 10, "datum": "...", "von": "...", "bis": "..."}, ...]},
-         ...
-       ]
-
     Logik:
       - nur aktuelle + zukünftige Wartungen (bis < now wird ignoriert)
       - pro Zug: lokale Wartungen löschen und neu einfügen
@@ -51,23 +37,20 @@ def sync_wartungen_from_flotte(base_url: str) -> dict:
     now = datetime.now()
 
     try:
-        # -----------------------
-        # 1) INPUT NORMALISIEREN -> groups[zugId] = [wartung_dict, ...]
-        # -----------------------
+
         groups: dict[int, list[dict]] = {}
 
         for it in data:
             if not isinstance(it, dict):
                 continue
 
-            # Format B: {"zugId": X, "wartungen": [...]}
+
             if "wartungen" in it and isinstance(it.get("wartungen"), list):
                 zug_id = int(it["zugId"])
                 groups.setdefault(zug_id, []).extend(it["wartungen"])
                 continue
 
-            # Format A: flat wartung item
-            # {"zugId": X, "wartungszeitid": Y, "datum": ..., "von": ..., "bis": ...}
+
             if "zugId" in it and "wartungszeitid" in it:
                 zug_id = int(it["zugId"])
                 groups.setdefault(zug_id, []).append(it)

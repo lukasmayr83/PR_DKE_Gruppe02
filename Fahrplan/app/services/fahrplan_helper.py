@@ -133,7 +133,7 @@ def auto_assign_crew(
     result: list[list[int]] = []
 
     for _ in range(num_fahrten):
-        # sort by (count, random) → fair + bisschen random
+        # sort by (count, random) → fair
         mids = sorted(mitarbeiter_ids, key=lambda m: (counts[m], rng.random()))
         pick = mids[:crew_size]
         for m in pick:

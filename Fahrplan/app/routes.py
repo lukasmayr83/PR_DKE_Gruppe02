@@ -662,7 +662,7 @@ def fahrt_edit(fahrt_id: int):
         zugewiesene_ids=bestehende_ids,
         halte_rows=halte_rows,
         segment_rows=segment_rows,
-        alle_zuege=alle_zuege,  # NEU
+        alle_zuege=alle_zuege,
     )
 
 @app.route("/fahrten/bulk", methods=["GET"])
@@ -693,7 +693,6 @@ def fahrten_bulk_preview():
 
     crew_size = int(request.form.get("crew_size") or 0)
 
-    # falls du price_factor im bulk-form schon hast:
     pf_raw = (request.form.get("price_factor") or "1.0").strip()
     try:
         price_factor = float(pf_raw)
@@ -783,14 +782,12 @@ def fahrten_bulk_create():
 
             zug_id_raw = (request.form.get(zug_key) or "").strip()
             if not zug_id_raw:
-                # Zug ist bei dir Pflicht -> daher Fehler
                 raise ValueError(f"Bei Fahrt #{i+1} wurde kein Zug ausgewählt.")
 
             zug_id = int(zug_id_raw)
 
             crew_ids = [int(x) for x in request.form.getlist(f"crew_{i}")]
 
-            # legt an, wirft Exception bei Konflikten (Wartung/Overlap) oder Validierungsproblemen
             create_fahrt_internal(
                 halteplan_id=halteplan_id,
                 zug_id=zug_id,
@@ -869,7 +866,7 @@ def fahrt_mitarbeiter(fahrt_id):
         id_strings = request.form.getlist("mitarbeiter_ids")
         neue_ids = {int(x) for x in id_strings}
 
-        # 1) jetzt nichtselectierte löschen
+        # 1) nichtselectierte löschen
         for dz in bestehende_zuweisungen:
             if dz.mitarbeiter_id not in neue_ids:
                 db.session.delete(dz)
@@ -912,7 +909,7 @@ def meine_fahrten():
         db.session.query(Fahrtdurchfuehrung)
         .join(Dienstzuweisung, Dienstzuweisung.fahrt_id == Fahrtdurchfuehrung.fahrt_id)
         .filter(Dienstzuweisung.mitarbeiter_id == ma.id)
-        .order_by(Fahrtdurchfuehrung.abfahrt_zeit.asc())  # optional besser als fahrt_id
+        .order_by(Fahrtdurchfuehrung.abfahrt_zeit.asc())
         .all()
     )
 
@@ -938,7 +935,7 @@ def meine_fahrten():
         for fid, bname, abf, ank in start_rows:
             start_info[fid] = {
                 "bahnhof": bname,
-                "zeit": abf or ank,  # fallback falls abfahrt_zeit mal NULL wäre
+                "zeit": abf or ank,  # fallback falls abfahrt_zeit NULL wäre
             }
 
         # ENDE: max(position) pro fahrt
@@ -990,20 +987,20 @@ def fahrten_alle():
 
     mitarbeiter = current_user.mitarbeiter
 
-    # --- 1) Basis: alle Fahrten (wie bisher, nur mit order_by)
+    #1) Basis: alle Fahrten
     fahrten = (
         db.session.query(Fahrtdurchfuehrung)
         .order_by(Fahrtdurchfuehrung.fahrt_id)
         .all()
     )
 
-    # --- 2) Zuweisungen des Mitarbeiters
+    #2) Zuweisungen des Mitarbeiters
     zugewiesene_fahrten_ids = {
         dz.fahrt_id
         for dz in Dienstzuweisung.query.filter_by(mitarbeiter_id=mitarbeiter.id).all()
     }
 
-    # --- 3) Start-/Endhalt pro Fahrt via SQL
+    # 3) Start-/Endhalt pro Fahrt
     FH_start = aliased(FahrtHalt)
     FH_end = aliased(FahrtHalt)
     B_start = aliased(Bahnhof)
@@ -1074,7 +1071,7 @@ def fahrten_alle():
         fahrten=fahrten,
         mitarbeiter=mitarbeiter,
         zugewiesene_fahrten_ids=zugewiesene_fahrten_ids,
-        start_end_map=start_end_map,   # <-- NEU
+        start_end_map=start_end_map,
     )
 
 
@@ -1181,7 +1178,7 @@ def halteplan_new():
         for r in abschnitte_rows:
             bahnhof_ids_in_order.append(int(r.end_bahnhof_id))
 
-    # unique falls etwas doppelt
+    # unique
     seen = set()
     bahnhof_ids_in_order = [x for x in bahnhof_ids_in_order if not (x in seen or seen.add(x))]
 
@@ -1197,7 +1194,7 @@ def halteplan_new():
     if request.method == "POST":
         bezeichnung = request.form.get("bezeichnung", "").strip()
         strecke_id = request.form.get("strecke_id", type=int)
-        halte_ids = request.form.getlist("halte_bahnhof_ids")  # Checkboxen
+        halte_ids = request.form.getlist("halte_bahnhof_ids")
         halte_ids = [int(x) for x in halte_ids]
 
         if not bezeichnung or not strecke_id or len(halte_ids) < 2:
@@ -1484,7 +1481,6 @@ def halteplan_delete(halteplan_id: int):
 
     # GET: Warnseite anzeigen
     if request.method == "GET":
-        # mit-cascade: wir zeigen nur, was betroffen wäre
         fahrten_count = len(hp.fahrten)
         haltepunkte_count = len(hp.haltepunkte)
         segmente_count = len(hp.segmente)
@@ -1497,7 +1493,6 @@ def halteplan_delete(halteplan_id: int):
             segmente_count=segmente_count,
         )
 
-    # POST: wirklich löschen
     db.session.delete(hp)
     db.session.commit()
     flash("Halteplan wurde gelöscht (inkl. Haltepunkte, Segmente, Fahrten).", "success")
@@ -1511,7 +1506,7 @@ def api_refresh_fahrt(fart_id):
     result = refresh_fahrt_snapshot(fart_id)
     return jsonify(result), 200
 
-####fürs synchen script aufrufen/damit alles auf den richtigen ports läuft
+#fürs synchen script aufrufen/damit alles auf den richtigen ports läuft
 
 @app.route("/api/sync/strecken", methods=["POST"])
 def api_sync_strecken():
@@ -1547,9 +1542,7 @@ def api_sync_wartungen():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 503
 
-    #############################
-    ################################
-    #############################
+
 
 # API by Daniel
 

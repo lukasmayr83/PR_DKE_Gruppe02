@@ -31,9 +31,7 @@ class EmptyForm(FlaskForm):
     submit = SubmitField("Submit")
 
 
-# ----------------------------------------------
-#   NEU: Mitarbeiter anlegen (inkl. User-Daten)
-# ----------------------------------------------
+
 
 class MitarbeiterForm(FlaskForm):
     name = StringField(

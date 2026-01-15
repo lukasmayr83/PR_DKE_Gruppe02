@@ -36,7 +36,7 @@ def rebuild_fahrt_halte_und_segmente(fahrt: Fahrtdurchfuehrung) -> None:
     if len(segs) != len(stops) - 1:
         raise ValueError("Halteplan-Segmente passen nicht zur Anzahl der Haltepunkte.")
 
-    # Alte Datensätze löschen (damit keine Inkonsistenzen bleiben)
+    # Alte Datensätze löschen (sonst Inkonsistenzen )
     db.session.query(FahrtSegment).filter(FahrtSegment.fahrt_id == fahrt.fahrt_id).delete(synchronize_session=False)
     db.session.query(FahrtHalt).filter(FahrtHalt.fahrt_id == fahrt.fahrt_id).delete(synchronize_session=False)
     db.session.flush()

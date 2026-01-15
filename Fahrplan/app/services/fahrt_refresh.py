@@ -80,13 +80,13 @@ def refresh_fahrt_snapshot(fahrt_id: int) -> dict:
             bahnhof_id=hp.bahnhof_id,
             position=i + 1,
             ankunft_zeit=t,
-            abfahrt_zeit=t,  # falls du später Aufenthaltszeit willst, kannst du das splitten
+            abfahrt_zeit=t,
         )
         db.session.add(fh)
         db.session.flush()
         fahrt_halt_ids.append(fh.id)
 
-    # 4) FahrtSegment neu erzeugen (nur final_price speichern)
+    # 4) FahrtSegment neu erzeugen
     links = 0
     for i, hpseg in enumerate(segmente, start=1):
         # Validierung kostendeckend: base_price muss >= min_cost
@@ -99,7 +99,6 @@ def refresh_fahrt_snapshot(fahrt_id: int) -> dict:
 
         final_price = base_price * float(fahrt.price_factor)
 
-        # zur Sicherheit nochmal kostendeckend (nach Faktor eigentlich eh >= min_cost wenn base>=min)
         if final_price < min_cost:
             final_price = min_cost
 

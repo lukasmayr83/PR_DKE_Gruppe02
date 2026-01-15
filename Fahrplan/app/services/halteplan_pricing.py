@@ -14,9 +14,7 @@ DEFAULT_KM_PER_ABSCHNITT: float = 1.0
 DEFAULT_SPEED_FACTOR: float = 0.75
 
 
-# ------------------------------------------------------------
-# Interne Helper
-# ------------------------------------------------------------
+
 
 def _load_strecke_abschnitte(strecke_id: int) -> List[dict]:
     rows = db.session.execute(
@@ -35,7 +33,6 @@ def _load_strecke_abschnitte(strecke_id: int) -> List[dict]:
 
     result: List[dict] = []
     for _, start_b, end_b, entgelt, vmax, laenge in rows:
-        # Annahme: laenge in Metern
         km = float(laenge) if laenge else DEFAULT_KM_PER_ABSCHNITT
 
         result.append({
@@ -85,8 +82,6 @@ def _build_prefix_sums(
         # Dauerformel:
         # Stunden = km / (vmax * speed_factor)
         # Minuten = Stunden * 60
-        #
-        # Wenn vmax==0 (schlechte Daten), dann Dauer 0 setzen (oder du kannst hier aborten).
         if vmax <= 0:
             minutes = 0.0
         else:
@@ -98,9 +93,7 @@ def _build_prefix_sums(
     return cost_prefix, time_prefix
 
 
-# ------------------------------------------------------------
-# Öffentliche API (die du in Routes/Services verwenden willst)
-# ------------------------------------------------------------
+
 
 def compute_min_cost_map(strecke_id: int) -> Dict[Tuple[int, int], float]:
     """

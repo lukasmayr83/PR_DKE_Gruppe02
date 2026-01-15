@@ -27,8 +27,6 @@ def wartung_conflict_for_external_zug(external_zug_id: int, start_dt: datetime, 
     """
     zug = Zug.query.filter_by(external_id=external_zug_id).first()
     if not zug:
-        # Wenn Zug nicht synchronisiert ist: lieber blocken oder erlauben.
-        # Für Sicherheit im Fahrplan eher blocken:
         return True
 
     return (
