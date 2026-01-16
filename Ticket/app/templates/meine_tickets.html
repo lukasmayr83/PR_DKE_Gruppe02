@@ -24,6 +24,22 @@
               <div style="margin-top:6px; font-size:0.95em;">
                 <strong>Umstieg:</strong> {{ t.umstieg_bahnhof }}
               </div>
+
+              <div style="margin-top:4px; font-size:0.95em;">
+                <strong>Umstieg Ankunft:</strong>
+                {{ t.umstieg_ankunft.strftime("%d.%m.%Y %H:%M") if t.umstieg_ankunft else "-" }}
+                <br>
+                <strong>Umstieg Abfahrt:</strong>
+                {{ t.umstieg_abfahrt.strftime("%d.%m.%Y %H:%M") if t.umstieg_abfahrt else "-" }}
+              </div>
+
+              <div style="margin-top:4px; font-size:0.95em;">
+                <strong>Umstieg FahrtID:</strong> {{ t.fahrt_id2 or "-" }}
+                <strong>HalteplanID:</strong> {{ t.halteplan_id2 or "-" }}
+                <strong>ZugID:</strong> {{ t.zug_id2 or "-" }}
+              </div>
+
+
             {% endif %}
           </td>
           <td>{{ t.abfahrt.strftime("%d.%m.%Y %H:%M") if t.abfahrt else "-" }}</td>
