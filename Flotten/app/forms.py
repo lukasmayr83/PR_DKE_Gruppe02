@@ -53,7 +53,7 @@ class MitarbeiterEditForm(MitarbeiterBaseForm):
     password2 = PasswordField("Passwort wiederholen", validators=[ Optional(),EqualTo('password', message="Passwörter stimmen nicht überein!")])
 
 class WartungszeitraumForm(FlaskForm):
-    zugid = IntegerField('Zugid', validators=[DataRequired(message="Zugid ist erforderlich!"),NumberRange(min=1, message="Zugid kann nicht kleiner wie 1 sein!")])
+    zugid = SelectField('Zugid - Zugbezeichnung',coerce=int, validators=[DataRequired(message="Zugid ist erforderlich!")])
     datum = DateField('Datum',validators=[DataRequired(message="Datum ist erforderlich!")])
     von = TimeField('Startzeit',validators=[DataRequired(message="Startzeit ist erforderlich!")], format="%H:%M")
     bis = TimeField('Endzeit',validators=[DataRequired(message="Endzeit ist erforderlich!")],format="%H:%M")

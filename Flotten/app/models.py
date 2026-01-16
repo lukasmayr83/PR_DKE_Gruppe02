@@ -143,12 +143,6 @@ class Wartungszeitraum(db.Model):
 
     wartungen: so.Mapped[list["Wartung"]] = so.relationship(back_populates="wartungszeitraum")
 
-    # Composite Unique Constraint - Kombination der drei Spalten muss in der gesamten Tabelle eindeutig sein
-    __table_args__ = (
-        sa.UniqueConstraint('datum', 'von', 'bis', name='unique_datum_von_bis'),
-    )
-
-
 class Wartung(db.Model):
     __tablename__ = 'wartung'
 

@@ -11,7 +11,7 @@
     <div style="min-width: 250px;">
         <p>
             {{ form.zugid.label }}<br>
-            {{ form.zugid(size=25, form="wartungs-form") }}
+            {{ form.zugid(form="wartungs-form") }}
             {% for error in form.zugid.errors %}
                 <div style="color:red">{{ error }}</div>
             {% endfor %}
@@ -19,7 +19,7 @@
 
         <p>
             {{ form.datum.label }}<br>
-            {{ form.datum(class="form-control", form="wartungs-form") }}
+            {{ form.datum(form="wartungs-form") }}
             {% for error in form.datum.errors %}
                 <div style="color:red">{{ error }}</div>
             {% endfor %}

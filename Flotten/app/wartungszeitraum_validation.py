@@ -134,3 +134,21 @@ def validate_zug_wartung_keine_ueberlappung(zugid, datum, von, bis, ignore_wzid=
         return False  # Überschneidung gefunden
 
     return True
+
+# Gibt alle Zugids für SelectField in Wartungszeitraum hinzufügen/bearbeiten zurück
+def set_zugid_choices(form):
+    # Alle Züge aus der DB laden
+    zuege = db.session.execute(db.select(Zuege)).scalars().all()
+
+    choices = []
+
+    # Jeden Zug in ein (value, label)
+    for zug in zuege:
+        label = f"{zug.zugid} - {zug.bezeichnung}"
+        value = zug.zugid  # Wert der beim Absenden des Formulars gesendet wird
+
+        # Value und label zur choice-Liste hinzufügen
+        choices.append((value, label))
+
+    # Choices dem Selectfield zuweisen
+    form.zugid.choices = choices

@@ -119,12 +119,12 @@ def personenwagen_action():
 
     pw = db.session.get(Personenwagen, wagen_id)
 
-    # Personenwagen kann nicht gelöscht werden, wenn er einem Zug zugeordnet ist
-    if action == "loeschen":
-        if pw.istfrei is not None:
-            flash("Wagen ist in einem Zug und kann nicht gelöscht werden!")
-            return redirect(url_for('uebers_personenwagen'))
+    # Personenwagen kann nicht gelöscht oder bearbeitet werden, wenn er einem Zug zugeordnet ist
+    if pw.istfrei is not None:
+        flash("Wagen ist in einem Zug und kann nicht gelöscht oder bearbeitet werden!")
+        return redirect(url_for('uebers_personenwagen'))
 
+    if action == "loeschen":
         db.session.delete(pw)
         db.session.commit()
         flash("Personenwagen erfolgreich gelöscht.")
@@ -146,15 +146,6 @@ def bearbeite_personenwagen(wagen_id):
         return redirect(url_for('uebers_personenwagen'))
 
     if form.validate_on_submit():
-        # Spurweite darf NICHT geändert werden, wenn der Wagen in einem Zug ist
-        if pw.istfrei is not None and pw.spurweite != form.spurweite.data:
-            flash("Spurweite darf nicht geändert werden, wenn der Wagen in einem Zug ist!")
-            return redirect(url_for('bearbeite_personenwagen', wagen_id=wagen_id))
-        # Maximales Gewicht darf NICHT geändert werden, wenn der Wagen in einem Zug ist
-        if pw.istfrei is not None and pw.maxgewicht != form.maxgewicht.data:
-            flash("Maximales Gewicht darf nicht geändert werden, wenn der Wagen in einem Zug ist!")
-            return redirect(url_for('bearbeite_personenwagen', wagen_id=wagen_id))
-
         pw.kapazitaet = form.kapazitaet.data
         pw.maxgewicht = form.maxgewicht.data
         pw.spurweite  = form.spurweite.data
@@ -483,6 +474,7 @@ def uebers_wartungszeitraum():
 @login_required
 def hinzufuegen_wartungszeitraum():
     form = WartungszeitraumForm()
+    wartungszeitraum_validation.set_zugid_choices(form)
     # Alle Mitarbeiter holen
     mitarbeiter_liste = db.session.execute(db.select(Mitarbeiter).order_by(Mitarbeiter.vorname)).scalars().all()
 
@@ -599,6 +591,7 @@ def bearbeite_wartungszeitraum(wartungszeitid):
         von=wartungszeitraum.von.time(),
         bis=wartungszeitraum.bis.time()
     )
+    wartungszeitraum_validation.set_zugid_choices(form)
     # Aktuell zugewiesene Mitarbeiter
     ausgewaehlte_ma_svnr = {w.svnr for w in wartungszeitraum.wartungen}
 

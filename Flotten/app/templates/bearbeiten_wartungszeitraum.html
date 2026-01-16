@@ -11,7 +11,7 @@
     <div style="min-width: 250px;">
         <p>
             {{ form.zugid.label }}<br>
-            {{ form.zugid(size=25, form="wartungs-form") }}
+            {{ form.zugid(form="wartungs-form") }}
             {% for error in form.zugid.errors %}
                 <div style="color:red">{{ error }}</div>
             {% endfor %}

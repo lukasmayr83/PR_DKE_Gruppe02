@@ -27,9 +27,7 @@ def validate_zug(request_form):
     total_weight = sum(pw.maxgewicht for pw in pws)
     if tw.maxzugkraft < total_weight:
         return False, None, None, (
-            f"Fehler: Zu schwer! "
-            f"Triebwagen schafft {tw.maxzugkraft}t, "
-            f"Wagen wiegen zusammen {total_weight}t."
+            f"Fehler: Zu schwer! Triebwagen schafft {tw.maxzugkraft}t - Personenwagen wiegen zusammen {total_weight}t."
         )
 
     return True, tw, pws, None
