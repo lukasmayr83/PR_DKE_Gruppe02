@@ -1139,15 +1139,34 @@ def get_warnung_api():
             )
         )
 
+    # Ergänzung Abschnitte 1601: Abschnitte D.S.
+    stmt = stmt.options(
+selectinload(Warnung.abschnitte).selectinload(Abschnitt.startBahnhof),
+        selectinload(Warnung.abschnitte).selectinload(Abschnitt.endBahnhof),
+    )
+    # Ergänzung Abschnitte 1601
+
     warnung = db.session.scalars(stmt).all()
 
     items = []
     for w in warnung:
+        # Ergänzung abschnitte 1601: Abschnitte (segment-Info) in API ausgeben
+        abschnitte_items = []
+        for a in (w.abschnitte or []):
+            abschnitte_items.append({
+                "vonName": a.startBahnhof.name if a.startBahnhof else None,
+                "nachName": a.endBahnhof.name if a.endBahnhof else None,
+            })
+        # Ergänzung Abschnitte 1601 Daniel S
+
         items.append({
             "warnungId": w.warnungId,
             "bezeichnung": w.bezeichnung,
             "startZeit": w.startZeit,
-            "endZeit": w.endZeit
+            "endZeit": w.endZeit,
+            # Ergänzung Abschnitte 1601 D.S für örtliche Einschränkung
+            "abschnitte": abschnitte_items
+            # Ergänzung Abschnitte 1601
         })
     total_count = len(warnung)
 
