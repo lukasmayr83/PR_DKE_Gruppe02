@@ -4,6 +4,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 <h1>Abschnitt bearbeiten</h1>
 
+
+
 <div class="flex-container">
 
     <!-- Links Formular-->
@@ -12,18 +14,24 @@
             {{ form.hidden_tag() }}
             <p class="form-group">
                 {{ form.startBahnhof.label }}<br>
-                {{ form.startBahnhof(class="form-control") }}
+                {{ form.startBahnhof(class="form-control", disabled=abschnitt_in_strecke) }}
                 {% for error in form.startBahnhof.errors %}
                     <span style="color:red; display:block;">[{{ error }}]</span>
                 {% endfor %}
             </p>
             <p class="form-group">
                 {{ form.endBahnhof.label }}<br>
-                {{ form.endBahnhof(class="form-control") }}
+                {{ form.endBahnhof(class="form-control", disabled=abschnitt_in_strecke) }}
                 {% for error in form.endBahnhof.errors %}
                     <span style="color:red; display:block;">[{{ error }}]</span>
                 {% endfor %}
             </p>
+            <!-- Warnung wenn Abschnitt in Strecke verwendet wird -->
+            {% if abschnitt_in_strecke %}
+                <div class="alert alert-warning" style="margin-bottom: 20px;">
+                    <p style="margin-bottom: 0;"><strong>Hinweis:</strong> Dieser Abschnitt wird in einer Strecke verwendet! Die Bahnhöfe können daher nicht mehr geändert werden.</p>
+                </div>
+            {% endif %}
             <p>{{ form.max_geschwindigkeit.label }}<br>{{form.max_geschwindigkeit() }}</p>
             <p>{{ form.spurweite.label }}<br>{{ form.spurweite() }}</p>
             <p>{{ form.laenge.label }}<br>{{ form.laenge() }}
@@ -83,7 +91,8 @@
             map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
         }
     }
-function fetchStationCoords(id, type) {
+
+    function fetchStationCoords(id, type) {
         if (!id) return;
 
         //Koordinaten der Bahnhöfe abfragen

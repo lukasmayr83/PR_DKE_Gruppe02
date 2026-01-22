@@ -164,12 +164,15 @@ def abschnitt_add():
 def edit_abschnitt(abschnitt_id):
     abschnitt = db.session.get(Abschnitt, abschnitt_id)
 
+    # Prüfung: Ist der Abschnitt in einer Strecke?
+    abschnitt_in_strecke = bool(abschnitt.strecken_abschnitt_ref)
+
+
     form = AbschnittForm(
         obj=abschnitt,
         original_start_id=abschnitt.startBahnhofId,
         original_end_id=abschnitt.endBahnhofId
     )
-
 
     standard_option_bahnhof = [(0, 'Bitte wählen Sie einen Bahnhof')]
     bahnhoefe = Bahnhof.query.order_by(Bahnhof.name).all()
@@ -177,7 +180,6 @@ def edit_abschnitt(abschnitt_id):
 
     form.startBahnhof.choices = standard_option_bahnhof + bahnhof_choices
     form.endBahnhof.choices = standard_option_bahnhof + bahnhof_choices
-
 
     spurweiten_optionen = [
         (0, 'Bitte wählen Sie eine Spurweite'),
@@ -187,9 +189,7 @@ def edit_abschnitt(abschnitt_id):
     form.spurweite.choices = spurweiten_optionen
 
     form.startBahnhof.data = abschnitt.startBahnhofId
-
     form.endBahnhof.data = abschnitt.endBahnhofId
-
 
     if request.method == 'GET':
         if form.startBahnhof.data is None:
@@ -206,8 +206,11 @@ def edit_abschnitt(abschnitt_id):
         abschnitt.max_geschwindigkeit = form.max_geschwindigkeit.data
         abschnitt.laenge = form.laenge.data
         abschnitt.nutzungsentgelt = form.nutzungsentgelt.data
-        abschnitt.startBahnhofId = form.startBahnhof.data
-        abschnitt.endBahnhofId = form.endBahnhof.data
+
+        # Nur ändern wenn NICHT in Strecke (zur Sicherheit)
+        if not abschnitt_in_strecke:
+            abschnitt.startBahnhofId = form.startBahnhof.data
+            abschnitt.endBahnhofId = form.endBahnhof.data
 
         try:
             db.session.commit()
@@ -215,14 +218,17 @@ def edit_abschnitt(abschnitt_id):
             return redirect(url_for("abschnitt"))
         except Exception as e:
             db.session.rollback()
-            print(f"Fehler beim Editieren: {e}")  # Hilfreich für Debugging in der Konsole
+            print(f"Fehler beim Editieren: {e}")
             flash("Fehler beim Speichern", "danger")
+
 
     return render_template(
         "abschnitt_edit.html",
         form=form,
         abschnitt=abschnitt,
-        title='Abschnitt bearbeiten',)
+        abschnitt_in_strecke=abschnitt_in_strecke,
+        title='Abschnitt bearbeiten'
+    )
 
 @app.route("/abschnitt/delete_multiple", methods=["POST"])
 @login_required
