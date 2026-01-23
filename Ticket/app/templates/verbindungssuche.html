@@ -4,23 +4,17 @@
   <h1>Ticket</h1>
   <h2>Verbindungssuche</h2>
 
-  <datalist id="bahnhoefe-list">
-    {% for name in (bahnhoefe or []) %}
-      <option value="{{ name }}"></option>
-    {% endfor %}
-  </datalist>
-
-  <form method="post">
+  <form method="post" autocomplete="off">
     {{ form.hidden_tag() }}
 
     <div class="field-row">
       <div>
         <label>Startbahnhof</label>
-        {{ form.startbahnhof(list="bahnhoefe-list") }}
+        {{ form.startbahnhof() }}
       </div>
       <div>
         <label>Zielbahnhof</label>
-        {{ form.zielbahnhof(list="bahnhoefe-list") }}
+        {{ form.zielbahnhof() }}
       </div>
     </div>
 
@@ -35,7 +29,7 @@
       </div>
     </div>
 
-    <button class="btn" type="submit">Suchen</button>
+    <button class="btn" type="submit">Suchen1</button>
   </form>
 
   {% if verbindungen %}

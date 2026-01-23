@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, PasswordField, BooleanField, SubmitField,
-    TextAreaField, FloatField, SelectField
+    TextAreaField, FloatField, SelectField, TimeField
 )
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Email, Length, Optional, NumberRange, EqualTo
@@ -69,8 +69,8 @@ class AktionForm(FlaskForm):
 
 # Verbindungssuche
 class VerbindungssucheForm(FlaskForm):
-    startbahnhof = StringField("Startbahnhof", validators=[DataRequired(), Length(max=120)])
-    zielbahnhof = StringField("Zielbahnhof", validators=[DataRequired(), Length(max=120)])
-    datum = DateField("Datum (YYYY-MM-DD)", format="%Y-%m-%d", validators=[DataRequired()])
-    uhrzeit = StringField("Uhrzeit (HH:MM)", validators=[DataRequired(), Length(max=5)])
+    startbahnhof = SelectField("Startbahnhof", choices=[], validators=[DataRequired()], coerce=str)
+    zielbahnhof = SelectField("Zielbahnhof", choices=[], validators=[DataRequired()], coerce=str)
+    datum = DateField("Datum", validators=[DataRequired()])
+    uhrzeit = TimeField("Ab Uhrzeit optional", validators=[Optional()])
     submit = SubmitField("Suchen")

@@ -560,24 +560,35 @@ def aktion_delete(aktion_id):
 @login_required
 def verbindungssuche():
     form = VerbindungssucheForm()
-    bahnhoefe = lade_bahnhoefe()
     verbindungen: list[dict] = []
     warnungen_global: list[dict] = []
 
-    if form.validate_on_submit():
-        start = (form.startbahnhof.data or "").strip()
-        ziel = (form.zielbahnhof.data or "").strip()
-        datum = form.datum.data
+    # Dropdown befüllen (jedes Mal, damit neue Bahnhöfe sofort drin sind)
+    try:
+        data = strecken_bahnhoefe()  # ohne query => alle
+        items = data.get("items") or []
+        names = sorted({
+            (b.get("name") or "").strip()
+            for b in items
+            if (b.get("name") or "").strip()
+        })
+    except Exception:
+        names = []
 
-        # Uhrzeit robust (string oder time)
-        ab_zeit_val = None
-        raw = (form.uhrzeit.data or "").strip()
-        if raw:
-            try:
-                hh, mm = raw.split(":")
-                ab_zeit_val = dtime(int(hh), int(mm))
-            except Exception:
-                ab_zeit_val = None
+    choices = [("", "-- bitte wählen --")] + [(n, n) for n in names]
+    form.startbahnhof.choices = choices
+    form.zielbahnhof.choices = choices
+
+    if form.validate_on_submit():
+        start = form.startbahnhof.data
+        ziel = form.zielbahnhof.data
+        datum = form.datum.data
+        ab_zeit_val = form.uhrzeit.data  # ist bereits datetime.time oder None
+
+        if not start or not ziel:
+            flash("Bitte Start und Ziel auswählen.", "warning")
+            return render_template("verbindungssuche.html", title="Verbindungssuche", form=form,
+                                   verbindungen=[], warnungen=[], bahnhoefe=[])
 
         hits = suche_verbindungen(start, ziel, datum, ab_zeit=ab_zeit_val)
 
@@ -585,32 +596,22 @@ def verbindungssuche():
         now = _now_utc()
         hits = [h for h in hits if getattr(h, "abfahrt", None) and h.abfahrt > now]
 
-        # Warnungen laden
+        # Warnungen laden / mapping bleibt wie bei dir
         try:
             warn_items = (strecken_warnungen().get("items") or [])
         except Exception:
             warn_items = []
 
-        # Snapshot laden (für Abschnitt-Mapping)
         snapshot_map = _build_snapshot_map()
 
-        # wenn nach Filter nichts mehr da ist => Info
         if not hits:
             flash("Keine zukünftigen Verbindungen gefunden.")
-            return render_template(
-                "verbindungssuche.html",
-                title="Verbindungssuche",
-                form=form,
-                verbindungen=[],
-                warnungen=[],
-                bahnhoefe=bahnhoefe,
-            )
+            return render_template("verbindungssuche.html", title="Verbindungssuche",
+                                   form=form, verbindungen=[], warnungen=[], bahnhoefe=[])
 
         for h in hits:
-            # Basispreis
+            # Aktion/Rabatt/Warnungen: kann 그대로 bleiben wie bei dir
             preis = h.preis
-
-            # beste Aktion finden
             aktion = ermittle_beste_aktion(h.abfahrt, h.halteplan_id)
             if aktion:
                 preis = round(preis * (1 - float(aktion.rabattWert or 0.0) / 100.0), 2)
@@ -622,21 +623,14 @@ def verbindungssuche():
                 aktion_rabatt = 0.0
                 aktion_id = None
 
-            umstieg_ank_iso = h.umstieg_ankunft.isoformat() if h.umstieg_ankunft else ""
-            umstieg_ab_iso = h.umstieg_abfahrt.isoformat() if h.umstieg_abfahrt else ""
-
             v = {
-                # 1. Leg
                 "fahrt_id": h.fahrtdurchfuehrung_id,
                 "halteplan_id": h.halteplan_id,
                 "zug_id": h.zug_id,
-
-                # 2. Leg (optional)
                 "fahrt_id2": h.fahrtdurchfuehrung_id2,
                 "halteplan_id2": h.halteplan_id2,
                 "zug_id2": h.zug_id2,
 
-                # Anzeige
                 "start_halt": h.start_name,
                 "ziel_halt": h.ziel_name,
                 "abfahrt": h.abfahrt,
@@ -645,58 +639,30 @@ def verbindungssuche():
                 "ankunft_display": h.ankunft.strftime("%d.%m.%Y %H:%M"),
                 "abfahrt_iso": h.abfahrt.isoformat(),
                 "ankunft_iso": h.ankunft.isoformat(),
-
                 "anzahl_umstiege": h.umstiege,
                 "preis": preis,
 
-                # Umstieg
                 "umstieg_bahnhof": h.umstieg_bahnhof,
                 "umstieg_ankunft_display": h.umstieg_ankunft.strftime("%d.%m.%Y %H:%M") if h.umstieg_ankunft else "",
                 "umstieg_abfahrt_display": h.umstieg_abfahrt.strftime("%d.%m.%Y %H:%M") if h.umstieg_abfahrt else "",
-                "umstieg_ankunft_iso": umstieg_ank_iso,
-                "umstieg_abfahrt_iso": umstieg_ab_iso,
+                "umstieg_ankunft_iso": h.umstieg_ankunft.isoformat() if h.umstieg_ankunft else "",
+                "umstieg_abfahrt_iso": h.umstieg_abfahrt.isoformat() if h.umstieg_abfahrt else "",
 
-                # Aktion
                 "aktion_name": aktion_name,
                 "aktion_rabatt": aktion_rabatt,
                 "aktion_id": aktion_id,
-
-                # Warnungen (pro Verbindung)
                 "warnungen": [],
             }
 
-            # Warnungen für diese Verbindung berechnen
             v["warnungen"] = warnungen_fuer_verbindung(warn_items, snapshot_map, v)
             verbindungen.append(v)
 
-        # GLobal: aktive Warnungen (zeitlich) – aber nur jene, die nicht schon pro Verbindung angezeigt werden
-        # allgemeine Warnungen zur Suchzeit die nicht konkret auf die Route matchen
-        if hits:
-            t0 = hits[0].abfahrt
-            already = {
-                w.get("warnungId")
-                for v in verbindungen
-                for w in (v.get("warnungen") or [])
-                if w.get("warnungId") is not None
-            }
-            for w in warn_items:
-                if not _warnung_matches_time(w, t0, t0):
-                    continue
-                if w.get("warnungId") in already:
-                    continue
-                warnungen_global.append(w)
+        return render_template("verbindungssuche.html", title="Verbindungssuche",
+                               form=form, verbindungen=verbindungen, warnungen=warnungen_global,)
 
-        if not verbindungen:
-            flash("Keine passende Verbindung gefunden.")
+    return render_template("verbindungssuche.html", title="Verbindungssuche",
+                           form=form, verbindungen=[], warnungen=[], bahnhoefe=[])
 
-    return render_template(
-        "verbindungssuche.html",
-        title="Verbindungssuche",
-        form=form,
-        verbindungen=verbindungen,
-        warnungen=warnungen_global,
-        bahnhoefe=bahnhoefe,
-    )
 
 
 @bp.route("/tickets/buchen/<int:fahrt_id>", methods=["POST"])
