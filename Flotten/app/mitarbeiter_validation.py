@@ -2,6 +2,7 @@ from app import db
 from app.models import Mitarbeiter, User
 import sqlalchemy as sa
 
+# Prüft ob die SVNR eindeutig ist
 def validate_unique_svnr(svnr, current_svnr=None):
     # Wenn beim Bearbeiten die SVNR nicht geändert wurde → OK
     if current_svnr is not None and svnr == current_svnr:
@@ -16,7 +17,7 @@ def validate_unique_svnr(svnr, current_svnr=None):
 
     return True, None
 
-
+# Prüft ob der Benutzername eindeutig ist
 def validate_unique_username(username, current_user_id=None):
     user = db.session.scalar(
         sa.select(User).where(User.username == username)
