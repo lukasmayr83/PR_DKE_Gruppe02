@@ -394,6 +394,7 @@ def mitarbeiter_action():
     mitarbeiter = db.session.get(Mitarbeiter, svnr)
     now = datetime.now()
 
+ # Löschen nur zulässig, wenn beide Ifs nicht zutreffen
     if action == "loeschen":
 
         for wartung in mitarbeiter.wartungen:
@@ -402,10 +403,12 @@ def mitarbeiter_action():
             start_dt = datetime.combine(wzr.datum, wzr.von.time())
             end_dt = datetime.combine(wzr.datum, wzr.bis.time())
 
+            # Prüft ob der Mitarbeiter gerade in einer laufenden Wartung ist
             if start_dt <= now <= end_dt:
                 flash("Mitarbeiter befindet sich aktuell in einer Wartung und kann daher nicht gelöscht werden!")
                 return redirect(url_for('uebers_mitarbeiter'))
 
+            # Prüft ob der Mitarbeiter für eine zukünftige Wartung der einzige zugeteilte ist
             if start_dt > now:
                 anzahl_ma = Wartung.query.filter_by(wartungszeitid=wartung.wartungszeitid).count()
 
@@ -413,6 +416,7 @@ def mitarbeiter_action():
                     flash(f"Mitarbeiter ist der einzige zugeteilt für die zukünftige Wartung Nummer: {wartung.wartungszeitid} und kann daher nicht gelöscht werden!")
                     return redirect(url_for('uebers_mitarbeiter'))
 
+        # Alle Prüfungen bestanden - Mitarbeiter und zugehörigen User löschen
         user_to_delete = mitarbeiter.user
         db.session.delete(mitarbeiter)
         if user_to_delete:
@@ -486,6 +490,7 @@ def hinzufuegen_wartungszeitraum():
         if not wartungszeitraum_validation.validate_zug_datum_von_bis(form):
             return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=[],verfuegbarkeit_geprueft=False)
 
+        # Verfügbare Mitarbeiter für den Zeitraum ermitteln
         mitarbeiter_liste= wartungszeitraum_validation.get_verfuegbare_mitarbeiter(form.datum.data, form.von.data, form.bis.data)
         flash("Verfügbarkeit geprüft - Bitte Mitarbeiter auswählen!", 'success')
         return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=True)
@@ -493,7 +498,7 @@ def hinzufuegen_wartungszeitraum():
     if form.validate_on_submit():
         if not wartungszeitraum_validation.validate_all(form, request):
             return render_template("hinzufuegen_wartungszeitraum.html",title="Wartung Hinzufügen",form=form,mitarbeiter_liste=mitarbeiter_liste,verfuegbarkeit_geprueft=False)
-
+        # Verfügbare Mitarbeiter für Zeitraum erneut ermitteln, falls nach dem Button klick auf Verfügbarbeit prüfen bei den Zeit/Zug Daten was verändert wurde
         verfuegbare_mitarbeiter = wartungszeitraum_validation.get_verfuegbare_mitarbeiter(form.datum.data, form.von.data, form.bis.data)
         # Holte alle Mitarbeiter aus verfuegbare_mitarbeiter und baut eine Set m.svnr
         verfuegbare_svnr = {m.svnr for m in verfuegbare_mitarbeiter}
@@ -524,7 +529,8 @@ def hinzufuegen_wartungszeitraum():
         )
         db.session.add(neuer_wartungszeitraum)
         db.session.flush()  # Wartungszeitid erstellen ohne Transaktion abzubrechen
-        # Wartung erstellen
+
+        # Wartungseintrag für jeden ausgewählten Mitarbeiter erstellen
         for svnr in svnr_liste:
             wartung = Wartung(
                 wartungszeitid=neuer_wartungszeitraum.wartungszeitid,
@@ -554,7 +560,7 @@ def wartungszeitraum_action():
     now = datetime.now()
     laufend = wartungszeitraum.von <= now <= wartungszeitraum.bis
     abgeschlossen = now >= wartungszeitraum.von
-    # Aktion: Löschen
+    # Aktion: Löschen - Wartung nur Löschbar wenn dieser nicht gerade läuft
     if action == "loeschen":
         if laufend:
             flash("Dise Wartung läuft gerade und kann daher nicht gelöscht werden!")
@@ -569,6 +575,7 @@ def wartungszeitraum_action():
         flash("Wartungszeitraum und zugehörige Wartungen erfolgreich gelöscht.",'success')
         return redirect(url_for('uebers_wartungszeitraum'))
 
+#  Wartung kann nur bearbeitet werden wenn sie nicht gerade läuft und sie nicht in der Verangenheit liegt
     if action == "bearbeiten":
         if laufend:
             flash("Diese Wartung läuft gerade und kann daher nicht bearbeitet werden!")
@@ -585,6 +592,7 @@ def wartungszeitraum_action():
 def bearbeite_wartungszeitraum(wartungszeitid):
     wartungszeitraum = db.session.get(Wartungszeitraum, wartungszeitid )
 
+    # Formular mit bestehenden Daten vorbefüllen
     form = WartungszeitraumForm(
         zugid=wartungszeitraum.wartungen[0].zugid if wartungszeitraum.wartungen else None,
         datum=wartungszeitraum.datum,
@@ -619,7 +627,7 @@ def bearbeite_wartungszeitraum(wartungszeitid):
         mitarbeiter_liste = ([m for m in verfuegbare_mitarbeiter] +
                              [m for m in mitarbeiter_liste if m.svnr in ausgewaehlte_ma_svnr and m.svnr not in verfuegbare_svnr])
 
-        #  Doppelte entfernen
+        #  Doppelte entfernen (falls Mitarbeiter in beiden Listen ist)
         seen = set() # erstellt leeres Set
         mitarbeiter_liste = [m for m in mitarbeiter_liste if not (m.svnr in seen or seen.add(m.svnr))]
 
@@ -630,7 +638,7 @@ def bearbeite_wartungszeitraum(wartungszeitid):
 
         if not wartungszeitraum_validation.validate_all(form, request):
             return render_template("bearbeiten_wartungszeitraum.html",title="Wartung Bearbeiten",form=form,mitarbeiter_liste=mitarbeiter_liste,ausgewaehlte_ma_svnr=ausgewaehlte_ma_svnr,verfuegbarkeit_geprueft=False)
-
+        # Mitarbeiter verfügbarkeit erneut prüfen, falls Zeit oder Zug Daten nachdem der Button Verfügbarkeit prüfen geklickt wurde - geändert wurden
         verfuegbare_mitarbeiter = wartungszeitraum_validation.get_verfuegbare_mitarbeiter(
             form.datum.data, form.von.data, form.bis.data,ignore_wzid=wartungszeitraum.wartungszeitid
         )
@@ -649,6 +657,7 @@ def bearbeite_wartungszeitraum(wartungszeitid):
         von_dt = datetime.combine(form.datum.data, form.von.data)
         bis_dt = datetime.combine(form.datum.data, form.bis.data)
 
+        # Wartungszeitraum aktualisieren
         wartungszeitraum.datum = form.datum.data
         wartungszeitraum.von = von_dt
         wartungszeitraum.bis = bis_dt
@@ -739,6 +748,7 @@ def get_zuege_api():
             if tw:
                 spurweite = tw.spurweite
 
+        # Wartungsstatus geprüft
         in_wartung_status = zug.aktuelle_wartungs_anzeige
         is_in_wartung = in_wartung_status != "FALSE"
 
