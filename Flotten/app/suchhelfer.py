@@ -4,6 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy import or_
 from datetime import datetime
 
+# Suchfunktion für die Mitarbeiter-Übersicht
 def search_mitarbeiter(request):
     # strip() entfernt Leerzeichen am Anfang/Ende.
     suchbegriff = request.args.get('q', '').strip()
@@ -19,6 +20,7 @@ def search_mitarbeiter(request):
         )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion für die Personenwagen-Übersicht
 def search_personenwagen(request):
     suchbegriff = request.args.get('q', '').strip()
     query = db.select(Personenwagen).order_by(Personenwagen.wagenid)
@@ -34,6 +36,7 @@ def search_personenwagen(request):
         )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion für die Triebwagen-Übersicht
 def search_triebwagen(request):
     suchbegriff = request.args.get('q', '').strip()
     query = db.select(Triebwagen).order_by(Triebwagen.wagenid)
@@ -48,6 +51,7 @@ def search_triebwagen(request):
         )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion für die Zug-Übersicht
 def search_zuege(request):
     suchbegriff = request.args.get('q', '').strip()
     query = db.select(Zuege).order_by(Zuege.zugid)
@@ -60,6 +64,7 @@ def search_zuege(request):
     )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion welche fürs Hinzufügen von Triebwagen bei Zügen verwendet wird
 def search_freie_triebwagen(request):
     suchbegriff = request.args.get("search_tw", "").strip()
 
@@ -75,6 +80,7 @@ def search_freie_triebwagen(request):
         )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion welche fürs Hinzufügen von Personenwagen bei Zügen verwendet wird
 def search_freie_personenwagen(request):
     suchbegriff = request.args.get("search_pw", "").strip()
     query = db.select(Personenwagen).where(Personenwagen.istfrei == None).order_by(Personenwagen.wagenid)
@@ -89,7 +95,7 @@ def search_freie_personenwagen(request):
         )
     return db.session.execute(query).scalars().all()
 
-
+# Suchfunktion welche fürs Bearbeiten von Triebwagen bei Zügen verwendet wird
 def search_triebwagen_for_zug_bearbeiten(request, zug_id):
     suchbegriff = request.args.get("search_tw", "").strip()
     query = db.select(Triebwagen).where(
@@ -109,6 +115,7 @@ def search_triebwagen_for_zug_bearbeiten(request, zug_id):
 
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion welche fürs Bearbeiten von Personenwagen bei Zügen verwendet wird
 def search_personenwagen_for_zug_bearbeiten(request, zug_id):
     suchbegriff = request.args.get("search_pw", "").strip()
     query = db.select(Personenwagen).where(
@@ -129,6 +136,7 @@ def search_personenwagen_for_zug_bearbeiten(request, zug_id):
         )
     return db.session.execute(query).scalars().all()
 
+# Suchfunktion für die Wartungs-Übersicht
 def search_wartungen(request, nur_aktuelle=False, svnr=None):
     suchbegriff = request.args.get("q", "").strip()
     query = (db.select(Wartungszeitraum).join(Wartung, Wartung.wartungszeitid == Wartungszeitraum.wartungszeitid)

@@ -1,6 +1,7 @@
 from app import db
 from app.models import Triebwagen, Personenwagen
 
+ # Prüft ob ein Triebwagen und Personenwagen ausgewählt wurden, die Spurweite gleich ist und die Zugkraft ausreicht
 def validate_zug(request_form):
 
     tw_id = request_form.get("triebwagen_id")

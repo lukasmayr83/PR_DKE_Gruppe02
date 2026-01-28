@@ -61,7 +61,7 @@ def validate_mitarbeiter_ausgewaehlt(req):
         flash("Bitte Verfügbarkeit prüfen und dann mindestens einen Mitarbeiter auswählen!")
         return False
     return True
-
+ # Führt alle Validierungen für einen neue/bearbeitet Wartung durch
 def validate_all(form, req):
     if not validate_mitarbeiter_ausgewaehlt(req):
         return False
@@ -75,7 +75,7 @@ def validate_all(form, req):
         flash("Dieser Zug hat in diesem Zeitraum bereits eine Wartung!")
         return False
     return True
-
+ # Führt die Validierungen für den Zug, das Datum und VON-BIS aus
 def validate_zug_datum_von_bis(form):
     if not validate_zug_existiert(form.zugid.data):
         return False
@@ -126,7 +126,7 @@ def validate_zug_wartung_keine_ueberlappung(zugid, datum, von, bis, ignore_wzid=
         Wartungszeitraum.bis > von_dt
     )
 
-    if ignore_wzid is not None:
+    if ignore_wzid is not None: #Eigene Wartung ignorieren wichtig beim Bearbeiten
         query = query.where(Wartung.wartungszeitid != int(ignore_wzid))
 
     result = db.session.execute(query).scalars().all()
