@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- CSS für Leaflet & DataTables-->
+<!-- Bindet die CSS-Datei overview.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<!-- Bindet das CSS-Stylesheet für DataTables ein (interaktive Tabelle mit Suche, Sortierung) -->
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
+<!-- Bindet das CSS-Stylesheet für Leaflat ein (Karte) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-<h1>Alle Warnungen</h1>
+<h1>Alle Warnungen</h1> <!-- Überschrift -->
 <div class="main-content-flex">
     <div class="table-container">
 
         <!-- Zeitfilter Standartwert: aktuelle Warnungen -->
         <div style="margin-bottom: 15px;">
-            <label for="timeFilter" style="font-weight: bold; margin-right: 10px;">Zeitraum filtern:</label>
+            <label for="timeFilter" style="font-weight: bold; margin-right: 10px;">Zeitraum filtern:</label> <!-- BEschriftung des Zeitfilters -->
             <select id="timeFilter" class="form-control" style="display: inline-block; width: auto;">
+                <!--Auswählbare Optionen im Dropdownfeld -->
                 <option value="all">Alle Warnungen</option>
                 <option value="current" selected>Aktuelle Warnungen</option>
                 <option value="future">Zukünftige Warnungen</option>
@@ -25,8 +28,11 @@
         <form method="POST" action="{{ url_for('delete_multiple_warnung') }}" id="warnung-form">
             <div class="table-scroll-wrapper">
                 <table id="warnungTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
+
+                    <!-- definiert den Tabellenkopf (1.Zeile) -->
                     <thead>
                         <tr>
+                            <!-- Checkbox Spalte fürs löschen wird nur Admins angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 21px;"></th>
                             {% endif %}
@@ -35,6 +41,7 @@
                             <th>Startzeit</th>
                             <th>Endzeit</th>
                             <th>Abschnitte</th>
+                            <!-- Aktion Spalte fürs bearbeiten wird nur Admins angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 80px;">Aktion</th>
                             {% endif %}
@@ -43,18 +50,21 @@
                     <tbody>
                         {% for w in posts %}
                         <tr data-warnung-id="{{ w.warnungId }}">
+                            <!-- Checkbox Spalte fürs löschen wird nur Admins angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <td><input type="checkbox" name="warnung_ids" value="{{ w.warnungId }}"></td>
                             {% endif %}
                             <td>{{ w.bezeichnung }}</td>
                             <td>{{ w.beschreibung }}</td>
                             <td>{{ w.startZeit }}</td>
-                            <td>{{ '-' if w.endZeit is none else w.endZeit }}</td>
+                            <td>{{ '-' if w.endZeit is none else w.endZeit }}</td> <!-- falls es keine NEdzeit gibt -> "-" stattdessen-->
+                            <!-- Schleife geht alle Abschnitte durch und zeigt sie untereinander in der Tabellen an -->
                             <td>
                                 {% for abschnitt in w.abschnitte %}
                                     <span data-abschnitt-id="{{ abschnitt.abschnittId }}">{{ abschnitt.name }}</span><br>
                                 {% endfor %}
                             </td>
+                            <!-- Aktion Spalte fürs bearbeiten wird nur Admins angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('edit_warnung', warnung_id=w.warnungId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
@@ -66,10 +76,12 @@
                 </table>
             </div>
 
-            <!-- Löschnachricht anzeigen-->
+            <!-- Löschbutton -->
             <div style="margin-top: 10px;">
+                <!-- Button zum Löschen der Warnung wird nur Admins angezeigt-->
                 {% if role.value != 'mitarbeiter' %}
                     <button type="submit" class="btn btn-danger"
+                            <!-- Button öffnet beim Anklicken ein Pop-up, dass dem User fragt, ob man die Warnung wirklich löschen möchte-->
                             onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
                         Ausgewählte löschen
                     </button>
@@ -318,7 +330,7 @@
                                         shadowSize: [41, 41]
                                     })
                                 })
-                                .bindPopup(`<b>Bahnhof:</b> ${data.start.name}`)
+                                .bindPopup(`<b>Bahnhof:</b> ${data.start.name}`) // wird angezigt wenn man den Bahnhof anklickt
                                 .addTo(segmentsLayer);
 
                                 L.marker(endLatLng, {
@@ -331,11 +343,11 @@
                                         shadowSize: [41, 41]
                                     })
                                 })
-                                .bindPopup(`<b>Bahnhof:</b> ${data.end.name}`)
+                                .bindPopup(`<b>Bahnhof:</b> ${data.end.name}`) // wird angezigt wenn man den Bahnhof anklickt
                                 .addTo(segmentsLayer);
 
-                                bounds.extend(startLatLng); //Koordinaten hinzufügen
-                                bounds.extend(endLatLng);
+                                bounds.extend(startLatLng); //Koordinaten von Startbahnhof hinzufügen
+                                bounds.extend(endLatLng); //Koordinaten von Endbahnhof hinzufügen
                             }
                         });
                     });
@@ -350,19 +362,19 @@
 
         //Initial die Karte zeichnen
         setTimeout(function() {
-            drawVisibleWarnings();
+            drawVisibleWarnings(); //ruft Mehode von oben auf -> zeichnet Abschnitte der Tabelle mit Warnungen auf der Karte
         }, 100);
 
         // Event Listener für Filter-Änderungen
         $('#timeFilter').on('change', function() {
             setTimeout(function() {
-                drawVisibleWarnings();
+                drawVisibleWarnings(); //ruft Mehode von oben auf -> zeichnet Abschnitte der Tabelle mit Warnungen auf der Karte
             }, 100);
         });
 
         // Event Listener für Suche/Seitenwechsel in DataTable
         $('#warnungTable').on('draw.dt', function() {
-            drawVisibleWarnings();
+            drawVisibleWarnings(); //ruft Mehode von oben auf -> zeichnet Abschnitte der Tabelle mit Warnungen auf der Karte
         });
     });
 </script>

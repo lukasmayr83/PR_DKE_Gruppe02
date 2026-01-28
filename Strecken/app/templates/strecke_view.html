@@ -6,6 +6,8 @@
     .segment-field { margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; }
     input[readonly], select[disabled] { background-color: #e9ecef; cursor: not-allowed; }
 </style>
+
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 <h1>Strecke Details</h1>
 <div class="flex-container">
@@ -13,6 +15,7 @@
     <div class="form-wrapper">
         <form id="strecken-form">
 
+            <!-- readonly Felder zum Anzeigen des Streckennamens, des Start-und Endbahnhofs -->
             <p>
                 <label>Streckenname</label><br>
                 <input type="text" class="form-control" value="{{ strecke.name }}" readonly>
@@ -27,63 +30,68 @@
                 <label for="endBahnhof">Endbahnhof der Strecke</label><br>
                 <input type="text" id="endBahnhof" class="form-control bg-light" readonly>
             </p>
-
+            <!-- Abschnitte der Strecke -->
             <h3 class="mt-4 mb-2">Abschnitte der Strecke</h3>
 
             <div id="segment-chain" class="segment-chain">
                 <p class="text-gray-500" id="loading-message">Lade Abschnittsdaten...</p>
             </div>
-
+            <!-- Button "Zurück" damit der MA wieder zur Übersichtsseite von allen Strecken gelangt-->
             <p>
                 <a href="{{ url_for('strecke') }}" class="btn btn-secondary">Zurück</a>
             </p>
         </form>
+        <!-- Container für die Karte-->
     </div>
     <div class="map-wrapper">
         <div id="map" style="width:100%; height:100%;"></div>
     </div>
 </div>
-
+<!--Jquery-->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-    let allAbschnitte = [];
-    let allBahnhoefe = {};
-    let selectedChain = [];
+    let allAbschnitte = []; //speichert alle Abschnitte
+    let allBahnhoefe = {}; //ordnet BahnhofIds die Namen zu
+    let selectedChain = []; //speichert vom Benutzer ausgewählte Abschnitte
 
     // Vorhandene Abschnitte der Strecke aus dem Backend laden
     let existingAbschnitte = {%if existing_abschnitte %}{{ existing_abschnitte | tojson | safe }}{% else %}[]{% endif %};
     console.log("Existing Abschnitte:", existingAbschnitte);
-    
-    function loadInitialData() {
-        const apiUrl = "{{ api_url }}";
 
+    //lädt Daten vom Server per AJAX und initialisiert erstes Auswahlfeld
+    function loadInitialData() {
+        const apiUrl = "{{ api_url }}"; //ruft API api_abschnitte_daten auf
+        //sendet Anfrage im Hintergrund ohne die Seite neu zu laden
         $.ajax({
-            url: apiUrl,
-            method: 'GET',
-            dataType: 'json',
-            success: function(data) {
-                $('#loading-message').remove();
+            url: apiUrl, // URL der API
+            method: 'GET', //GET-Methode -> Daten abrufen
+            dataType: 'json', //JSON wird als Antwortformat erwartet
+            success: function(data) { //falls alles geklappt hat
+                $('#loading-message').remove(); //Lade-Nachricht "Lade Abschnitsdaten..." bei Erfolg entfernen
 
                 if (data.abschnitte && data.bahnhoefe) {
-                    allAbschnitte = data.abschnitte;
-                    allBahnhoefe = data.bahnhoefe;
+                    allAbschnitte = data.abschnitte; //speichert die empfangenen Abschnitte
+                    allBahnhoefe = data.bahnhoefe; //speichert die empfangenen Bahnhöfe
 
                     if (allAbschnitte.length > 0) {
                         if (existingAbschnitte && existingAbschnitte.length > 0) {
-                            loadExistingChain();
+                            loadExistingChain(); //ruft Mthode auf, die die bereits definierten Abschnitte lädt und dem User anzeigt
                         } else {
+                            //keine Abschnitte vorhanden -> Warnmeldung
                             $('#segment-chain').html('<p class="text-muted">Keine Abschnitte zugeordnet.</p>');
                         }
                     } else {
+                        // Fehlermeldung: unerwartetes Datenformat vom Server
                         $('#segment-chain').html('<p class="text-warning">Keine Abschnitte in der Datenbank gefunden.</p>');
                     }
                 } else {
                     $('#segment-chain').html('<p class="text-danger">Fehler: Unerwartetes Datenformat vom Server.</p>');
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
-                $('#loading-message').remove();
+            error: function(jqXHR, textStatus, errorThrown) { //falls ein Fehler auftritt
+                $('#loading-message').remove(); // Entfernt Lade-Nachricht
+                // Zeigt Fehlermeldung mit HTTP-Status-Code
                 $('#segment-chain').html('<p class="text-danger">Fehler beim Laden der Abschnitte: ' + textStatus + '</p>');
                 console.error("AJAX Error:", errorThrown);
             }
@@ -93,84 +101,103 @@
     // Lädt vorhandene Abschnitte (read-only)
     function loadExistingChain() {
         existingAbschnitte.forEach((abschnittId, index) => {
-            const abschnitt = allAbschnitte.find(a => a.abschnittId === abschnittId);
+            const abschnitt = allAbschnitte.find(a => a.abschnittId === abschnittId); //sucht nach dem Abschnittsobjekt ausgehend von der Id
             if (abschnitt) {
-                selectedChain.push(abschnitt);
-                addReadOnlySegmentField(index, abschnitt);
+                selectedChain.push(abschnitt); //zu ausgewählten Abschnitten hinzufügen
+                addReadOnlySegmentField(index, abschnitt); //Dropdowns für die bereits vorhandenen Abschnitte erzeugen
             }
         });
 
-        updateDisplay();
+        updateDisplay(); //ruft Methode auf, um STart-und Endbahnhof zu aktualisieren + Karte zeichnen
     }
 
     // Read-Only Anzeige der Abschnitte
     function addReadOnlySegmentField(index, abschnitt) {
+        // Template-String: erzeugt HTML-Code für ein Read-Only-Feld
         const fieldHtml = `
             <div class="segment-field" data-index="${index}">
                 <span style="min-width: 90px; font-weight: 500;">Abschnitt ${index + 1}:</span>
                 <input type="text" class="form-control" value="${abschnitt.name}" readonly style="display: inline-block; width: calc(100% - 100px);">
             </div>
         `;
+        // jQuery append(): fügt das generierte HTML am Ende des segment-chain Containers ein
         $('#segment-chain').append(fieldHtml);
     }
 
+    //UI, Start-und Endbahnhoffelder und Map aktualisieren
     function updateDisplay() {
         if (selectedChain.length > 0) {
-            const startBhfId = selectedChain[0].startBahnhofId;
-            const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId;
+            const startBhfId = selectedChain[0].startBahnhofId; //startBahnhof = Startbahnhof des ersten Abschnitts
+            const endBhfId = selectedChain[selectedChain.length - 1].endBahnhofId; //endbahnhof = Endbahnhof des letzten Abschnitts
 
-            $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt');
+            $('#startBahnhof').val(allBahnhoefe[startBhfId] || 'Unbekannt'); //holt den Namen des Bahnhofs aus den übergebenen Bahnhöfen
             $('#endBahnhof').val(allBahnhoefe[endBhfId] || 'Unbekannt');
         }
 
-        drawSelectedSegments();
+        drawSelectedSegments(); // Karte aktualisieren
     }
 
+    //wird ausgeführt sobald das HTML-Dokument vollständig geladen wurde
     $(document).ready(function() {
-        loadInitialData();
+        loadInitialData();  //lädt erstes Dropdown
     });
 </script>
 
+<!--CSS+JS für Leaflet (zum Erstellen der Karte)-->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+    //Karte erstellen
     let map = L.map('map').setView([47.5162, 14.5501], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    //LayerGroup für Linien und Marker
     let segmentsLayer = L.layerGroup().addTo(map);
 
+    //wird aufgerufen wenn sich die Abschnitte ändern
     function drawSelectedSegments() {
+        // Verwendet selectedChain statt Dropdown-Werte
         let selectedIds = selectedChain.map(s => s.abschnittId);
+
+        //löscht alle alten Dinge
         segmentsLayer.clearLayers();
 
+        //holt Koordinaten fürs Zeichnen aus der Datenbank
         if (!selectedIds || selectedIds.length === 0) {
             return;
         }
 
+        //holt Koordinaten fürs Zeichnen aus der Datenbank
         let fetchPromises = selectedIds.map(id => {
             return fetch(`/api/abschnitt/${id}`).then(response => response.json());
         });
 
+        //wartet bis alle Daten geladen wurden -> zeichnet dann alles auf einmal
         Promise.all(fetchPromises)
             .then(results => {
-                let bounds = L.latLngBounds();
+                let bounds = L.latLngBounds(); //Repräsentiert das anzuzeigende Rechteck
 
+                //Iterieren über alle Abschnitte
                 results.forEach(data => {
                     if (data.start && data.end) {
+                        //extrahiert die Koordinaten
                         let startLatLng = [data.start.lat, data.start.lon];
                         let endLatLng = [data.end.lat, data.end.lon];
 
+                        //Linie zeichnen
                         let polyline = L.polyline([startLatLng, endLatLng], {
                             color: 'blue',
                             weight: 4,
                             opacity: 0.7
                         }).addTo(segmentsLayer);
 
+                        //Popup für Abschnitt
                         polyline.bindPopup(`<b>Abschnitt:</b> ${data.start.name} ➝ ${data.end.name}`);
 
+                        //Marker für Startbahnhof
                         L.marker(startLatLng, {
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
@@ -181,9 +208,10 @@
                                         shadowSize: [41, 41]
                                     })
                                 })
-                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`)
+                            .bindPopup(`<b>Startbahnhof:</b> ${data.start.name}`) //wenn man auf den Marker anklickt wird dieser Text angezeigt
                             .addTo(segmentsLayer);
 
+                        //Marker für Endbahnhof
                         L.marker(endLatLng, {
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
@@ -194,16 +222,16 @@
                                         shadowSize: [41, 41]
                                     })
                                 })
-                            .bindPopup(`<b>Ende:</b> ${data.end.name}`)
+                            .bindPopup(`<b>Ende:</b> ${data.end.name}`) //wenn man auf den Marker anklickt wird dieser Text angezeigt
                             .addTo(segmentsLayer);
-
+                        //Bounds erweitern -> alles anzeigt wird
                         bounds.extend(startLatLng);
                         bounds.extend(endLatLng);
                     }
                 });
 
                 if (bounds.isValid()) {
-                    map.fitBounds(bounds, {padding: [50, 50]});
+                    map.fitBounds(bounds, {padding: [50, 50]}); //Karte auf Bounds zentriert
                 }
             })
             .catch(err => console.error("Fehler beim Laden der Abschnitte:", err));

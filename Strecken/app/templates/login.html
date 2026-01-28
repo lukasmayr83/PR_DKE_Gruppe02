@@ -1,30 +1,34 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+<!-- Bindet die CSS-Datei login.css für das Login-Foto (schienen_querformat.png) ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-    <h1>Login</h1>
+    <h1>Login</h1> <!-- Überschrift -->
 
 <div class="flex-container">
     <div class="form-wrapper">
     <form action="" method="post" novalidate>
-        {{ form.hidden_tag() }}
+        {{ form.hidden_tag() }} <!-- CSRF-Token für Sicherheit (verhindert Cross-Site Request Forgery Angriffe) -->
+
+        <!-- Username-->
         <p>
-            {{ form.username.label }}<br>
-            {{ form.username(size=32) }}<br>
-            {% for error in form.username.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.username.label }}<br> <!--zeigt die Beschriftung für das Usernamensfeld an + Seitenumbruch -->
+            {{ form.username(size=32) }}<br> <!--Inputfeld für den Usernamen mit der Größe 32 -->
+            {% for error in form.username.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
         <p>
-            {{ form.password.label }}<br>
-            {{ form.password(size=32) }}<br>
-            {% for error in form.password.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.password.label }}<br> <!--zeigt die Beschriftung für das Passwortsfeld an + Seitenumbruch -->
+            {{ form.password(size=32) }}<br> <!--Inputfeld für das Passwort mit der Größe 32 -->
+            {% for error in form.password.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
-        <p>{{ form.remember_me() }} {{ form.remember_me.label }}</p>
-        {{ form.submit(class="btn btn-primary") }}
+        <p>{{ form.remember_me() }} {{ form.remember_me.label }}</p> <!--Checkbox für Remember-Me-->
+        {{ form.submit(class="btn btn-primary") }} <!-- Login-Button -->
     </form>
     </div>
     <div class="image-wrapper"> </div>

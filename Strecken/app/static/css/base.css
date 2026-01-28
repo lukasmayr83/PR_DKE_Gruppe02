@@ -1,22 +1,25 @@
 /* Header-Container: Menü links, User-Links rechts */
+
+/* CSS-Klasse für den Haupt-Header-Container */
 .header {
-  display: flex;
+  display: flex; /*ermöglicht flexible Anordnung der Kindelemente */
   justify-content: space-between; /* Abstand zwischen links und rechts */
   align-items: center; /* vertikal zentrieren */
-  padding: 5px 20px;
-  background-color: #f8f8f8;
+  padding: 5px 20px; /* Innenabstand: 5px oben/unten, 20px links/rechts */
+  background-color: #f8f8f8; /* Hintergrundfarbe: helles Grau */
 }
 
-/* Menü*/
+/* CSS-Klasse für die Menü-Liste */
 .menu {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    background-color: transparent;
+    list-style: none; /* Entfernt die Standard-Aufzählungszeichen (Punkte) */
+    padding: 0; /* Entfernt den Standard-Innenabstand */
+    margin: 0; /* Entfernt den Standard-Außenabstand */
+    background-color: transparent; /* Transparenter Hintergrund*/
     display: flex; /* horizontale Ausrichtung */
-    gap: 10px;
+    gap: 10px; /* Abstand zwischen den Flex-Elementen: 10 Pixel */
 }
 
+/* CSS-Selektor für einzelne Listenelemente im Menü */
 .menu li {
     margin: 0;
     padding: 0;
@@ -24,45 +27,48 @@
     position: relative;
 }
 
-/* Dropdown */
+/* CSS-Klasse für den Dropdown-Inhalt */
 .dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: white;
-  min-width: 220px;
+  display: none; /*Dropdown sind standardmäßig ausgeblendet*/
+  position: absolute; /* Absolute Positionierung: relativ zum nächsten positionierten Elternelement */
+  background-color: white; /*Hintergrundfarbe: weiß*/
+  min-width: 220px; /*definiert minimale Breite auf 220px*/
   z-index: 1;
-  border-radius: 4px;
-  overflow: hidden;
-  padding: 0;
-  list-style: none;
+  border-radius: 4px; /* Abgerundete Ecken: Radius von 4 Pixeln */
+  overflow: hidden; /* Überlaufverhalten: versteckt überlaufenden Inhalt*/
+  padding: 0; /* Entfernt den Innenabstand */
+  list-style: none; /* Entfernt die Aufzählungszeichen */
 }
 
+/* CSS-Selektor für Links innerhalb der Dropdown-Listenelemente */
 .dropdown-content li a {
-  color: black;
-  padding: 10px;
-  text-decoration: none;
-  display: block;
-  background-color: #e0e0e0;
+  color: black; /* Textfarbe: schwarz */
+  padding: 10px; /* Innenabstand: 10 Pixel */
+  text-decoration: none; /* Entfernt die Standard-Textunterstreichung */
+  display: block;  /* Block-Element: füllt die gesamte Breite aus */
+  background-color: #e0e0e0; /* Hintergrundfarbe: Grau */
 }
 
+/* Hover-Effekt für Dropdown-Links*/
 .dropdown-content li a:hover {
-  background-color: #b0b0b0;
+  background-color: #b0b0b0; /*dunkleres Grau beim Hovern*/
 }
 
 .dropdown:hover .dropdown-content {
   display: block;
 }
 
-/* Login/Logout-Links rechts */
+/* CSS-Selektor für Links im User-Links-Container */
 .user-links a {
-  text-decoration: none;
+  text-decoration: none; /* Entfernt die Textunterstreichung */
   padding: 8px 12px;
-  background-color: #ddd;
-  border-radius: 4px;
-  margin-left: 10px;
-  transition: background-color 0.2s;
+  background-color: #ddd; /* Hintergrundfarbe: helles Grau */
+  border-radius: 4px;/* Abgerundete Ecken: Radius von 4 Pixeln */
+  margin-left: 10px;   /* Linker Außenabstand: 10 Pixel */
+  transition: background-color 0.2s; /* Hintergrundfarbe ändert sich über 0.2 Sekunden */
 }
 
+/* Hover-Effekt für User-Links */
 .user-links a:hover {
   background-color: #ccc;
 }
@@ -78,6 +84,7 @@
     transition: background-color 0.2s;
 }
 
+/* Hover-Effekt für Haupt-Menüpunkte */
 .menu > li > a:hover {
     background-color: #ccc;
 }

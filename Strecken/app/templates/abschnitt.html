@@ -1,35 +1,22 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<!-- Bindet die CSS-Datei overview2.css für das Styling ein -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview2.css') }}">
+<!-- Bindet das CSS-Stylesheet für DataTables ein (interaktive Tabelle mit Suche, Sortierung) -->
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 
-<h1>Alle Abschnitte</h1>
+<h1>Alle Abschnitte</h1> <!-- Überschrift -->
 
 <div class="main-content-flex">
 
+    <!--div-Container für die Tabelle-->
     <div class="table-container">
-
-
         <div class="table-scroll-wrapper">
-
             <form id="abschnitt-form" method="POST" action="{{ url_for('delete_multiple_abschnitt') }}">
                 <table id="abschnittTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; min-width: 200px; margin-bottom: 0;">
-                    <!--<colgroup>
-                        {% if role.value != 'mitarbeiter' %}
-                        <col style="width: 30px;">
-                        {% endif %}
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
-                        <col style="width: 80px;">
-                        <col style="width: 120px;">
-                        <col style="width: 50px;">
-                        <col style="width: auto;">
-                        {% if role.value != 'mitarbeiter' %}
-                        <col style="width: 100px;">
-                        {% endif %}
-                    </colgroup>-->
 
+                    <!-- definiert den Tabellenkopf (1.Zeile) -->
                     <thead>
                         <tr style="background-color: #f1f1f1; position: sticky; top: 0; z-index: 10;">
                             {% if role.value != 'mitarbeiter' %}
@@ -39,18 +26,20 @@
                             <th >Endbahnhof</th>
                             <th >Spurweite</th>
                             <th > Länge</th>
-                            <th >Nutzungs- entgelt</th>
+                            <th >Nutzungsentgelt</th>
                             <th >max. km/h</th>
                             <th >Warnungen</th>
+                            <!--Spalte Aktion nur für Admins ersichtlich-->
                             {% if role.value != 'mitarbeiter' %}
                             <th >Aktion</th>
                             {% endif %}
                         </tr>
                     </thead>
+                    <!-- definiert den Tabelleninhalt (ab 2.Zeile) -->
                     <tbody>
-
                         {% for a in posts %}
                         <tr>
+                            <!-- Checkboxen zum Löschen werden nur Admin angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <td><input type="checkbox" name="abschnitt_ids" value="{{ a.abschnittId }}"></td>
                             {% endif %}
@@ -64,6 +53,7 @@
                             <td>{{ a.max_geschwindigkeit }}</td>
 
                             <td>
+                                <!-- falls es Warnungen für den Abschnitt gibt; alle Warnungen durchgehen -> Warnungsnamen ausgeben -->
                                 {% if a.warnungen %}
                                     {% for warnung in a.warnungen %}
                                         <span class="badge bg-warning text-dark" style="margin-right: 2px;">
@@ -71,11 +61,13 @@
                                             <br>
                                         </span>
                                     {% endfor %}
+                                <!-- falls es keine Warnungen gibt -> "-" -->
                                 {% else %}
                                     <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
 
+                            <!-- Button zum Bearbeiten des Abschnitts wird nur Admins angezeigt-->
                             {% if role.value != 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('edit_abschnitt', abschnitt_id=a.abschnittId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
@@ -90,18 +82,18 @@
 
         </div>
 
-
-
+        <!--Lösch-Button ist nur für Admins ersichtlich -->
         <div style="margin-top: 10px;">
              {% if role.value != 'mitarbeiter' %}
-
+                <!-- Button öffnet beim Anklicken ein Pop-up, dass dem User fragt, ob man die Bahnhöfe wirklich löschen möchte-->
                 <button type="button" class="btn btn-danger"
                         onclick="if (confirm('Willst du wirklich alle ausgewählten Abschnitte löschen?')) { document.getElementById('abschnitt-form').submit(); }">
                     Ausgewählte löschen
                 </button>
             {% endif %}
 
-
+            <!--Flash-Messages um Messages zum Bearbeiten, Löschen und Erstellen anzeigen zu können
+             grüne Box für success; rote Box für error-->
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div style="margin-top: 15px;">
@@ -120,9 +112,9 @@
             {% endif %}
             {% endwith %}
         </div>
-
     </div>
 
+    <!-- Erstellt den div-Container für die Map -->
    <div class="map-container">
         {% if map_html %}
         {{ map_html | safe }}

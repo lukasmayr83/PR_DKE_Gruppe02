@@ -1,32 +1,35 @@
+/* CSS-Regel für den Seitenhintergrund */
 body {
-    background-color: #f8f9fa;
+    background-color: #f8f9fa; /* helles Grau */
 }
 
+/* CSS-Klasse für die Haupttabelle */
 .table {
     /* Wichtig: Erzwingt, dass die Breiten der <colgroup> oder <th>-Selektoren angewendet werden */
     table-layout: fixed;
 
     /* Stellt sicher, dass die Tabelle die volle Breite des Scroll-Wrappers einnimmt */
     width: 100%;
-
+    /* Unterer Außenabstand: 0 Pixel, !important überschreibt andere Regeln */
     margin-bottom: 0 !important;
 }
 
+/* CSS-Regel für DataTables-spezifische Tabellen */
 table.dataTable {
-    width: 100% !important;
-    table-layout: auto !important;
+    width: 100% !important; /* Breite: 100%, !important -> überschreibt DataTables-Standard */
+    table-layout: auto !important; /* Table-Layout: auto = Breite passt sich dem Inhalt an, !important überschreibt vorherige Regel */
 }
 
+/* CSS-Regel für alle Tabellenzellen (td) und Header-Zellen (th) */
 td, th {
-    white-space: nowrap;
+    white-space: nowrap; /*verhindertzeilenumbruche*/
 }
-
 
 
 /* Farbe für Tabellen-Header */
 .table thead th {
     background-color: #b8b4b4;
-    position: sticky;
+    position: sticky; /*Header-Zeile bliebt beim scrollen nach unten ganz oben*/
     top: 0;
     z-index: 10;
     font-size: 0.9rem; /* Kleinere Schrift im Header */
@@ -53,62 +56,53 @@ td, th {
 
 /* Haupt-Container: Tabelle links, Karte rechts */
 .main-content-flex {
-    display: flex !important;
-    flex-direction: row !important;
-    gap: 15px;
-    padding: 15px;
+    display: flex !important; /* Flexbox-Layout */
+    flex-direction: row !important; /*horizontale Flex-Richtung */
+    gap: 15px; /*Abstand zwischen Flex-Elementen*/
+    padding: 15px;  /* Innenabstand: 15 Pixel */
     height: calc(100vh - 180px); /* Angepasst */
-    align-items: stretch;
+    align-items: stretch; /* Flex-Items dehnen sich auf gleiche Höhe aus */
 }
 
 /* Linke Spalte: Tabelle + Buttons */
 .table-container {
-    flex: 1.5;
+    flex: 1.5; /*Tabelle, um 50 % großer als Karte*/
     display: flex;
     flex-direction: column;
     min-width: 0; /* Wichtig für Flex-Shrink */
-    height: 100%;
+    height: 100%; /* Höhe: 100% des Elternelements */
 }
 
 /* Tabellen-Scroll-Wrapper - SCROLLBAR */
 .table-scroll-wrapper {
     flex: 1 1 auto; /* Kann wachsen und schrumpfen */
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-    border-radius: 4px;
-    margin-bottom: 10px;
+    overflow-y: auto !important; /* Vertikales Scrollen: aktiviert */
+    overflow-x: auto !important; /* Horizontales Scrollen: aktiviert */
+    border-radius: 4px; /* abgerundete Ecken */
+    margin-bottom: 10px; /*unterer Abstand */
     max-height: calc(100vh - 250px); /* Maximale Höhe */
 }
-
-/* Tabelle selbst */
-.table {
-    margin-bottom: 0 !important;
-    width: 100%;
-}
-
-
 
 /* Rechte Spalte: Karte */
 .map-container {
     flex: 1;
-    min-width: 0;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
+    min-width: 0; /* minimale Breite */
+    border-radius: 6px; /*Abgerundete Ecken */
     overflow: hidden;
-    height: 55%;
+    height: 55%; /*Höhe vom ELternelement*/
 }
 
 /* Karte nimmt vollen Platz ein */
 .map-container iframe,
 .map-container > div {
-    width: 100% !important;
-    height: 100% !important;
+    width: 100% !important; /* Breite 100%*/
+    height: 100% !important; /* Höhe 100%*/
 }
 
 /* Alerts sichtbar machen */
 .alert {
     display: block !important;
-    margin-bottom: 10px !important;
+    margin-bottom: 10px !important;/*unterer Abstand*/
     font-size: 0.9rem;
 }
 
@@ -116,15 +110,15 @@ td, th {
 .btn {
     display: inline-block !important;
     visibility: visible !important;
-    font-size: 0.9rem;
+    font-size: 0.9rem; /* Schriftgröße 90% der Standard Schriftgröße*/
 }
 
 /* Checkbox-Spalte schmaler */
 .table tbody td:first-child,
 .table thead th:first-child {
     width: 30px;
-    text-align: center;
-    padding: 6px 2px;
+    text-align: center; /* Textausrichtung: zentriert */
+    padding: 6px 2px; /* Innenabstand: 6px oben/unten; 2px links/rechts */
 }
 
 /* Aktion-Spalte kompakter */
@@ -134,16 +128,18 @@ td, th {
     padding: 6px 5px;
 }
 
+    /* CSS-Klasse für kleine Buttons */
 .btn-sm {
     font-size: 0.8rem;
     padding: 4px 8px;
 }
 
-
+/* CSS-Klasse für den Tabellen-Scroll-Wrapper */
 .table-scroll-wrapper {
     border-radius: 6px;
 }
 
+/* CSS-Klasse für Danger-Buttons*/
 .btn-danger{
     padding: 5px 10px; /*Abstand noch oben/unten und links/rechts*/
     font-size: 12px;  /*Schriftgröße*/

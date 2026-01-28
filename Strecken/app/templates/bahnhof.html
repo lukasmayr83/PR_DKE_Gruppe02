@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Bindet die CSS-Datei overview2.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/overview2.css') }}">
+<!-- Bindet das CSS-Stylesheet für DataTables ein (interaktive Tabelle mit Suche, Sortierung) -->
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 
-<h1>Alle Bahnhöfe</h1>
+<h1>Alle Bahnhöfe</h1> <!-- Überschrift -->
 
 <div class="main-content-flex">
-
+    <!-- div-Container für die Tabelle -->
     <div class="table-container">
 
         <form method="POST" action="{{ url_for('delete_multiple_bahnhof') }}" id="bahnhof-form">
@@ -15,59 +17,56 @@
             <div class="table-scroll-wrapper">
 
                 <table id="bahnhofTable" class="table table-striped" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
-                    <!--<colgroup>
-                        {% if role.value != 'mitarbeiter' %}
-                        <col style="width: 30px;">
-                        {% endif %}
-                        <col style="width: 30%;">
-                        <col style="width: auto;">
-                        {% if role.value != 'mitarbeiter' %}
-                        <col style="width: 100px;">
-                        {% endif %}
-                    </colgroup>-->
 
-
+                    <!-- definiert den Tabellenkopf (1.Zeile) -->
                     <thead>
                         <tr>
+                            <!-- Spalte zum Löschen werden nur Admin angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 21px;"></th>
                             {% endif %}
                             <th style="min-width: 150px;">Name</th>
                             <th style="min-width: 200px;">Adresse</th>
-                            <!--<th style="min-width: 100px;">Breitengrad</th>
-                            <th style="min-width: 100px;">Längengrad</th> -->
+                            <!-- Spalte zum Bearbeiten des Bahnhofs wird nur Admins angezeigt-->
                             {% if role.value != 'mitarbeiter' %}
                             <th style="min-width: 80px;">Aktion</th>
                             {% endif %}
                         </tr>
                     </thead>
+                    <!-- definiert den Tabelleninhalt (ab 2.Zeile) -->
                     <tbody>
                         {% for b in posts %}
                         <tr>
+                            <!-- Checkboxen zum Löschen werden nur Admin angezeigt -->
                             {% if role.value != 'mitarbeiter' %}
                             <td><input type="checkbox" name="bahnhof_ids" value="{{ b.bahnhofId }}"></td>
                             {% endif %}
                             <td>{{ b.name }}</td>
                             <td>{{ b.adresse }}</td>
-                            <!--<td>{{ b.latitude or '-' }}</td>
-                            <td>{{ b.longitude or '-' }}</td> -->
+
+                            <!-- Button zum Bearbeiten des Bahnhofs wird nur Admins angezeigt-->
                             {% if role.value != 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('edit_bahnhof', bahnhof_id=b.bahnhofId) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
                             </td>
                             {% endif %}
+
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                <!--Lösch-Button -->
             </div> <div style="margin-top: 10px;">
+                <!-- Button zum Löschen der Bahnhöfe wird nur Admins angezeigt-->
                 {% if role.value != 'mitarbeiter' %}
+                    <!-- Button öffnet beim Anklicken ein Pop-up, dass dem User fragt, ob man die Bahnhöfe wirklich löschen möchte-->
                     <button type="submit" class="btn btn-danger"
                             onclick="return confirm('Willst du wirklich alle ausgewählten Bahnhöfe löschen?');">
                         Ausgewählte löschen
                     </button>
                 {% endif %}
-
+                <!--Flash-Messages um Messages zum Bearbeiten, Löschen und Erstellen anzeigen zu können
+                grüne Box für success; rote Box für error-->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div style="margin-top: 15px;">
@@ -88,6 +87,7 @@
             </div>
 
         </form>
+    <!-- div-Container für die Map -->
     </div> <div class="map-container">
         {% if map_html %}
             {{ map_html|safe }}

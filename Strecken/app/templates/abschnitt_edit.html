@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
-<h1>Abschnitt bearbeiten</h1>
+<h1>Abschnitt bearbeiten</h1> <!-- Überschrift -->
 
 
 
@@ -12,39 +14,52 @@
     <div class="form-wrapper">
         <form method="POST">
             {{ form.hidden_tag() }}
+
+            <!--Bahnhöfe sind disabled, falls der Abschnitt bereits in einer Strecke verwendet wird-->
             <p class="form-group">
-                {{ form.startBahnhof.label }}<br>
+                {{ form.startBahnhof.label }}<br> <!--zeigt die Beschriftung für das Startbahnhofsfeld an + Seitenumbruch -->
+                <!-- Startbahnhof-Eingabefeld: falls Abschnitt in einer Strecke ist -> nicht mehr änderbar -> disabled-->
                 {{ form.startBahnhof(class="form-control", disabled=abschnitt_in_strecke) }}
-                {% for error in form.startBahnhof.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% for error in form.startBahnhof.errors %} <!-- Schleife durch alle Validierungsfehler des Startbahnhof-Feldes -->
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
             <p class="form-group">
-                {{ form.endBahnhof.label }}<br>
+                {{ form.endBahnhof.label }}<br> <!--zeigt die Beschriftung für das Starbahnhofsfeld an + Seitenumbruch -->
+                <!-- Endbahnhof-Eingabefeld: falls Abschnitt in einer Strecke ist -> nicht mehr änderbar -> disabled-->
                 {{ form.endBahnhof(class="form-control", disabled=abschnitt_in_strecke) }}
-                {% for error in form.endBahnhof.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {% for error in form.endBahnhof.errors %} <!-- Schleife durch alle Validierungsfehler des Endbahnhof-Feldes -->
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
-            <!-- Warnung wenn Abschnitt in Strecke verwendet wird -->
+            <!-- Hinweis wenn Abschnitt in Strecke verwendet wird -->
             {% if abschnitt_in_strecke %}
                 <div class="alert alert-warning" style="margin-bottom: 20px;">
                     <p style="margin-bottom: 0;"><strong>Hinweis:</strong> Dieser Abschnitt wird in einer Strecke verwendet! Die Bahnhöfe können daher nicht mehr geändert werden.</p>
                 </div>
             {% endif %}
+
+            <!--max. Geschwindigkeit-->
             <p>{{ form.max_geschwindigkeit.label }}<br>{{form.max_geschwindigkeit() }}</p>
-            <p>{{ form.spurweite.label }}<br>{{ form.spurweite() }}</p>
+
+            <!-- Spurweite disabled falls der Abschnitt bereits in einer Strecke verwendet wird-->
+            <p>{{ form.spurweite.label }}<br>{{ form.spurweite( disabled=abschnitt_in_strecke) }}</p>
+
+            <!-- Länge des Abschnittes -->
             <p>{{ form.laenge.label }}<br>{{ form.laenge() }}
                 {% for error in form.laenge.errors %}
                     <span style="color:red; display:block;">[{{ error }}]</span>
                 {% endfor %}
             </p>
+
+            <!-- Nutzungsentgelt -->
             <p>{{ form.nutzungsentgelt.label }}<br>{{ form.nutzungsentgelt() }}
                 {% for error in form.nutzungsentgelt.errors %}
                     <span style="color:red; display:block;">[{{ error }}]</span>
                 {% endfor %}
             </p>
 
+            <!-- Speichern + Abbrechen Button-->
             <p>{{ form.submit(class="btn btn-primary") }}
                 <a href="{{ url_for('abschnitt') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
@@ -70,9 +85,9 @@
     attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let startMarker = null;
-    let endMarker = null;
-    let routeLine = null;
+    let startMarker = null; //Marker für Startbahnhof
+    let endMarker = null; //Marker für Endbahnhof
+    let routeLine = null; //Variable für Linie zwischen den Bahnhöfen
 
     //function, um Verbindung zwischen Bahnhöfe zu zeichnen
     function updateRoute() {
@@ -104,8 +119,8 @@
                 const lon = data.longitude;
 
                 //Marker zeichnen oder verschieben
-                if (type === 'start') {
-                    if (startMarker) startMarker.setLatLng([lat, lon]);
+                if (type === 'start') { //Startmarker = rot
+                    if (startMarker) startMarker.setLatLng([lat, lon]); //bereits vorhandenen Marker verschieben
                     else startMarker = L.marker([lat, lon], {
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -116,9 +131,9 @@
                                         shadowSize: [41, 41]
                                     })
                                 }, {title: "Start"}).addTo(map);
-                } else {
-                    if (endMarker) endMarker.setLatLng([lat, lon]);
-                    else endMarker = L.marker([lat, lon], {
+                } else { //Endmarker = rot
+                    if (endMarker) endMarker.setLatLng([lat, lon]); //bereits vorhandenen Marker verschieben
+                    else endMarker = L.marker([lat, lon], { //wenn esnoch keinen Marker gibt diesen Zeichnen
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -130,8 +145,9 @@
                                 }, {title: "Ende"}).addTo(map);
                 }
 
-                updateRoute();
+                updateRoute(); //ruft die Funktion von oben auf
 
+                //falls es nur einen Marker gibt -> auf diesen zentrieren
                 if (!startMarker || !endMarker) {
                     map.setView([lat, lon], 13);
                 }
@@ -139,16 +155,17 @@
             .catch(err => console.error("Fehler beim Laden der Koordinaten:", err));
     }
 
-    // Event Listener
+    // Event Listener für Start-und Endbahnhof
     const startSelect = document.getElementById("startBahnhof");
     const endSelect = document.getElementById("endBahnhof");
 
+    //wenn neuer Startbahnhof im Dropdownmenü ausgewählt wurde, wird Methode fetchStationCoords aufgerufen
     if (startSelect) {
         startSelect.addEventListener("change", function() {
             fetchStationCoords(this.value, 'start');
         });
     }
-
+    //wenn neuer Startbahnhof im Dropdownmenü ausgewählt wurde, wird Methode fetchStationCoords aufgerufen
     if (endSelect) {
         endSelect.addEventListener("change", function() {
             fetchStationCoords(this.value, 'end');
@@ -156,10 +173,17 @@
     }
 
     //lädt die Daten des Abschnitts (Id der Bahnhöfe) beim Laden des Fensters
+    //Code wird ausgeführt sobald ganze HTMl,CSS geladen wurde
     window.addEventListener('load', function() {
+        // Holt das HTML-Element mit der ID "startBahnhof" aus dem DOM (Document Object Model)
+        // und liest dessen aktuellen Wert aus
         const startVal = document.getElementById("startBahnhof").value;
+        // Holt das HTML-Element mit der ID "endBahnhof" aus dem DOM
+        // und liest dessen aktuellen Wert (value) aus
         const endVal = document.getElementById("endBahnhof").value;
 
+        // Prüft ob startVal/endVal einen Wert hat (nicht leer, nicht null, nicht undefined)
+        // Wenn ja: ruft die Funktion fetchStationCoords auf mit startVal/endVal und dem String 'start'/'end' als Parameter
         if (startVal) fetchStationCoords(startVal, 'start');
         if (endVal) fetchStationCoords(endVal, 'end');
     });

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
-<h1>Abschnitt hinzufügen</h1>
+<h1>Abschnitt hinzufügen</h1> <!-- Überschrift -->
 
 <div class="flex-container">
 
@@ -10,33 +12,40 @@
     <div class="form-wrapper">
         <form method="POST">
             {{ form.hidden_tag() }}
+
+            <!-- Start-und Endbahnhof -->
             <p class="form-group">
-                {{ form.startBahnhof.label }}<br>
-                {{ form.startBahnhof(class="form-control") }}
-                {% for error in form.startBahnhof.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {{ form.startBahnhof.label }}<br> <!--zeigt die Beschriftung für das Startbahnhofsfeld an + Seitenumbruch -->
+                {{ form.startBahnhof(class="form-control") }} <!-- Startbahnhof-Eingabefeld -->
+                {% for error in form.startBahnhof.errors %} <!-- Schleife durch alle Validierungsfehler des Startbahnhof-Feldes -->
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
             <p class="form-group">
-                {{ form.endBahnhof.label }}<br>
-                {{ form.endBahnhof(class="form-control") }}
-                {% for error in form.endBahnhof.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                {{ form.endBahnhof.label }}<br> <!--zeigt die Beschriftung für das Starbahnhofsfeld an + Seitenumbruch -->
+                {{ form.endBahnhof(class="form-control") }} <!-- Endbahnhof-Eingabefeld -->
+                {% for error in form.endBahnhof.errors %} <!-- Schleife durch alle Validierungsfehler des Endbahnhof-Feldes -->
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
+            <!-- max. Geschwindigkeit -->
             <p>{{ form.max_geschwindigkeit.label }}<br>{{form.max_geschwindigkeit() }}</p>
+            <!-- Spurweite -->
             <p>{{ form.spurweite.label }}<br>{{ form.spurweite() }}</p>
+            <!-- Länge -->
             <p>{{ form.laenge.label }}<br>{{ form.laenge() }}
                 {% for error in form.laenge.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
+            <!-- Nutzungsentgelt -->
             <p>{{ form.nutzungsentgelt.label }}<br>{{ form.nutzungsentgelt() }}
                 {% for error in form.nutzungsentgelt.errors %}
-                    <span style="color:red; display:block;">[{{ error }}]</span>
+                    <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
 
+            <!-- Speichern + Abbrechen Button-->
             <p>{{ form.submit(class="btn btn-primary") }}
                 <a href="{{ url_for('abschnitt') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
@@ -62,9 +71,9 @@
     attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let startMarker = null;
-    let endMarker = null;
-    let routeLine = null;
+    let startMarker = null; //Marker für Startbahnhof
+    let endMarker = null; //Marker für Endbahnhof
+    let routeLine = null; //Variable für Linie zwischen den Bahnhöfen
 
     //function, um Verbindung zwischen Bahnhöfe zu zeichnen
     function updateRoute() {
@@ -78,12 +87,20 @@
             let startLatLng = startMarker.getLatLng();
             let endLatLng = endMarker.getLatLng();
 
-            //Linie zwischen den Punkten
+            //Linie zwischen den Punkten (blau mit der Strichstärke 4)
             routeLine = L.polyline([startLatLng, endLatLng], {color: 'blue', weight: 4}).addTo(map);
-            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]}); //zentriert Abschnitt mit Abstand zum Rand
         }
     }
-function fetchStationCoords(id, type) {
+
+    /*
+    wird aufgerufen, wenn sich der Start bzw. Endbahnhof ändert;
+    id -> Id des jeweiligen Bahnhofs;
+    type 'end' für Endbahnhof und 'start' für Startbahnhof;
+    diese Methode holt die Daten für die zu zeichnenenden Bahnhöfen aus dem Backend und zeichnet diese Bahnhöfe auf der Karte
+    mit einer Verbindungslinie zwischen den beiden Bahnhöfen (ruft für die Verbindungslinie Methode updateRoute auf)
+    */
+    function fetchStationCoords(id, type) {
         if (!id) return;
 
         // Holt die Daten aus der API
@@ -93,10 +110,10 @@ function fetchStationCoords(id, type) {
                 const lat = data.latitude;
                 const lon = data.longitude;
 
-
+                //Startbahnhof-Marker wird mit einem grünen Marker symbolisiert
                 if (type === 'start') {
-                    if (startMarker) startMarker.setLatLng([lat, lon]); //Marker gbt es bereits verschieben!
-                    else startMarker = L.marker([lat, lon],{
+                    if (startMarker) startMarker.setLatLng([lat, lon]); //bereits vorhandenen Marker verschieben!
+                    else startMarker = L.marker([lat, lon],{ //neuen Marker erstellen
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
                                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -106,9 +123,9 @@ function fetchStationCoords(id, type) {
                                         shadowSize: [41, 41]
                                     })
                                 }, {title: "Startbahnhof"},).addTo(map); //Marker erstellen
-                } else {
-                    if (endMarker) endMarker.setLatLng([lat, lon]);
-                    else endMarker = L.marker([lat, lon], {
+                } else { //Endabhnhof-Marker wird mit einem roten Marker symbolisiert
+                    if (endMarker) endMarker.setLatLng([lat, lon]); //bereits vorhandenen Marker verschieben!
+                    else endMarker = L.marker([lat, lon], { //neuen Marker erstellen
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -117,10 +134,10 @@ function fetchStationCoords(id, type) {
                                         popupAnchor: [1, -34],
                                         shadowSize: [41, 41]
                                     })
-                                }, {title: "EndBahnhof"}).addTo(map);
+                                }, {title: "EndBahnhof"}).addTo(map); //Marker erstellen
                 }
 
-                updateRoute(); //ruft Methode von oben auf
+                updateRoute(); //ruft Methode updateRoute von oben auf, um die Verbindung der Bahnhöfe zu zeichnen
 
                 //falls es nur einen Marker gibt wird auf diesen hereingezoomt (13)
                 if (!startMarker || !endMarker) {
@@ -130,20 +147,20 @@ function fetchStationCoords(id, type) {
             .catch(err => console.error("Fehler beim Laden der Koordinaten:", err));
     }
 
-    // Event Listener
+    // Event Listener für Start-und Endbahnhof
     const startSelect = document.getElementById("startBahnhof");
     const endSelect = document.getElementById("endBahnhof");
 
-    //wenn neuer Bahnhof im Dropdownmenü ausgewählt wurde, wird Methode fetchStationCoords aufgerufen
+    //wenn neuer Startbahnhof im Dropdownmenü ausgewählt wurde, wird Methode fetchStationCoords aufgerufen
     if (startSelect) {
         startSelect.addEventListener("change", function() {
             fetchStationCoords(this.value, 'start');
         });
     }
-
+    //wenn neuer Startbahnhof im Dropdownmenü ausgewählt wurde, wird Methode fetchStationCoords aufgerufen
     if (endSelect) {
         endSelect.addEventListener("change", function() {
-            fetchStationCoords(this.value, 'end');
+            fetchStationCoords(this.value, 'end'); //ruft Methode fetchStationCoords auf
         });
     }
 

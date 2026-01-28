@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Bahnhof bearbeiten</h2>
+<h1>Bahnhof bearbeiten</h1> <!-- Überschrift -->
+
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 <div class="flex-container">
 
@@ -9,6 +11,8 @@
     <div class="form-wrapper">
         <form method="POST">
             {{ form.hidden_tag() }}
+
+            <!--Eingabefelder für Name und Adresse des Bahnhofs-->
             <p>
                 {{ form.name.label }}<br>
                 {{ form.name(size=40) }}
@@ -24,6 +28,8 @@
                 {% endfor %}
                 <span id="adresse-error" style="color:red; display:none;"></span>
             </p>
+
+            <!-- readonly Anzeigefelder zum Anzeigen der berechneten Koordinaten aus der Adresse -->
             <p>
                 <label for="latitude">Breitengrad:</label><br>
                 <input type="text" id="latitude" name="latitude" value="{{ bahnhof.latitude }}" readonly>
@@ -32,9 +38,12 @@
                 <label for="longitude">Längengrad:</label><br>
                 <input type="text" id="longitude" name="longitude" value="{{ bahnhof.longitude }}" readonly>
             </p>
+
+            <!-- Speichern + Abbrechen Button-->
             <p>{{ form.submit(class="btn btn-primary") }}
             <a href="{{ url_for('bahnhof') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
+
         </form>
     </div>
 
@@ -45,7 +54,7 @@
 
 </div>
 
-<!-- Leaflet CSS + JS (Erklärung siehe bahnhof_add)-->
+<!-- Leaflet CSS + JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -57,47 +66,52 @@
     }).addTo(map);
 
     //deklariert Variablen
-    let marker = null;
-    let latField = document.getElementById("latitude");
-    let lonField = document.getElementById("longitude");
+    let marker = null; // Variable für den Bahnhofsmarker, initial null (noch kein Marker)
+    let latField = document.getElementById("latitude"); <!-- Referenz zum Breitengrad-Eingabefeld -->
+    let lonField = document.getElementById("longitude"); <!-- Referenz zum Längengrad-Eingabefeld -->
 
-
+    <!-- prüft ob Koordinaten schon vorhanden sind (sollte eigentlich der Fall sein -> zeichnet Marker -->
     if (latField.value && lonField.value) {
-        //marker erstellen
+        //Marker erstellen
         marker = L.marker([parseFloat(latField.value), parseFloat(lonField.value)], {draggable: true}).addTo(map);
-        //Listener für das verscheiben des Markers
+        //Listener für das Verschieben des Markers
         marker.on('dragend', function() {
-            const pos = marker.getLatLng();
-            latField.value = pos.lat;
-            lonField.value = pos.lng;
+            const pos = marker.getLatLng(); <!-- neue Position des Markers nach dem verschieben -->
+            latField.value = pos.lat; <!-- Aktualisiert das Breitengrad-Feld mit der neuen Position -->
+            lonField.value = pos.lng; <!-- Aktualisiert das Längengrad-Feld mit der neuen Position -->
         });
         //Karte zentrieren auf Marker und zoomen
         map.setView([parseFloat(latField.value), parseFloat(lonField.value)], 15);
     }
 
+    <!-- Eventlistener der ausgelöst wird  wenn das Adress-Feld geändert wird -> wandelt Adresse in Koordinaten um
+     -> zeichnet mit Hilfe der Koordinaten den Marker für den Bahnhof-->
     document.getElementById("adresse").addEventListener("change", function () {
         const adresse = this.value.trim(); //Leerzeichen entfernen
-        const errorSpan = document.getElementById("adresse-error");
-        errorSpan.style.display = "none";
-        errorSpan.textContent = "";
+        const errorSpan = document.getElementById("adresse-error"); <!-- Referenz zum Fehler-Span-Element -->
+        errorSpan.style.display = "none"; <!-- versteckt die Fehlermeldung-->
+        errorSpan.textContent = ""; <!-- leert den Fehlertext -->
 
+        <!-- wenn die Adresse kürzer als 3 Zeichen ist -> Funktion beenden (zu kurz für eine sinnvolle Adresse) -->
         if (adresse.length < 3) return;
 
-        //Adresse umwandeln in Koordinaten (gleich wie bei add)
+        //Adresse umwandeln in Koordinaten
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresse)}`)
-            .then(response => response.json())
+            .then(response => response.json()) //wandelt die Antwort in JSON um
+            // verarbeitet die JSON-Datei
             .then(data => {
-                if (data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
+                if (data.length > 0) { //falls mind. 1 Ergebnis für die Adresse gefunden wurde
+                    const lat = parseFloat(data[0].lat); //extrahiert den Breitengrad des ersten Ergebnisses (1. Ergebniss  = beste, zutreffendste Ergebnis
+                    const lon = parseFloat(data[0].lon); //extrahiert den Längengrad des ersten Ergebnisses
 
-                    latField.value = lat;
-                    lonField.value = lon;
+                    latField.value = lat; // setzt den Längengrad ins Eingabefeld damit der User es sehen kann
+                    lonField.value = lon; // setzt den Breitengrad ins Eingabefeld damit der User es sehen kann
 
-                    if (marker) {
-                        marker.setLatLng([lat, lon]);
-                    } else {
-                        marker = L.marker([lat, lon], {
+                    if (marker) { //falls es bereits einen Marker gibt
+                        marker.setLatLng([lat, lon]); //verschiebt den vorhandenen Marker
+                    } else { //falls es den Marker noch nicht gibt
+                        marker = L.marker([lat, lon], { //Marker erstellen
+                            //Icon für Marker definieren -> Github-Repository für Icon verwendet
                                     icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
                                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -106,23 +120,24 @@
                                         popupAnchor: [1, -34],
                                         shadowSize: [41, 41]
                                     })
-                                }, {draggable: true}).addTo(map);
+                                }, {draggable: true}).addTo(map); //macht den Marker verschiebbar + fügt ihn zur Karte hinzu
+                        //Event-Handler, wenn das verschieben des neuen Markers beendet wird
                         marker.on('dragend', function() {
-                            const pos = marker.getLatLng();
-                            latField.value = pos.lat;
-                            lonField.value = pos.lng;
+                            const pos = marker.getLatLng(); //holt die neue Position des Markers
+                            latField.value = pos.lat; //aktualisiert Breitengrad-Feld
+                            lonField.value = pos.lng; //aktualisiert Längengrad-Feld
                         });
                     }
 
-                    map.setView([lat, lon], 15);
-                } else {
-                    latField.value = "";
-                    lonField.value = "";
-                    errorSpan.textContent = "[Adresse wurde nicht gefunden.]";
-                    errorSpan.style.display = "inline";
+                    map.setView([lat, lon], 15); //zentriert die Karte mit einem Zoom von 15 auf den Marker (auf die Koordinaten)
+                } else { //falls keine Koordinaten für die Adresse gefunden wurden
+                    latField.value = ""; //leert Breitengradfeld
+                    lonField.value = ""; //leert Längengradfeld
+                    errorSpan.textContent = "[Adresse wurde nicht gefunden.]"; //setzt die Fehlermeldung
+                    errorSpan.style.display = "inline"; //macht die Fehlermeldung sichtbar
                 }
             })
-            .catch(err => console.error("Geocoding Fehler:", err));
+            .catch(err => console.error("Geocoding Fehler:", err)); //gibt Fehler in der Konsole aus
     });
 </script>
 {% endblock %}

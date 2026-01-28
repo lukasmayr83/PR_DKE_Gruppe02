@@ -2,51 +2,63 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
+<!-- Bindet die CSS-Datei login.css für das Register-Foto (MA.png) ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
-    <h1>Neuen Benutzer anlegen</h1>
+    <h1>Neuen Benutzer anlegen</h1> <!-- Überschrift -->
 <div class="flex-container">
 
     <div class="form-wrapper">
     <form action="" method="post">
-        {{ form.hidden_tag() }}
+        {{ form.hidden_tag() }} <!-- CSRF-Token für Sicherheit (verhindert Cross-Site Request Forgery Angriffe) -->
+
+        <!-- Benutzername -->
         <p>
-            {{ form.username.label }}<br>
-            {{ form.username(size=32) }}<br>
-            {% for error in form.username.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.username.label }}<br> <!-- Beschriftung Benutzername  -->
+            {{ form.username(size=32) }}<br> <!-- Inputfeld für den Benutzernamen  -->
+            {% for error in form.username.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
+
+        <!-- E-Mail -->
         <p>
-            {{ form.email.label }}<br>
-            {{ form.email(size=64) }}<br>
-            {% for error in form.email.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.email.label }}<br> <!-- Beschriftung Email  -->
+            {{ form.email(size=64) }}<br> <!-- Inputfeld für die Email  -->
+            {% for error in form.email.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
+
+        <!-- Passwort -->
         <p>
-            {{ form.password.label }}<br>
-            {{ form.password(size=32) }}<br>
-            {% for error in form.password.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.password.label }}<br> <!-- Beschriftung Passwort  -->
+            {{ form.password(size=32) }}<br> <!-- Inputfeld für das Passwort  -->
+            {% for error in form.password.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
+
+        <!-- Passwort wiederholen -->
         <p>
-            {{ form.password2.label }}<br>
-            {{ form.password2(size=32) }}<br>
-            {% for error in form.password2.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.password2.label }}<br> <!-- Beschriftung Passwort wiederholen  -->
+            {{ form.password2(size=32) }}<br> <!-- Inputfeld für das Passwort (wiederholen)  -->
+            {% for error in form.password2.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
+
+        <!-- Rolle -->
         <p>
-            {{ form.role.label }}<br>
-            {{ form.role() }}<br>
-            {% for error in form.role.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            {{ form.role.label }}<br> <!-- Beschriftung Rolle  -->
+            {{ form.role() }}<br> <!-- Inputfeld zum Auswählen der Rolle  -->
+            {% for error in form.role.errors %} <!-- Schleife über alle Errors -->
+            <span style="color: red;">[{{ error }}]</span> <!-- zeigt Errors in rot an -->
             {% endfor %}
         </p>
-        <p>{{ form.submit(class="btn btn-primary") }}
+        <p>{{ form.submit(class="btn btn-primary") }} <!-- Button "Anlegen" -->
     </form>
     </div>
+    <!-- div-Container für Image -->
     <div class="image-wrapper"> </div>
 </div>
 

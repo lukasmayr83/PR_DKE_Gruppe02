@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/overview2.css') }}">
+<!-- Bindet das CSS-Stylesheet für DataTables ein (interaktive Tabelle mit Suche, Sortierung) -->
 <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css" />
 <h1>Alle Strecken</h1>
 
@@ -15,20 +17,10 @@
 
                 <table id="streckeTable" class="table table-striped table-hover" border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-bottom: 0;">
 
-                    <!--<colgroup>
-                        {% if role.value != 'mitarbeiter' %}
-                        <col style="width: 30px;">
-                        {% endif %}
-                        <col style="width: 30%;">
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
-                        <col style="width: auto;">
-                        <col style="width: 100px;">
-
-                    </colgroup>-->
-
+                     <!-- definiert den Tabellenkopf (1.Zeile) -->
                     <thead>
                         <tr>
+                            <!--Spalte zum Löschen von Strecken wird nur Admins angezigt-->
                             {% if role.value != 'mitarbeiter' %}
                             <th></th>
                             {% endif %}
@@ -44,6 +36,7 @@
 
                         {% for s in strecken %}
                         <tr>
+                            <!--Spalte zum Löschen von Strecken wird nur Admins angezigt-->
                             {% if role.value != 'mitarbeiter' %}
                             <td><input type="checkbox" name="strecke_ids" value="{{ s.id }}"></td>
                             {% endif %}
@@ -53,12 +46,13 @@
                             <td>{{ s.end_bahnhof }}</td>
                             <td class="text-center">{{ s.anzahl_abschnitte }}</td>
 
+                            <!-- in Spalte Aktion steht für Admins "Bearbeiten"-> strecke_edit-->
                             {% if role.value != 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('strecke_edit', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Bearbeiten</a>
                             </td>
                             {% endif %}
-
+                            <!-- in Spalte Aktion steht für Mitarbeiter "Details" -> strecke_view-->
                             {% if role.value == 'mitarbeiter' %}
                             <td>
                                 <a href="{{ url_for('strecke_view', strecke_id=s.id) }}" class="btn btn-primary btn-sm">Details</a>
@@ -67,6 +61,7 @@
                         </tr>
                         {% endfor %}
 
+                        <!--wenn noch keine STrecken gibt -> Meldung "Es wurden noch keine Strecken definiert." -->
                         {% if not strecken %}
                         <tr>
                             <td colspan="6" class="text-center text-muted">Es wurden noch keine Strecken definiert.</td>
@@ -76,9 +71,11 @@
                     </tbody>
                 </table>
             </div>
-
+            <!--Lösch-Button -->
             <div style="margin-top: 10px;">
+                <!-- Button zum Löschen der Strekcen wird nur Admins angezeigt-->
                 {% if role.value != 'mitarbeiter' %}
+                <!-- Button öffnet beim Anklicken ein Pop-up, dass dem User fragt, ob man die Strecken wirklich löschen möchte-->
                     <button type="submit" class="btn btn-danger"
                             onclick="return confirm('Willst du wirklich alle ausgewählten Strecken löschen?');">
                         Ausgewählte löschen

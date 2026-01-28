@@ -2,13 +2,12 @@
 .image-wrapper {
     flex: 2; /*ist doppelt so groß wie das Formular */
     position: relative;
-    min-width: 400px;
-    height: 75vh;
+    min-width: 400px; /* Minimale Breite: Container wird nie schmaler als 400 Pixel */
+    height: 75vh; /* Höhe mind. 75% des Bildschirms */
     border-radius: 10px;
-    overflow: hidden; /*damit die Ecken schön abgerundet sind*/
+    overflow: hidden; /
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);  /*erzeugt Schatten*/
-    background-image: url('../img/MA.png');
-    /*wird in der Mitte des Containers platziert und füllt den Container ohne das Bild zu verzehren*/
+    background-image: url('../img/MA.png'); /*wird in der Mitte des Containers platziert und füllt den Container ohne das Bild zu verzehren*/
     background-size: cover;
-    background-position: center center;
+    background-position: center center; /*Bild wird horizontal und vertikal zentriert */
 }

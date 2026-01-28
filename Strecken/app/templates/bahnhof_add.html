@@ -1,20 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- Bindet die CSS-Datei add_edit.css für das Styling ein -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/add_edit.css') }}">
 
-<h1>Bahnhof hinzufügen</h1>
+<h1>Bahnhof hinzufügen</h1> <!-- Überschrift -->
 
 <div class="flex-container">
 
     <div class="form-wrapper">
         <form method="POST" action="">
             {{ form.hidden_tag() }}
+
+            <!--Eingabefelder für Name und Adresse des Bahnhofs-->
             <p>
-                {{ form.name.label }}<br>
-                {{ form.name() }}
-                {% for error in form.name.errors %}
-                <span style="color:red; display:block;">[{{ error }}]</span>
+                {{ form.name.label }}<br> <!--zeigt die Beschriftung für das Namensfeld an + Seitenumbruch -->
+                {{ form.name() }} <!-- Name-Eingabefeld -->
+                {% for error in form.name.errors %} <!-- Schleife durch alle Validierungsfehler des Name-Feldes -->
+                <span style="color:red; display:block;">[{{ error }}]</span> <!-- zeigt Fehler in rot an -->
                 {% endfor %}
             </p>
             <p>
@@ -25,6 +29,8 @@
                 {% endfor %}
                 <span id="adresse-error" style="color:red; display:none;"></span>
             </p>
+
+            <!-- readonly Anzeigefelder zum Anzeigen der berechneten Koordinaten aus der Adresse -->
             <p>
                 <label for="latitude">Breitengrad</label><br>
                 <input type="text" id="latitude" name="latitude" readonly>
@@ -34,12 +40,14 @@
                 <input type="text" id="longitude" name="longitude" readonly>
             </p>
 
+            <!-- Speichern + Abbrechen Button-->
             <p>{{ form.submit(class="btn btn-primary") }}
             <a href="{{ url_for('bahnhof') }}" class="btn btn-secondary" style="margin-left: 10px;">Abbrechen</a>
             </p>
+
         </form>
     </div>
-
+    <!-- div-Container für die Map -->
     <div class="map-wrapper">
         <div id="map" style="width:100%; height:100%;"></div>
     </div>
@@ -58,9 +66,10 @@
     attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let marker = null;
+    let marker = null; // Variable für den Bahnhofsmarker, initial null (noch kein Marker)
 
     //Wenn User Adresse eingibt/aktualisiert wird der Code ausgeführt
+    //wandelt Adresse in Koordinaten um -> zeichnet mit Hilfe der Koordinaten den Marker für den Bahnhof auf der Karte
     document.getElementById("adresse").addEventListener("change", function () {
         const adresse = this.value.trim(); //trim entfernt Leerzeichen vorne und hinten
         const errorSpan = document.getElementById("adresse-error");

@@ -1,23 +1,30 @@
+<!-- Erstellt den obigen Reiter; BAsis-Template für die anderen HTML-Seiten -->
+
 <!doctype html>
 <html>
+
 <head>
-    {% if title %}
-        <title>{{ title }}</title>
-    {% else %}
-        <title>Streckensystem</title>
+
+    {% if title %} <!-- Titel wird übergeben -->
+        <title>{{ title }}</title> <!-- verwendet den übergebenen Titel-->
+    {% else %} <!-- falls kein Titel übergeben wird -->
+        <title>Streckensystem</title> <!-- setzt Standarttitel -->
     {% endif %}
+    <!-- Bindet die CSS-Datei base.css ein für das Styling -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <!-- Setzt das kleines Icon im Browser-Tab auf rail.png -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/rail.png') }}">
 
 </head>
 <body>
     <div class="header">
-        <!--Menü links-->
+        <!--Menü linksbündig-->
         <ul class="menu">
 
-            <!--Strecken Dropdown-->
+            <!--Strecke-->
         <li class="dropdown">
             <a href="{{ url_for('strecke') }}">Strecken</a>
+            <!-- Dropdown nur für Admins ersichtlich -->
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <ul class="dropdown-content">
                 <li><a href="{{ url_for('strecke_add') }}">Neue Strecke hinzufügen</a></li>
@@ -25,9 +32,11 @@
             </ul>
             {% endif %}
         </li>
-            <!--Abschnitt Dropdown-->
+
+            <!--Abschnitt-->
         <li class="dropdown">
             <a href="{{ url_for('abschnitt') }}">Abschnitt</a>
+            <!-- Dropdown nur für Admins ersichtlich -->
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <ul class="dropdown-content">
                 <li><a href="{{ url_for('abschnitt_add') }}">Neuen Abschnitt hinzufügen</a></li>
@@ -36,10 +45,10 @@
             {% endif %}
         </li>
 
-
-        <!--Bahnhof Dropdown-->
+            <!--Bahnhof -->
         <li class="dropdown">
             <a href="{{ url_for('bahnhof') }}">Bahnhof</a>
+            <!-- Dropdown nur für Admins ersichtlich -->
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <ul class="dropdown-content">
                 <li><a href="{{ url_for('bahnhof_add') }}">Neuen Bahnhof hinzufügen</a></li>
@@ -50,9 +59,10 @@
 
 
 
-        <!--Warnung Dropdown-->
+        <!--Warnung -->
         <li class="dropdown">
             <a href="{{ url_for('warnung') }}">Warnung</a>
+            <!-- Dropdown nur für Admins ersichtlich -->
             {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
             <ul class="dropdown-content">
                 <li><a href="{{ url_for('warnung_add') }}">Neue Warnung hinzufügen</a></li>
@@ -62,16 +72,20 @@
         </li>
     </ul>
 
-        <!--rechts Login/Logout-->
+        <!--rechtsbündig Login/Logout-->
         <div class="user-links">
+            <!-- wenn der Benutzer sich noch nicht angemeldet hat sieht er nur das Feld "Logout" -->
             {% if current_user.is_anonymous %}
                 <a href="{{ url_for('login') }}">Login</a>
+            <!-- eingelogte Admins können neue Benutzer anlegen + Logout -->
             {% elif current_user.role.value == 'admin' %}
                 <a href="{{ url_for('register') }}">+ neuer Benutzer</a>
                 <a href="{{ url_for('logout') }}">Logout</a>
+            <!-- eingelogter Mitarbeiter sieht nur Logout-Button -->
             {% else %}
                 <a href="{{ url_for('logout') }}">Logout</a>
             {% endif %}
+            <!-- zeigt den Avatar ganz rechts, wenn man eingeloggt ist -->
             {% if not current_user.is_anonymous %}
             <img src="{{ current_user.avatar(40) }}" alt="Avatar" style="border-radius:50%; vertical-align:middle; margin-right:8px;">
             {% endif %}
